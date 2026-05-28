@@ -62,7 +62,7 @@ function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform
         <h2 className="news-card-title">{item.title}</h2>
         <p className="news-card-body">{item.content}</p>
 
-        {/* Chips de plataforma — sempre visíveis */}
+        {/* Seleção de plataformas — sempre visível */}
         {connected.length > 0 && (
           <div className="card-platforms">
             <span className="card-platforms-label">Publicar em:</span>
@@ -73,31 +73,33 @@ function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform
                 const chosenId = selection?.accounts?.[platform.id] || accounts[0]?.id;
                 const chosenAcc = accounts.find(a => a.id === chosenId) || accounts[0];
                 return (
-                  <label
+                  <div
                     key={platform.id}
-                    className={`card-platform-chip${isOn ? ' card-platform-chip--on' : ''}`}
+                    className={`card-platform-item${isOn ? ' card-platform-item--on' : ''}`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={isOn}
-                      onChange={() => onTogglePlatform(platform.id)}
-                    />
-                    <span>{platform.label}</span>
-                    {isOn && chosenAcc?.picture && (
+                    {/* Dropdown de conta — sempre visível */}
+                    <select
+                      value={chosenId || ''}
+                      onChange={e => onSetAccount(platform.id, e.target.value)}
+                    >
+                      {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))}
+                    </select>
+                    {/* Avatar */}
+                    {chosenAcc?.picture && (
                       <img src={chosenAcc.picture} alt="" className="card-platform-avatar" />
                     )}
-                    {isOn && accounts.length > 0 && (
-                      <select
-                        value={chosenId}
-                        onChange={e => { e.stopPropagation(); onSetAccount(platform.id, e.target.value); }}
-                        onClick={e => e.stopPropagation()}
-                      >
-                        {accounts.map(acc => (
-                          <option key={acc.id} value={acc.id}>{acc.name}</option>
-                        ))}
-                      </select>
-                    )}
-                  </label>
+                    {/* Checkbox + nome da rede social */}
+                    <label className="card-platform-check">
+                      <input
+                        type="checkbox"
+                        checked={isOn}
+                        onChange={() => onTogglePlatform(platform.id)}
+                      />
+                      <span>{platform.label}</span>
+                    </label>
+                  </div>
                 );
               })}
             </div>
