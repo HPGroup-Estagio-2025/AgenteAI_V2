@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const token = sessionStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token');
     if (!token) return;
     fetch('/api/verify', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => { if (r.ok) router.replace('/dashboard'); })
@@ -38,8 +38,8 @@ export default function LoginPage() {
         setPassword('');
         return;
       }
-      sessionStorage.setItem('auth_token', data.token);
-      sessionStorage.setItem('token_expiry', String(Date.now() + data.expiresIn * 1000));
+      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('token_expiry', String(Date.now() + data.expiresIn * 1000));
       router.replace('/dashboard');
     } catch {
       setError('Não foi possível ligar ao servidor. Verifica a tua ligação.');

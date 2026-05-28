@@ -279,7 +279,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const token = sessionStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token');
     if (!token) return;
     fetch('/api/social/accounts', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
@@ -326,7 +326,7 @@ export default function DashboardPage() {
       return;
     }
 
-    const token = sessionStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token');
     if (!token) { loadingRef.current = false; setLoading(false); return; }
 
     const params = new URLSearchParams({ limit: PAGE_SIZE, page: page.toString(), _: Date.now().toString() });
@@ -340,7 +340,7 @@ export default function DashboardPage() {
         cache: 'no-store',
         signal: controller.signal,
       });
-      if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
+      if (res.status === 401 || res.status === 403) { localStorage.clear(); router.replace('/'); return; }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setNews(data.news || []);
@@ -368,16 +368,16 @@ export default function DashboardPage() {
 
   // Auth check
   useEffect(() => {
-    const token = sessionStorage.getItem('auth_token');
-    const expiry = parseInt(sessionStorage.getItem('token_expiry') || '0', 10);
-    if (!token || Date.now() > expiry) { sessionStorage.clear(); router.replace('/'); return; }
+    const token = localStorage.getItem('auth_token');
+    const expiry = parseInt(localStorage.getItem('token_expiry') || '0', 10);
+    if (!token || Date.now() > expiry) { localStorage.clear(); router.replace('/'); return; }
     fetch('/api/verify', { headers: { Authorization: `Bearer ${token}` } })
       .then(async res => {
-        if (!res.ok) { sessionStorage.clear(); router.replace('/'); return; }
+        if (!res.ok) { localStorage.clear(); router.replace('/'); return; }
         const data = await res.json();
         setUsername(data.username || 'admin');
       })
-      .catch(() => { sessionStorage.clear(); router.replace('/'); });
+      .catch(() => { localStorage.clear(); router.replace('/'); });
   }, [router]);
 
   useEffect(() => { fetchNews(); }, [fetchNews]);
@@ -444,11 +444,11 @@ export default function DashboardPage() {
   async function runAgentManually() {
     if (agentRunning) return;
     setAgentRunning(true);
-    const token = sessionStorage.getItem('auth_token');
-    if (!token) { setAgentRunning(false); sessionStorage.clear(); router.replace('/'); return; }
+    const token = localStorage.getItem('auth_token');
+    if (!token) { setAgentRunning(false); localStorage.clear(); router.replace('/'); return; }
     try {
       const res = await fetch('/api/agent/run', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-      if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
+      if (res.status === 401 || res.status === 403) { localStorage.clear(); router.replace('/'); return; }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { showToast(data.error || 'Erro ao executar agente', 'error'); return; }
       setLastAgentRun(data);
@@ -479,7 +479,7 @@ export default function DashboardPage() {
 
   // ── Publicar artigo ───────────────────────────────────────────────
   async function handlePublish(item) {
-    const token = sessionStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token');
     const sel = articleSelections[item.id] || { platforms: [], accounts: {} };
     try {
       const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/publish`, {
@@ -491,7 +491,7 @@ export default function DashboardPage() {
           selectedAccounts: sel.accounts,
         }),
       });
-      if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
+      if (res.status === 401 || res.status === 403) { localStorage.clear(); router.replace('/'); return; }
       const data = await res.json();
       if (!res.ok) { showToast(data.error || 'Erro ao publicar', 'error'); return; }
       removePending(item.id);
@@ -503,14 +503,14 @@ export default function DashboardPage() {
 
   // ── Guardar artigo (on_hold) ──────────────────────────────────────
   async function handleSave(item) {
-    const token = sessionStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token');
     try {
       const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/save`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ article: item }),
       });
-      if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
+      if (res.status === 401 || res.status === 403) { localStorage.clear(); router.replace('/'); return; }
       const data = await res.json();
       if (!res.ok) { showToast(data.error || 'Erro ao guardar', 'error'); return; }
       removePending(item.id);
@@ -551,7 +551,7 @@ export default function DashboardPage() {
               </svg>
               <span>{username}</span>
             </div>
-            <button className="btn btn-ghost btn-danger" onClick={() => { sessionStorage.clear(); router.replace('/'); }}>
+            <button className="btn btn-ghost btn-danger" onClick={() => { localStorage.clear(); router.replace('/'); }}>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>
               </svg>

@@ -76,13 +76,13 @@ function SocialPageContent() {
   }
 
   const loadAccounts = useCallback(async () => {
-    const token = sessionStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token');
     if (!token) { router.replace('/'); return; }
     try {
       const res = await fetch('/api/social/accounts', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.status === 401) { sessionStorage.clear(); router.replace('/'); return; }
+      if (res.status === 401) { localStorage.clear(); router.replace('/'); return; }
       const data = await res.json();
       setAccounts(data.accounts || {});
     } catch {
@@ -97,9 +97,9 @@ function SocialPageContent() {
   }, []);
 
   useEffect(() => {
-    const token = sessionStorage.getItem('auth_token');
-    const expiry = parseInt(sessionStorage.getItem('token_expiry') || '0', 10);
-    if (!token || Date.now() > expiry) { sessionStorage.clear(); router.replace('/'); return; }
+    const token = localStorage.getItem('auth_token');
+    const expiry = parseInt(localStorage.getItem('token_expiry') || '0', 10);
+    if (!token || Date.now() > expiry) { localStorage.clear(); router.replace('/'); return; }
     loadAccounts();
   }, [loadAccounts, router]);
 
@@ -118,7 +118,7 @@ function SocialPageContent() {
   }, [searchParams, router]);
 
   async function handleConnect(platformId) {
-    const token = sessionStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token');
     setConnecting(platformId);
     try {
       const res = await fetch(`/api/social/connect/${platformId}`, {
@@ -135,7 +135,7 @@ function SocialPageContent() {
   }
 
   async function handleDisconnect(accountId) {
-    const token = sessionStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token');
     try {
       const res = await fetch('/api/social/accounts', {
         method: 'DELETE',
@@ -178,7 +178,7 @@ function SocialPageContent() {
             </button>
           </nav>
           <div className="header-actions">
-            <button className="btn btn-ghost btn-danger" onClick={() => { sessionStorage.clear(); router.replace('/'); }}>
+            <button className="btn btn-ghost btn-danger" onClick={() => { localStorage.clear(); router.replace('/'); }}>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>
               </svg>
