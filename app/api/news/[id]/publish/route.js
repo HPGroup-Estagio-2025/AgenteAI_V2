@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
 import { findNews, insertNews, updateNews } from '@/src/lib/db';
-import { getAccount } from '@/src/lib/social';
+import { getAccount, getAccountById } from '@/src/lib/social';
 
 const N8N_PUBLISH_WEBHOOK = process.env.N8N_PUBLISH_WEBHOOK || '';
 const FACEBOOK_DIRECT_PUBLISH = process.env.FACEBOOK_DIRECT_PUBLISH === 'true';
@@ -28,8 +28,8 @@ function buildFacebookMessage(item) {
     .filter(Boolean).join('\n\n').slice(0, 60000);
 }
 
-async function publishToFacebook(item) {
-  const account = getAccount('facebook');
+async function publishToFacebook(item, accountId = null) {
+  const account = accountId ? getAccountById(accountId) : getAccount('facebook');
   if (!account) throw Object.assign(new Error('Facebook nao conectado'), { code: 'facebook_not_connected' });
   const page = getFacebookPage(account);
   if (!page?.accessToken) {
@@ -106,15 +106,19 @@ export async function POST(request, { params }) {
   const socialPlatforms = Array.isArray(body.socialPlatforms)
     ? body.socialPlatforms.filter(p => VALID_SOCIAL_PLATFORMS.includes(p))
     : [];
+  // Conta específica escolhida pelo admin para cada plataforma: { facebook: 'uuid', ... }
+  const selectedAccounts = body.selectedAccounts && typeof body.selectedAccounts === 'object'
+    ? body.selectedAccounts : {};
 
   try {
     const socialResults = [];
     if (socialPlatforms.includes('facebook')) {
-      if (!getAccount('facebook')) {
+      const fbAccountId = selectedAccounts.facebook || null;
+      if (!fbAccountId && !getAccount('facebook')) {
         return NextResponse.json({ error: 'Facebook ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
       if (FACEBOOK_DIRECT_PUBLISH) {
-        socialResults.push(await publishToFacebook(item));
+        socialResults.push(await publishToFacebook(item, fbAccountId));
       }
     }
 

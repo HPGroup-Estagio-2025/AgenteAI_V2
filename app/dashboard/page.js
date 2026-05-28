@@ -12,9 +12,9 @@ const SECTOR_MAP = {
 
 const STATUS_LABELS = { pending: 'Pendente', published: 'Publicada', rejected: 'Rejeitada' };
 const SOCIAL_PLATFORMS = [
-  { id: 'facebook', label: 'Facebook' },
+  { id: 'facebook',  label: 'Facebook' },
   { id: 'instagram', label: 'Instagram' },
-  { id: 'linkedin', label: 'LinkedIn' },
+  { id: 'linkedin',  label: 'LinkedIn' },
 ];
 const PAGE_SIZE = 5;
 
@@ -125,9 +125,13 @@ export default function DashboardPage() {
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
-  const [selectedPlatforms, setSelectedPlatforms] = useState(['facebook']);
   const [agentRunning, setAgentRunning] = useState(false);
   const [lastAgentRun, setLastAgentRun] = useState(null);
+
+  // Contas sociais conectadas e seleção no modal de publicação
+  const [connectedAccounts, setConnectedAccounts] = useState({});   // { facebook: [{id,name,picture,...}] }
+  const [selectedPlatforms, setSelectedPlatforms] = useState([]);   // plataformas com checkbox ativa
+  const [selectedAccounts, setSelectedAccounts] = useState({});     // { facebook: 'account-uuid' }
 
   const loadingRef = useRef(false);
   const toastTimer = useRef(null);
@@ -145,6 +149,16 @@ export default function DashboardPage() {
     const stored = loadPending();
     setPendingArticles(stored);
     setCounts(prev => ({ ...prev, pending: stored.length }));
+  }, []);
+
+  // Carrega contas sociais conectadas
+  useEffect(() => {
+    const token = sessionStorage.getItem('auth_token');
+    if (!token) return;
+    fetch('/api/social/accounts', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => setConnectedAccounts(data.accounts || {}))
+      .catch(() => {});
   }, []);
 
   // ── Fetch de notícias da BD (publicadas/rejeitadas) ────────────────
@@ -336,6 +350,7 @@ export default function DashboardPage() {
           body: JSON.stringify({
             article: item,
             socialPlatforms: options.socialPlatforms || [],
+            selectedAccounts: options.selectedAccounts || {},
           }),
         });
         if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
@@ -359,7 +374,7 @@ export default function DashboardPage() {
     // ── Ações sobre artigos já na BD (publicadas/rejeitadas) ─────────
     const endpoint = `/api/news/${encodeURIComponent(item.id)}/${type}`;
     const body = type === 'publish'
-      ? { socialPlatforms: options.socialPlatforms || [] }
+      ? { socialPlatforms: options.socialPlatforms || [], selectedAccounts: options.selectedAccounts || {} }
       : { reason: options.reason || '' };
     try {
       const res = await fetch(endpoint, {
@@ -377,15 +392,30 @@ export default function DashboardPage() {
     }
   }
 
+  // Abre o modal de publicação e pré-seleciona contas/plataformas conectadas
+  function openPublishModal(item) {
+    const initPlatforms = [];
+    const initAccounts = {};
+    for (const [platformId, accounts] of Object.entries(connectedAccounts)) {
+      if (accounts?.length > 0) {
+        initPlatforms.push(platformId);
+        initAccounts[platformId] = accounts[0].id;
+      }
+    }
+    setSelectedPlatforms(initPlatforms);
+    setSelectedAccounts(initAccounts);
+    setModal({ type: 'publish', item });
+  }
+
   function handleModalConfirm() {
     if (!modal) return;
     const { type, item } = modal;
-    if (type === 'publish' && selectedPlatforms.length === 0) {
-      showToast('Seleciona pelo menos uma rede social.', 'error');
-      return;
-    }
     setModal(null);
-    performAction(type, item, { socialPlatforms: selectedPlatforms, reason: rejectReason });
+    performAction(type, item, {
+      socialPlatforms: selectedPlatforms,
+      selectedAccounts,
+      reason: rejectReason,
+    });
     setRejectReason('');
   }
 
@@ -395,6 +425,10 @@ export default function DashboardPage() {
     setSelectedPlatforms(prev =>
       prev.includes(platformId) ? prev.filter(id => id !== platformId) : [...prev, platformId]
     );
+  }
+
+  function setAccountForPlatform(platformId, accountId) {
+    setSelectedAccounts(prev => ({ ...prev, [platformId]: accountId }));
   }
 
   // Notícias a mostrar na lista
@@ -517,7 +551,7 @@ export default function DashboardPage() {
               <NewsCard
                 key={item.id}
                 item={item}
-                onPublish={i => { setSelectedPlatforms(['facebook']); setModal({ type: 'publish', item: i }); }}
+                onPublish={i => openPublishModal(i)}
                 onReject={i => setModal({ type: 'reject', item: i })}
               />
             ))
@@ -552,20 +586,73 @@ export default function DashboardPage() {
                   ? `Publicar "${modal.item.title}"?`
                   : 'Tem a certeza que quer rejeitar esta notícia?'}
               </p>
-              {modal.type === 'publish' && (
-                <div className="publish-options" role="group" aria-label="Redes sociais">
-                  {SOCIAL_PLATFORMS.map(platform => (
-                    <label key={platform.id} className="publish-option">
-                      <input
-                        type="checkbox"
-                        checked={selectedPlatforms.includes(platform.id)}
-                        onChange={() => togglePlatform(platform.id)}
-                      />
-                      <span>{platform.label}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
+
+              {modal.type === 'publish' && (() => {
+                const connectedPlatforms = SOCIAL_PLATFORMS.filter(
+                  p => connectedAccounts[p.id]?.length > 0
+                );
+                return (
+                  <>
+                    <p style={{ fontSize: '.8rem', color: 'var(--gray-400)', marginTop: 10, marginBottom: 4 }}>
+                      Escolhe as redes sociais e a conta para publicar:
+                    </p>
+                    <div className="publish-options" role="group" aria-label="Redes sociais">
+                      {connectedPlatforms.length === 0 ? (
+                        <p className="publish-no-accounts">
+                          Sem contas conectadas — a notícia será guardada sem publicação social.
+                          <br />
+                          <span style={{ fontSize: '.8rem' }}>Vai a <strong>Redes Sociais</strong> para conectar contas.</span>
+                        </p>
+                      ) : (
+                        connectedPlatforms.map(platform => {
+                          const accounts = connectedAccounts[platform.id] || [];
+                          const isOn = selectedPlatforms.includes(platform.id);
+                          const chosenId = selectedAccounts[platform.id] || accounts[0]?.id;
+                          return (
+                            <div
+                              key={platform.id}
+                              className={`publish-platform-row${isOn ? '' : ' publish-platform-row--disabled'}`}
+                            >
+                              <div className="publish-platform-header">
+                                <label className="publish-option">
+                                  <input
+                                    type="checkbox"
+                                    checked={isOn}
+                                    onChange={() => togglePlatform(platform.id)}
+                                  />
+                                  <span>{platform.label}</span>
+                                </label>
+                              </div>
+
+                              {isOn && accounts.length > 1 && (
+                                <select
+                                  className="publish-account-select"
+                                  value={chosenId}
+                                  onChange={e => setAccountForPlatform(platform.id, e.target.value)}
+                                >
+                                  {accounts.map(acc => (
+                                    <option key={acc.id} value={acc.id}>{acc.name}</option>
+                                  ))}
+                                </select>
+                              )}
+
+                              {isOn && accounts.length === 1 && (
+                                <div className="publish-account-info">
+                                  {accounts[0].picture && (
+                                    <img src={accounts[0].picture} alt="" className="publish-account-avatar" />
+                                  )}
+                                  <span>{accounts[0].name}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+
               {modal.type === 'reject' && (
                 <textarea
                   placeholder="Motivo da rejeição (opcional)"
