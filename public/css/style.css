@@ -297,13 +297,19 @@ textarea { resize: vertical; }
 .card-platform-check {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   cursor: pointer;
   font-size: .875rem;
   font-weight: 500;
   color: var(--gray-500);
   user-select: none;
-  flex: 1;
+  white-space: nowrap;
+}
+/* Separador entre checkboxes de plataformas diferentes na mesma linha */
+.card-platform-check + .card-platform-check {
+  padding-left: 10px;
+  border-left: 1.5px solid var(--gray-300);
+  margin-left: 2px;
 }
 .card-platform-item--on .card-platform-check { color: var(--blue-700); font-weight: 600; }
 .card-platform-check input[type="checkbox"] {

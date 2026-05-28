@@ -22,6 +22,12 @@ const SOCIAL_PLATFORMS = [
   { id: 'linkedin',  label: 'LinkedIn' },
 ];
 
+// Agrupa plataformas por conta: Meta (Facebook+Instagram) e LinkedIn em linhas separadas
+const PLATFORM_GROUPS = [
+  { groupId: 'meta',     primaryPlatform: 'facebook', platforms: ['facebook', 'instagram'] },
+  { groupId: 'linkedin', primaryPlatform: 'linkedin',  platforms: ['linkedin'] },
+];
+
 const PAGE_SIZE = 5;
 
 function formatDate(iso) {
@@ -41,9 +47,21 @@ function SectorBadge({ category }) {
   return <span className="badge badge-category">{category}</span>;
 }
 
-// ── Card para artigos do agente (com chips de plataforma inline) ────
+// ── Card para artigos do agente (com seleção de plataformas inline) ──
 function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform, onSetAccount, onPublish, onSave }) {
-  const connected = SOCIAL_PLATFORMS.filter(p => connectedAccounts[p.id]?.length > 0);
+
+  // Constrói grupos ativos: uma linha por conta (Meta = Facebook+Instagram; LinkedIn separado)
+  const activeGroups = PLATFORM_GROUPS.map(g => {
+    // Usa contas da plataforma primária; se vazia, tenta qualquer plataforma do grupo
+    let accounts = connectedAccounts[g.primaryPlatform] || [];
+    if (accounts.length === 0) {
+      for (const pid of g.platforms) {
+        if ((connectedAccounts[pid] || []).length > 0) { accounts = connectedAccounts[pid]; break; }
+      }
+    }
+    const activePlatforms = g.platforms.filter(pid => (connectedAccounts[pid] || []).length > 0);
+    return { ...g, accounts, activePlatforms };
+  }).filter(g => g.activePlatforms.length > 0);
 
   return (
     <article className={`news-card${item.imageUrl ? ' has-image' : ''}`}>
@@ -62,43 +80,47 @@ function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform
         <h2 className="news-card-title">{item.title}</h2>
         <p className="news-card-body">{item.content}</p>
 
-        {/* Seleção de plataformas — sempre visível */}
-        {connected.length > 0 && (
+        {/* Uma linha por conta/empresa — dropdown + checkboxes das suas redes */}
+        {activeGroups.length > 0 && (
           <div className="card-platforms">
             <span className="card-platforms-label">Publicar em:</span>
             <div className="card-platforms-row">
-              {connected.map(platform => {
-                const accounts = connectedAccounts[platform.id] || [];
-                const isOn = selection?.platforms?.includes(platform.id) ?? true;
-                const chosenId = selection?.accounts?.[platform.id] || accounts[0]?.id;
+              {activeGroups.map(group => {
+                const { accounts, activePlatforms, groupId, primaryPlatform } = group;
+                const chosenId = selection?.accounts?.[primaryPlatform] || accounts[0]?.id;
                 const chosenAcc = accounts.find(a => a.id === chosenId) || accounts[0];
+                // A linha fica ativa se pelo menos uma plataforma do grupo está selecionada
+                const groupActive = activePlatforms.some(pid => selection?.platforms?.includes(pid) ?? true);
                 return (
-                  <div
-                    key={platform.id}
-                    className={`card-platform-item${isOn ? ' card-platform-item--on' : ''}`}
-                  >
-                    {/* Dropdown de conta — sempre visível */}
+                  <div key={groupId} className={`card-platform-item${groupActive ? ' card-platform-item--on' : ''}`}>
+                    {/* Dropdown da conta — sempre visível */}
                     <select
                       value={chosenId || ''}
-                      onChange={e => onSetAccount(platform.id, e.target.value)}
+                      onChange={e => onSetAccount(primaryPlatform, e.target.value)}
                     >
                       {accounts.map(acc => (
                         <option key={acc.id} value={acc.id}>{acc.name}</option>
                       ))}
                     </select>
-                    {/* Avatar */}
+                    {/* Avatar da conta */}
                     {chosenAcc?.picture && (
                       <img src={chosenAcc.picture} alt="" className="card-platform-avatar" />
                     )}
-                    {/* Checkbox + nome da rede social */}
-                    <label className="card-platform-check">
-                      <input
-                        type="checkbox"
-                        checked={isOn}
-                        onChange={() => onTogglePlatform(platform.id)}
-                      />
-                      <span>{platform.label}</span>
-                    </label>
+                    {/* Checkboxes das redes sociais desta conta */}
+                    {activePlatforms.map(pid => {
+                      const platform = SOCIAL_PLATFORMS.find(p => p.id === pid);
+                      const isOn = selection?.platforms?.includes(pid) ?? true;
+                      return (
+                        <label key={pid} className="card-platform-check">
+                          <input
+                            type="checkbox"
+                            checked={isOn}
+                            onChange={() => onTogglePlatform(pid)}
+                          />
+                          <span>{platform?.label}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 );
               })}
