@@ -1,0 +1,25 @@
+{
+  "name": "dashboard-news",
+  "version": "1.0.0",
+  "description": "Dashboard de gestão de notícias recebidas do n8n",
+  "private": true,
+  "scripts": {
+    "predev": "node scripts/clean-next.js",
+    "dev": "node scripts/kill-port.js && node scripts/start-next.js dev",
+    "build": "next build",
+    "start": "node scripts/start-next.js start"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "next": "^15.5.18",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  }
+}

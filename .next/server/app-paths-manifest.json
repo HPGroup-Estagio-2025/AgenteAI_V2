@@ -1,0 +1,7 @@
+{
+  "/api/login/route": "app/api/login/route.js",
+  "/api/verify/route": "app/api/verify/route.js",
+  "/api/news/route": "app/api/news/route.js",
+  "/page": "app/page.js",
+  "/dashboard/page": "app/dashboard/page.js"
+}
