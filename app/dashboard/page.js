@@ -10,12 +10,18 @@ const SECTOR_MAP = {
   'ferroviario':    { label: 'Ferroviário',    cls: 'badge-sector-ferroviario' },
 };
 
-const STATUS_LABELS = { pending: 'Pendente', published: 'Publicada', rejected: 'Rejeitada' };
+const STATUS_LABELS = {
+  published: 'Publicada',
+  on_hold:   'Em Espera',
+  pending:   'Pendente',
+};
+
 const SOCIAL_PLATFORMS = [
   { id: 'facebook',  label: 'Facebook' },
   { id: 'instagram', label: 'Instagram' },
   { id: 'linkedin',  label: 'LinkedIn' },
 ];
+
 const PAGE_SIZE = 5;
 
 function formatDate(iso) {
@@ -35,9 +41,92 @@ function SectorBadge({ category }) {
   return <span className="badge badge-category">{category}</span>;
 }
 
-function NewsCard({ item, onPublish, onReject }) {
-  const isPending = item.status === 'pending';
+// ── Card para artigos do agente (com chips de plataforma inline) ────
+function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform, onSetAccount, onPublish, onSave }) {
+  const connected = SOCIAL_PLATFORMS.filter(p => connectedAccounts[p.id]?.length > 0);
 
+  return (
+    <article className={`news-card${item.imageUrl ? ' has-image' : ''}`}>
+      {item.imageUrl && (
+        <div className="news-card-image">
+          <img src={item.imageUrl} alt={item.title} loading="lazy" />
+        </div>
+      )}
+
+      <div className="news-card-content">
+        <div className="news-card-meta">
+          <SectorBadge category={item.category} />
+          {item.source && <span className="news-meta-text">Fonte: {item.source}</span>}
+        </div>
+
+        <h2 className="news-card-title">{item.title}</h2>
+        <p className="news-card-body">{item.content}</p>
+
+        {/* Chips de plataforma — sempre visíveis */}
+        {connected.length > 0 && (
+          <div className="card-platforms">
+            <span className="card-platforms-label">Publicar em:</span>
+            {connected.map(platform => {
+              const accounts = connectedAccounts[platform.id] || [];
+              const isOn = selection?.platforms?.includes(platform.id) ?? true;
+              const chosenId = selection?.accounts?.[platform.id] || accounts[0]?.id;
+              const chosenAcc = accounts.find(a => a.id === chosenId) || accounts[0];
+              return (
+                <label
+                  key={platform.id}
+                  className={`card-platform-chip${isOn ? ' card-platform-chip--on' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isOn}
+                    onChange={() => onTogglePlatform(platform.id)}
+                  />
+                  <span>{platform.label}</span>
+                  {isOn && accounts.length > 1 && (
+                    <select
+                      value={chosenId}
+                      onChange={e => { e.stopPropagation(); onSetAccount(platform.id, e.target.value); }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  {isOn && accounts.length === 1 && chosenAcc?.picture && (
+                    <img src={chosenAcc.picture} alt="" className="card-platform-avatar" />
+                  )}
+                </label>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="news-card-footer">
+          {item.publishedAt && <span>Publicado: {formatDate(item.publishedAt)}</span>}
+          <span>Recebido: {formatDate(item.receivedAt)}</span>
+        </div>
+      </div>
+
+      <div className="news-card-actions">
+        {item.url && (
+          <a href={item.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
+            Ver notícia
+          </a>
+        )}
+        <button className="btn btn-success" onClick={() => onPublish(item)}>
+          Publicar
+        </button>
+        <button className="btn btn-primary" style={{ background: 'var(--gray-600)', borderColor: 'var(--gray-600)' }} onClick={() => onSave(item)}>
+          Guardar
+        </button>
+      </div>
+    </article>
+  );
+}
+
+// ── Card para artigos já guardados na BD ───────────────────────────
+function SavedArticleCard({ item }) {
   return (
     <article className={`news-card${item.imageUrl ? ' has-image' : ''}`}>
       {item.imageUrl && (
@@ -52,9 +141,7 @@ function NewsCard({ item, onPublish, onReject }) {
             {STATUS_LABELS[item.status] || item.status}
           </span>
           <SectorBadge category={item.category} />
-          {item.source && (
-            <span className="news-meta-text">Fonte: {item.source}</span>
-          )}
+          {item.source && <span className="news-meta-text">Fonte: {item.source}</span>}
         </div>
 
         <h2 className="news-card-title">{item.title}</h2>
@@ -62,45 +149,31 @@ function NewsCard({ item, onPublish, onReject }) {
 
         <div className="news-card-footer">
           {item.publishedAt && <span>Publicado: {formatDate(item.publishedAt)}</span>}
-          <span>Recebido: {formatDate(item.receivedAt)}</span>
+          {item.processedAt && (
+            <span>
+              {item.status === 'published' ? 'Publicada' : 'Guardada'} em {formatDate(item.processedAt)}
+              {item.processedBy && ` · por ${item.processedBy}`}
+            </span>
+          )}
         </div>
-
-        {!isPending && item.processedAt && (
-          <div className="news-processed-info">
-            {item.status === 'published' ? 'Publicada' : 'Rejeitada'}{' '}
-            em {formatDate(item.processedAt)}
-            {item.rejectReason && ` · Motivo: ${item.rejectReason}`}
-          </div>
-        )}
       </div>
 
       <div className="news-card-actions">
-        <a href={item.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
-          Ver notícia
-        </a>
-
-        {isPending ? (
-          <>
-            <button className="btn btn-success" onClick={() => onPublish(item)}>Publicar</button>
-            <button className="btn btn-danger" onClick={() => onReject(item)}>Rejeitar</button>
-          </>
-        ) : (
-          <span className={`badge badge-${item.status}`}>
-            {item.status === 'published' ? 'Publicada' : 'Rejeitada'}
-          </span>
+        {item.url && (
+          <a href={item.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
+            Ver notícia
+          </a>
         )}
       </div>
     </article>
   );
 }
 
-// ── Helpers para localStorage ───────────────────────────────────────
+// ── localStorage helpers ────────────────────────────────────────────
 const LS_KEY = 'pending_articles';
-
 function loadPending() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; }
 }
-
 function savePending(articles) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(articles)); } catch {}
 }
@@ -110,12 +183,14 @@ export default function DashboardPage() {
   const router = useRouter();
   const [username, setUsername] = useState('admin');
 
-  // Artigos em revisão (localStorage)
+  // Artigos do agente (localStorage)
   const [pendingArticles, setPendingArticles] = useState([]);
+  // Seleção de plataformas/contas por artigo
+  const [articleSelections, setArticleSelections] = useState({});
 
-  // Artigos da BD (publicados / rejeitados)
+  // Artigos da BD (publicados / em espera)
   const [news, setNews] = useState([]);
-  const [counts, setCounts] = useState({ pending: 0, published: 0, rejected: 0 });
+  const [counts, setCounts] = useState({ pending: 0, published: 0, on_hold: 0 });
   const [filterStatus, setFilterStatus] = useState('pending');
   const [page, setPage] = useState(1);
   const [totalNews, setTotalNews] = useState(0);
@@ -123,15 +198,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [liveStatus, setLiveStatus] = useState('a ligar...');
   const [toast, setToast] = useState(null);
-  const [modal, setModal] = useState(null);
-  const [rejectReason, setRejectReason] = useState('');
   const [agentRunning, setAgentRunning] = useState(false);
   const [lastAgentRun, setLastAgentRun] = useState(null);
 
-  // Contas sociais conectadas e seleção no modal de publicação
-  const [connectedAccounts, setConnectedAccounts] = useState({});   // { facebook: [{id,name,picture,...}] }
-  const [selectedPlatforms, setSelectedPlatforms] = useState([]);   // plataformas com checkbox ativa
-  const [selectedAccounts, setSelectedAccounts] = useState({});     // { facebook: 'account-uuid' }
+  // Contas sociais conectadas
+  const [connectedAccounts, setConnectedAccounts] = useState({});
 
   const loadingRef = useRef(false);
   const toastTimer = useRef(null);
@@ -144,14 +215,13 @@ export default function DashboardPage() {
     toastTimer.current = setTimeout(() => setToast(null), 4000);
   }
 
-  // Carrega pendentes do localStorage no arranque
+  // Carrega pendentes + contas no arranque
   useEffect(() => {
     const stored = loadPending();
     setPendingArticles(stored);
     setCounts(prev => ({ ...prev, pending: stored.length }));
   }, []);
 
-  // Carrega contas sociais conectadas
   useEffect(() => {
     const token = sessionStorage.getItem('auth_token');
     if (!token) return;
@@ -161,13 +231,33 @@ export default function DashboardPage() {
       .catch(() => {});
   }, []);
 
-  // ── Fetch de notícias da BD (publicadas/rejeitadas) ────────────────
+  // Inicializa seleção de plataformas para novos artigos
+  useEffect(() => {
+    if (pendingArticles.length === 0) return;
+    const initPlatforms = SOCIAL_PLATFORMS
+      .filter(p => connectedAccounts[p.id]?.length > 0)
+      .map(p => p.id);
+    const initAccounts = {};
+    for (const [pid, accs] of Object.entries(connectedAccounts)) {
+      if (accs?.length > 0) initAccounts[pid] = accs[0].id;
+    }
+    setArticleSelections(prev => {
+      const updated = { ...prev };
+      for (const article of pendingArticles) {
+        if (!updated[article.id]) {
+          updated[article.id] = { platforms: initPlatforms, accounts: { ...initAccounts } };
+        }
+      }
+      return updated;
+    });
+  }, [pendingArticles, connectedAccounts]);
+
+  // ── Fetch da BD (publicadas / em espera) ─────────────────────────
   const fetchNews = useCallback(async ({ force = false, notify = false } = {}) => {
     if (loadingRef.current && !force) return;
     loadingRef.current = true;
     setLoading(true);
 
-    // Aba "Pendentes" usa localStorage — sem chamada à BD
     if (filterStatus === 'pending') {
       const stored = loadPending();
       setPendingArticles(stored);
@@ -185,7 +275,7 @@ export default function DashboardPage() {
     if (!token) { loadingRef.current = false; setLoading(false); return; }
 
     const params = new URLSearchParams({ limit: PAGE_SIZE, page: page.toString(), _: Date.now().toString() });
-    if (filterStatus) params.set('status', filterStatus);
+    params.set('status', filterStatus);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -199,16 +289,18 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setNews(data.news || []);
-      // Mantém o count de pendentes do localStorage
       const localPending = loadPending().length;
-      setCounts({ ...(data.counts || { pending: 0, published: 0, rejected: 0 }), pending: localPending });
+      setCounts({
+        pending:   localPending,
+        published: data.counts?.published || 0,
+        on_hold:   data.counts?.on_hold   || 0,
+      });
       setTotalNews(data.total || 0);
       setTotalPages(data.totalPages || 1);
       if (data.totalPages && page > data.totalPages) setPage(data.totalPages);
       if (notify) showToast('Notícias atualizadas', 'success');
     } catch {
       if (notify) showToast('Erro ao atualizar notícias', 'error');
-      if (!notify) setLiveStatus('sem ligação');
     } finally {
       clearTimeout(timeoutId);
       loadingRef.current = false;
@@ -217,13 +309,7 @@ export default function DashboardPage() {
   }, [filterStatus, page, router]);
 
   useEffect(() => { fetchRef.current = fetchNews; }, [fetchNews]);
-
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-      clearTimeout(toastTimer.current);
-    };
-  }, []);
+  useEffect(() => { return () => { isMountedRef.current = false; clearTimeout(toastTimer.current); }; }, []);
 
   // Auth check
   useEffect(() => {
@@ -241,38 +327,54 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchNews(); }, [fetchNews]);
 
-  // Escape fecha modal
-  useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') { setModal(null); setRejectReason(''); } }
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
-
-  // Supabase Realtime (apenas para publicadas/rejeitadas)
+  // Supabase Realtime
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const pollTimer = setInterval(() => fetchRef.current?.(), 60000);
-
     if (!supabaseUrl || supabaseUrl.includes('xxxx')) {
       setLiveStatus('Supabase não configurado');
       return () => clearInterval(pollTimer);
     }
-
     const supabase = createClient(supabaseUrl, supabaseKey);
     const channel = supabase
       .channel('news-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, () => {
-        fetchRef.current?.();
-      })
-      .subscribe((status) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, () => fetchRef.current?.())
+      .subscribe(status => {
         if (status === 'SUBSCRIBED') setLiveStatus('ao vivo');
         if (status === 'CHANNEL_ERROR') setLiveStatus('polling 60s');
         if (status === 'CLOSED') setLiveStatus('desligado');
       });
-
     return () => { clearInterval(pollTimer); supabase.removeChannel(channel); };
   }, []);
+
+  // ── Seleção de plataformas por artigo ─────────────────────────────
+  function toggleArticlePlatform(articleId, platformId) {
+    setArticleSelections(prev => {
+      const cur = prev[articleId] || { platforms: [], accounts: {} };
+      const platforms = cur.platforms.includes(platformId)
+        ? cur.platforms.filter(p => p !== platformId)
+        : [...cur.platforms, platformId];
+      return { ...prev, [articleId]: { ...cur, platforms } };
+    });
+  }
+
+  function setArticleAccount(articleId, platformId, accountId) {
+    setArticleSelections(prev => {
+      const cur = prev[articleId] || { platforms: [], accounts: {} };
+      return { ...prev, [articleId]: { ...cur, accounts: { ...cur.accounts, [platformId]: accountId } } };
+    });
+  }
+
+  // Remove artigo do localStorage e atualiza estado
+  function removePending(articleId) {
+    const updated = pendingArticles.filter(a => a.id !== articleId);
+    savePending(updated);
+    setPendingArticles(updated);
+    setNews(prev => prev.filter(n => n.id !== articleId));
+    setTotalNews(prev => Math.max(0, prev - 1));
+    setCounts(prev => ({ ...prev, pending: updated.length }));
+  }
 
   // ── Executar agente ───────────────────────────────────────────────
   async function runAgentManually() {
@@ -280,27 +382,16 @@ export default function DashboardPage() {
     setAgentRunning(true);
     const token = sessionStorage.getItem('auth_token');
     if (!token) { setAgentRunning(false); sessionStorage.clear(); router.replace('/'); return; }
-
     try {
-      const res = await fetch('/api/agent/run', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch('/api/agent/run', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        showToast(data.error || 'Erro ao executar agente', 'error');
-        return;
-      }
-
+      if (!res.ok) { showToast(data.error || 'Erro ao executar agente', 'error'); return; }
       setLastAgentRun(data);
-
-      // Adiciona artigos ao localStorage (sem duplicados por URL)
       if (Array.isArray(data.articles) && data.articles.length > 0) {
         const existing = loadPending();
         const existingUrls = new Set(existing.map(a => a.url).filter(Boolean));
         const fresh = data.articles.filter(a => !existingUrls.has(a.url));
-
         if (fresh.length > 0) {
           const updated = [...fresh, ...existing];
           savePending(updated);
@@ -310,8 +401,6 @@ export default function DashboardPage() {
         } else {
           showToast('Sem notícias novas (todas já estão em revisão)', 'info');
         }
-
-        // Muda para o separador Pendentes
         setFilterStatus('pending');
         setPage(1);
       } else {
@@ -324,114 +413,50 @@ export default function DashboardPage() {
     }
   }
 
-  // ── Ações sobre notícias ──────────────────────────────────────────
-  async function performAction(type, item, options = {}) {
+  // ── Publicar artigo ───────────────────────────────────────────────
+  async function handlePublish(item) {
     const token = sessionStorage.getItem('auth_token');
-    const isPendingLocal = pendingArticles.some(a => a.id === item.id);
-
-    // ── Rejeitar artigo pendente (só localStorage) ──────────────────
-    if (type === 'reject' && isPendingLocal) {
-      const updated = pendingArticles.filter(a => a.id !== item.id);
-      savePending(updated);
-      setPendingArticles(updated);
-      setNews(prev => prev.filter(n => n.id !== item.id));
-      setTotalNews(prev => Math.max(0, prev - 1));
-      setCounts(prev => ({ ...prev, pending: updated.length }));
-      showToast('Notícia rejeitada', 'success');
-      return;
-    }
-
-    // ── Publicar artigo pendente (insere no Supabase + publica) ──────
-    if (type === 'publish' && isPendingLocal) {
-      try {
-        const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/publish`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            article: item,
-            socialPlatforms: options.socialPlatforms || [],
-            selectedAccounts: options.selectedAccounts || {},
-          }),
-        });
-        if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
-        const data = await res.json();
-        if (!res.ok) { showToast(data.error || 'Erro ao publicar', 'error'); return; }
-
-        // Remove do localStorage
-        const updated = pendingArticles.filter(a => a.id !== item.id);
-        savePending(updated);
-        setPendingArticles(updated);
-        setNews(prev => prev.filter(n => n.id !== item.id));
-        setTotalNews(prev => Math.max(0, prev - 1));
-        setCounts(prev => ({ ...prev, pending: updated.length }));
-        showToast('Notícia publicada com sucesso!', 'success');
-      } catch {
-        showToast('Erro de ligação. Tenta novamente.', 'error');
-      }
-      return;
-    }
-
-    // ── Ações sobre artigos já na BD (publicadas/rejeitadas) ─────────
-    const endpoint = `/api/news/${encodeURIComponent(item.id)}/${type}`;
-    const body = type === 'publish'
-      ? { socialPlatforms: options.socialPlatforms || [], selectedAccounts: options.selectedAccounts || {} }
-      : { reason: options.reason || '' };
+    const sel = articleSelections[item.id] || { platforms: [], accounts: {} };
     try {
-      const res = await fetch(endpoint, {
+      const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/publish`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          article: item,
+          socialPlatforms: sel.platforms,
+          selectedAccounts: sel.accounts,
+        }),
       });
       if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
       const data = await res.json();
-      if (!res.ok) { showToast(data.error || 'Erro ao processar a ação', 'error'); return; }
-      showToast(`Notícia ${type === 'publish' ? 'publicada' : 'rejeitada'} com sucesso!`, 'success');
-      fetchRef.current?.();
+      if (!res.ok) { showToast(data.error || 'Erro ao publicar', 'error'); return; }
+      removePending(item.id);
+      showToast('Notícia publicada com sucesso!', 'success');
     } catch {
       showToast('Erro de ligação. Tenta novamente.', 'error');
     }
   }
 
-  // Abre o modal de publicação e pré-seleciona contas/plataformas conectadas
-  function openPublishModal(item) {
-    const initPlatforms = [];
-    const initAccounts = {};
-    for (const [platformId, accounts] of Object.entries(connectedAccounts)) {
-      if (accounts?.length > 0) {
-        initPlatforms.push(platformId);
-        initAccounts[platformId] = accounts[0].id;
-      }
+  // ── Guardar artigo (on_hold) ──────────────────────────────────────
+  async function handleSave(item) {
+    const token = sessionStorage.getItem('auth_token');
+    try {
+      const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/save`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ article: item }),
+      });
+      if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Erro ao guardar', 'error'); return; }
+      removePending(item.id);
+      showToast('Notícia guardada!', 'success');
+    } catch {
+      showToast('Erro de ligação. Tenta novamente.', 'error');
     }
-    setSelectedPlatforms(initPlatforms);
-    setSelectedAccounts(initAccounts);
-    setModal({ type: 'publish', item });
   }
 
-  function handleModalConfirm() {
-    if (!modal) return;
-    const { type, item } = modal;
-    setModal(null);
-    performAction(type, item, {
-      socialPlatforms: selectedPlatforms,
-      selectedAccounts,
-      reason: rejectReason,
-    });
-    setRejectReason('');
-  }
-
-  function closeModal() { setModal(null); setRejectReason(''); }
-
-  function togglePlatform(platformId) {
-    setSelectedPlatforms(prev =>
-      prev.includes(platformId) ? prev.filter(id => id !== platformId) : [...prev, platformId]
-    );
-  }
-
-  function setAccountForPlatform(platformId, accountId) {
-    setSelectedAccounts(prev => ({ ...prev, [platformId]: accountId }));
-  }
-
-  // Notícias a mostrar na lista
+  // Artigos a mostrar
   const displayedNews = filterStatus === 'pending'
     ? pendingArticles.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
     : news;
@@ -473,6 +498,7 @@ export default function DashboardPage() {
       </header>
 
       <main className="main">
+        {/* Stat cards */}
         <div className="stats-bar">
           <div className="stat-card stat-pending" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('pending'); setPage(1); }}>
             <div className="stat-value">{counts.pending}</div>
@@ -482,19 +508,19 @@ export default function DashboardPage() {
             <div className="stat-value">{counts.published}</div>
             <div className="stat-label">Publicadas</div>
           </div>
-          <div className="stat-card stat-rejected" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('rejected'); setPage(1); }}>
-            <div className="stat-value">{counts.rejected}</div>
-            <div className="stat-label">Rejeitadas</div>
+          <div className="stat-card stat-onhold" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('on_hold'); setPage(1); }}>
+            <div className="stat-value">{counts.on_hold}</div>
+            <div className="stat-label">Em Espera</div>
           </div>
         </div>
 
+        {/* Toolbar */}
         <div className="toolbar">
           <div className="filter-tabs" role="tablist">
             {[
               { status: 'pending',   label: `Para Revisão (${counts.pending})` },
               { status: 'published', label: 'Publicadas' },
-              { status: 'rejected',  label: 'Rejeitadas' },
-              { status: '',          label: 'Todas (BD)' },
+              { status: 'on_hold',   label: 'Em Espera' },
             ].map(({ status, label }) => (
               <button
                 key={status}
@@ -506,13 +532,13 @@ export default function DashboardPage() {
               </button>
             ))}
           </div>
-          <button type="button" className="btn btn-primary" onClick={runAgentManually} disabled={agentRunning} title="Executar agente de notícias">
+          <button type="button" className="btn btn-primary" onClick={runAgentManually} disabled={agentRunning}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 3l14 9-14 9V3z"/>
             </svg>
             {agentRunning ? 'A executar...' : 'Executar agente'}
           </button>
-          <button className="btn btn-ghost" onClick={() => fetchNews({ force: true, notify: true })} disabled={loading || agentRunning} title="Atualizar lista">
+          <button className="btn btn-ghost" onClick={() => fetchNews({ force: true, notify: true })} disabled={loading || agentRunning}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
             </svg>
@@ -534,6 +560,7 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Lista de notícias */}
         <div className="news-list">
           {loading && displayedNews.length === 0 ? (
             <div className="empty-state">
@@ -542,24 +569,33 @@ export default function DashboardPage() {
           ) : displayedNews.length === 0 ? (
             <div className="empty-state">
               <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>
+                <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+                <path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>
               </svg>
               <p>Sem notícias para mostrar</p>
             </div>
-          ) : (
+          ) : filterStatus === 'pending' ? (
             displayedNews.map(item => (
-              <NewsCard
+              <AgentArticleCard
                 key={item.id}
                 item={item}
-                onPublish={i => openPublishModal(i)}
-                onReject={i => setModal({ type: 'reject', item: i })}
+                connectedAccounts={connectedAccounts}
+                selection={articleSelections[item.id]}
+                onTogglePlatform={pid => toggleArticlePlatform(item.id, pid)}
+                onSetAccount={(pid, aid) => setArticleAccount(item.id, pid, aid)}
+                onPublish={handlePublish}
+                onSave={handleSave}
               />
+            ))
+          ) : (
+            displayedNews.map(item => (
+              <SavedArticleCard key={item.id} item={item} />
             ))
           )}
         </div>
 
         {totalPages > 1 && (
-          <div className="pagination" aria-label="Paginação de notícias">
+          <div className="pagination">
             <button className="btn btn-ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={loading || page <= 1}>
               Anterior
             </button>
@@ -573,99 +609,6 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
-
-      {modal && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
-          <div className="modal">
-            <div className="modal-header">
-              <h2>{modal.type === 'publish' ? 'Publicar notícia' : 'Rejeitar notícia'}</h2>
-            </div>
-            <div className="modal-body">
-              <p>
-                {modal.type === 'publish'
-                  ? `Publicar "${modal.item.title}"?`
-                  : 'Tem a certeza que quer rejeitar esta notícia?'}
-              </p>
-
-              {modal.type === 'publish' && (() => {
-                const connectedPlatforms = SOCIAL_PLATFORMS.filter(
-                  p => connectedAccounts[p.id]?.length > 0
-                );
-                return (
-                  <div className="publish-options" role="group" aria-label="Redes sociais">
-                    {connectedPlatforms.length === 0 ? (
-                      <p className="publish-no-accounts">
-                        Sem contas conectadas.<br />
-                        <span style={{ fontSize: '.8rem' }}>A notícia será guardada. Vai a <strong>Redes Sociais</strong> para conectar contas.</span>
-                      </p>
-                    ) : connectedPlatforms.map(platform => {
-                      const accounts = connectedAccounts[platform.id] || [];
-                      const isOn = selectedPlatforms.includes(platform.id);
-                      const chosenId = selectedAccounts[platform.id] || accounts[0]?.id;
-                      const chosenAccount = accounts.find(a => a.id === chosenId) || accounts[0];
-                      return (
-                        <label
-                          key={platform.id}
-                          className={`publish-platform-row${isOn ? ' publish-platform-row--active' : ''}`}
-                        >
-                          <input
-                            type="checkbox"
-                            className="publish-checkbox"
-                            checked={isOn}
-                            onChange={() => togglePlatform(platform.id)}
-                          />
-                          <div className="publish-platform-body">
-                            <span className="publish-platform-name">{platform.label}</span>
-                            {accounts.length > 1 ? (
-                              <select
-                                className="publish-account-select"
-                                value={chosenId}
-                                disabled={!isOn}
-                                onChange={e => { e.stopPropagation(); setAccountForPlatform(platform.id, e.target.value); }}
-                                onClick={e => e.stopPropagation()}
-                              >
-                                {accounts.map(acc => (
-                                  <option key={acc.id} value={acc.id}>{acc.name}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <div className="publish-account-name">
-                                {chosenAccount?.picture && (
-                                  <img src={chosenAccount.picture} alt="" className="publish-account-avatar" />
-                                )}
-                                <span>{chosenAccount?.name}</span>
-                              </div>
-                            )}
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-
-              {modal.type === 'reject' && (
-                <textarea
-                  placeholder="Motivo da rejeição (opcional)"
-                  value={rejectReason}
-                  onChange={e => setRejectReason(e.target.value)}
-                  rows={3}
-                  style={{ marginTop: 12, width: '100%' }}
-                />
-              )}
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={closeModal}>Cancelar</button>
-              <button
-                className={`btn ${modal.type === 'publish' ? 'btn-success' : 'btn-danger'}`}
-                onClick={handleModalConfirm}
-              >
-                {modal.type === 'publish' ? 'Publicar' : 'Rejeitar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {toast && (
         <div className={`toast toast-${toast.type}`} role="alert" aria-live="polite">
