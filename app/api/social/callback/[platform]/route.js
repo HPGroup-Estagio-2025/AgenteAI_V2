@@ -141,6 +141,9 @@ export async function GET(request, { params }) {
 
     return redirect(`/social?connected=${platform}`);
   } catch (err) {
+    // IMPORTANT: Next.js redirect() works by throwing a NEXT_REDIRECT error.
+    // If redirect() was called inside this try block, re-throw it so Next.js handles it correctly.
+    if (err?.digest?.startsWith?.('NEXT_REDIRECT')) throw err;
     console.error(`[oauth:${platform}] Erro inesperado:`, err.message);
     return redirect('/social?error=connection_failed');
   }
