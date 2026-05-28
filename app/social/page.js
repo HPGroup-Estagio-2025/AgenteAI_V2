@@ -130,18 +130,17 @@ function SocialPageContent() {
     }
   }
 
-  async function handleDisconnect(platformId) {
+  async function handleDisconnect(accountId) {
     const token = sessionStorage.getItem('auth_token');
     try {
       const res = await fetch('/api/social/accounts', {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform: platformId }),
+        body: JSON.stringify({ accountId }),
       });
       if (res.ok) {
-        setAccounts(prev => { const n = { ...prev }; delete n[platformId]; return n; });
-        const platform = PLATFORMS.find(p => p.id === platformId);
-        showToast(`${platform?.name} desconectado.`, 'info');
+        await loadAccounts();
+        showToast('Conta desconectada.', 'info');
       }
     } catch {
       showToast('Erro ao desconectar. Tenta novamente.', 'error');
@@ -210,10 +209,11 @@ function SocialPageContent() {
         ) : (
           <div className="social-grid">
             {PLATFORMS.map(({ id, name, description, color, bg, Icon }) => {
-              const account = accounts[id];
+              const platformAccounts = accounts[id] || [];
+              const hasAccounts = platformAccounts.length > 0;
               const isConnecting = connecting === id;
               return (
-                <div key={id} className={`social-card${account ? ' social-card--connected' : ''}`}>
+                <div key={id} className={`social-card${hasAccounts ? ' social-card--connected' : ''}`}>
                   <div className="social-card-top">
                     <div className="social-card-icon" style={{ background: bg }}>
                       <Icon />
@@ -222,17 +222,19 @@ function SocialPageContent() {
                       <h2 className="social-card-name">{name}</h2>
                       <p className="social-card-desc">{description}</p>
                     </div>
-                    <div className={`social-status ${account ? 'social-status--on' : 'social-status--off'}`}>
-                      {account ? 'Conectado' : 'Desconectado'}
+                    <div className={`social-status ${hasAccounts ? 'social-status--on' : 'social-status--off'}`}>
+                      {hasAccounts
+                        ? `${platformAccounts.length} conta${platformAccounts.length > 1 ? 's' : ''}`
+                        : 'Desconectado'}
                     </div>
                   </div>
 
-                  {account && (
-                    <div className="social-account-info">
+                  {platformAccounts.map(account => (
+                    <div key={account.id} className="social-account-info" style={{ alignItems: 'flex-start' }}>
                       {account.picture && (
-                        <img src={account.picture} alt="" className="social-account-avatar" />
+                        <img src={account.picture} alt="" className="social-account-avatar" style={{ flexShrink: 0 }} />
                       )}
-                      <div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="social-account-name">{account.name}</div>
                         {account.email && <div className="social-account-email">{account.email}</div>}
                         {id === 'facebook' && account.pages?.length > 0 && (
@@ -243,37 +245,35 @@ function SocialPageContent() {
                         )}
                         <div className="social-account-date">Conectado em {formatDate(account.connectedAt)}</div>
                       </div>
-                    </div>
-                  )}
-
-                  <div className="social-card-actions">
-                    {account ? (
                       <button
                         className="btn btn-danger"
-                        onClick={() => handleDisconnect(id)}
+                        onClick={() => handleDisconnect(account.id)}
+                        style={{ flexShrink: 0 }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>
                         </svg>
                         Desconectar
                       </button>
-                    ) : (
-                      <button
-                        className="btn btn-primary"
-                        style={{ background: color, borderColor: color }}
-                        disabled={isConnecting}
-                        onClick={() => handleConnect(id)}
-                      >
-                        {isConnecting ? (
-                          <span className="loader" style={{ width: 14, height: 14 }} />
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                          </svg>
-                        )}
-                        {isConnecting ? 'A conectar...' : 'Conectar'}
-                      </button>
-                    )}
+                    </div>
+                  ))}
+
+                  <div className="social-card-actions">
+                    <button
+                      className="btn btn-primary"
+                      style={{ background: color, borderColor: color }}
+                      disabled={isConnecting}
+                      onClick={() => handleConnect(id)}
+                    >
+                      {isConnecting ? (
+                        <span className="loader" style={{ width: 14, height: 14 }} />
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        </svg>
+                      )}
+                      {isConnecting ? 'A conectar...' : hasAccounts ? 'Adicionar conta' : 'Conectar'}
+                    </button>
                   </div>
                 </div>
               );

@@ -41,14 +41,7 @@ function NewsCard({ item, onPublish, onReject }) {
     <article className={`news-card${item.imageUrl ? ' has-image' : ''}`}>
       {item.imageUrl && (
         <div className="news-card-image">
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-primary"
-          >
-        Ver notícia
-      </a>
+          <img src={item.imageUrl} alt={item.title} loading="lazy" />
         </div>
       )}
 
