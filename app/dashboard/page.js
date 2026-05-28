@@ -22,6 +22,49 @@ const SOCIAL_PLATFORMS = [
   { id: 'linkedin',  label: 'LinkedIn' },
 ];
 
+// Constrói lista de empresas a partir das contas ligadas.
+// Meta (Facebook + Instagram) partilham a mesma entrada; LinkedIn é separado.
+function buildCompanies(connectedAccounts) {
+  const companies = [];
+  const fbAccs = connectedAccounts.facebook  || [];
+  const igAccs = connectedAccounts.instagram || [];
+  const liAccs = connectedAccounts.linkedin  || [];
+
+  // Grupo Meta: usa contas Facebook como primário; fallback para Instagram
+  if (fbAccs.length > 0 || igAccs.length > 0) {
+    const primaryAccs = fbAccs.length > 0 ? fbAccs : igAccs;
+    const metaPlatforms = [
+      ...(fbAccs.length > 0 ? ['facebook']  : []),
+      ...(igAccs.length > 0 ? ['instagram'] : []),
+    ];
+    for (const acc of primaryAccs) {
+      companies.push({
+        id:         `meta-${acc.id}`,
+        name:       acc.name,
+        picture:    acc.picture,
+        platforms:  metaPlatforms,
+        accountIds: {
+          ...(fbAccs.length > 0 ? { facebook:  acc.id        } : {}),
+          ...(igAccs.length > 0 ? { instagram: igAccs[0]?.id } : {}),
+        },
+      });
+    }
+  }
+
+  // LinkedIn: cada conta é uma entrada independente
+  for (const acc of liAccs) {
+    companies.push({
+      id:         `linkedin-${acc.id}`,
+      name:       acc.name,
+      picture:    acc.picture,
+      platforms:  ['linkedin'],
+      accountIds: { linkedin: acc.id },
+    });
+  }
+
+  return companies;
+}
+
 
 const PAGE_SIZE = 5;
 
@@ -42,19 +85,33 @@ function SectorBadge({ category }) {
   return <span className="badge badge-category">{category}</span>;
 }
 
-// ── Card para artigos do agente (com seleção de plataformas inline) ──
-function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform, onSetAccount, onPublish, onSave }) {
+// SVG placeholder para notícias sem imagem
+function ImagePlaceholder() {
+  return (
+    <div className="news-card-image-placeholder">
+      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+        <path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>
+      </svg>
+    </div>
+  );
+}
 
-  // Uma linha por plataforma que tem contas ligadas — sem agrupamentos automáticos
-  const connectedPlatforms = SOCIAL_PLATFORMS.filter(p => (connectedAccounts[p.id] || []).length > 0);
+// ── Card para artigos do agente ─────────────────────────────────────
+function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform, onSetCompany, onPublish, onSave }) {
+  const companies = buildCompanies(connectedAccounts);
+  const selectedId = selection?.companyId || companies[0]?.id;
+  const selectedCompany = companies.find(c => c.id === selectedId) || companies[0];
 
   return (
-    <article className={`news-card${item.imageUrl ? ' has-image' : ''}`}>
-      {item.imageUrl && (
-        <div className="news-card-image">
-          <img src={item.imageUrl} alt={item.title} loading="lazy" />
-        </div>
-      )}
+    <article className="news-card">
+      {/* Imagem — sempre visível (placeholder se não houver URL) */}
+      <div className="news-card-image">
+        {item.imageUrl
+          ? <img src={item.imageUrl} alt={item.title} loading="lazy" />
+          : <ImagePlaceholder />
+        }
+      </div>
 
       <div className="news-card-content">
         <div className="news-card-meta">
@@ -65,41 +122,37 @@ function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform
         <h2 className="news-card-title">{item.title}</h2>
         <p className="news-card-body">{item.content}</p>
 
-        {/* Uma linha por plataforma conectada: [Dropdown conta] [Avatar] [Checkbox rede] */}
-        {connectedPlatforms.length > 0 && (
+        {/* 1 dropdown com todas as empresas + checkboxes das redes dessa empresa */}
+        {companies.length > 0 && (
           <div className="card-platforms">
             <span className="card-platforms-label">Publicar em:</span>
-            <div className="card-platforms-row">
-              {connectedPlatforms.map(platform => {
-                const accounts = connectedAccounts[platform.id] || [];
-                const isOn = selection?.platforms?.includes(platform.id) ?? true;
-                const chosenId = selection?.accounts?.[platform.id] || accounts[0]?.id;
-                const chosenAcc = accounts.find(a => a.id === chosenId) || accounts[0];
+            <div className="card-platform-item card-platform-item--on">
+              {/* Dropdown único com todas as empresas */}
+              <select
+                value={selectedId || ''}
+                onChange={e => onSetCompany(e.target.value)}
+              >
+                {companies.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              {/* Avatar da empresa selecionada */}
+              {selectedCompany?.picture && (
+                <img src={selectedCompany.picture} alt="" className="card-platform-avatar" />
+              )}
+              {/* Checkboxes apenas das redes dessa empresa */}
+              {(selectedCompany?.platforms || []).map(pid => {
+                const platform = SOCIAL_PLATFORMS.find(p => p.id === pid);
+                const isOn = selection?.platforms?.includes(pid) ?? true;
                 return (
-                  <div key={platform.id} className={`card-platform-item${isOn ? ' card-platform-item--on' : ''}`}>
-                    {/* Dropdown da conta — sempre visível */}
-                    <select
-                      value={chosenId || ''}
-                      onChange={e => onSetAccount(platform.id, e.target.value)}
-                    >
-                      {accounts.map(acc => (
-                        <option key={acc.id} value={acc.id}>{acc.name}</option>
-                      ))}
-                    </select>
-                    {/* Avatar */}
-                    {chosenAcc?.picture && (
-                      <img src={chosenAcc.picture} alt="" className="card-platform-avatar" />
-                    )}
-                    {/* Checkbox da rede social */}
-                    <label className="card-platform-check">
-                      <input
-                        type="checkbox"
-                        checked={isOn}
-                        onChange={() => onTogglePlatform(platform.id)}
-                      />
-                      <span>{platform.label}</span>
-                    </label>
-                  </div>
+                  <label key={pid} className="card-platform-check">
+                    <input
+                      type="checkbox"
+                      checked={isOn}
+                      onChange={() => onTogglePlatform(pid)}
+                    />
+                    <span>{platform?.label}</span>
+                  </label>
                 );
               })}
             </div>
@@ -118,9 +171,7 @@ function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform
             Ver notícia
           </a>
         )}
-        <button className="btn btn-success" onClick={() => onPublish(item)}>
-          Publicar
-        </button>
+        <button className="btn btn-success" onClick={() => onPublish(item)}>Publicar</button>
         <button className="btn btn-primary" style={{ background: 'var(--gray-600)', borderColor: 'var(--gray-600)' }} onClick={() => onSave(item)}>
           Guardar
         </button>
@@ -132,12 +183,13 @@ function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform
 // ── Card para artigos já guardados na BD ───────────────────────────
 function SavedArticleCard({ item }) {
   return (
-    <article className={`news-card${item.imageUrl ? ' has-image' : ''}`}>
-      {item.imageUrl && (
-        <div className="news-card-image">
-          <img src={item.imageUrl} alt={item.title} loading="lazy" />
-        </div>
-      )}
+    <article className="news-card">
+      <div className="news-card-image">
+        {item.imageUrl
+          ? <img src={item.imageUrl} alt={item.title} loading="lazy" />
+          : <ImagePlaceholder />
+        }
+      </div>
 
       <div className="news-card-content">
         <div className="news-card-meta">
@@ -235,21 +287,20 @@ export default function DashboardPage() {
       .catch(() => {});
   }, []);
 
-  // Inicializa seleção de plataformas para novos artigos
+  // Inicializa seleção por empresa para novos artigos
   useEffect(() => {
     if (pendingArticles.length === 0) return;
-    const initPlatforms = SOCIAL_PLATFORMS
-      .filter(p => connectedAccounts[p.id]?.length > 0)
-      .map(p => p.id);
-    const initAccounts = {};
-    for (const [pid, accs] of Object.entries(connectedAccounts)) {
-      if (accs?.length > 0) initAccounts[pid] = accs[0].id;
-    }
+    const companies = buildCompanies(connectedAccounts);
+    const firstCompany = companies[0];
     setArticleSelections(prev => {
       const updated = { ...prev };
       for (const article of pendingArticles) {
         if (!updated[article.id]) {
-          updated[article.id] = { platforms: initPlatforms, accounts: { ...initAccounts } };
+          updated[article.id] = {
+            companyId: firstCompany?.id || null,
+            platforms: firstCompany ? [...firstCompany.platforms] : [],
+            accounts:  firstCompany ? { ...firstCompany.accountIds } : {},
+          };
         }
       }
       return updated;
@@ -355,7 +406,7 @@ export default function DashboardPage() {
   // ── Seleção de plataformas por artigo ─────────────────────────────
   function toggleArticlePlatform(articleId, platformId) {
     setArticleSelections(prev => {
-      const cur = prev[articleId] || { platforms: [], accounts: {} };
+      const cur = prev[articleId] || { companyId: null, platforms: [], accounts: {} };
       const platforms = cur.platforms.includes(platformId)
         ? cur.platforms.filter(p => p !== platformId)
         : [...cur.platforms, platformId];
@@ -363,11 +414,20 @@ export default function DashboardPage() {
     });
   }
 
-  function setArticleAccount(articleId, platformId, accountId) {
-    setArticleSelections(prev => {
-      const cur = prev[articleId] || { platforms: [], accounts: {} };
-      return { ...prev, [articleId]: { ...cur, accounts: { ...cur.accounts, [platformId]: accountId } } };
-    });
+  // Muda a empresa selecionada: atualiza companyId, platforms e accounts
+  function setArticleCompany(articleId, companyId) {
+    const companies = buildCompanies(connectedAccounts);
+    const company = companies.find(c => c.id === companyId);
+    if (!company) return;
+    setArticleSelections(prev => ({
+      ...prev,
+      [articleId]: {
+        ...prev[articleId],
+        companyId,
+        platforms: [...company.platforms],
+        accounts:  { ...(prev[articleId]?.accounts || {}), ...company.accountIds },
+      },
+    }));
   }
 
   // Remove artigo do localStorage e atualiza estado
@@ -586,7 +646,7 @@ export default function DashboardPage() {
                 connectedAccounts={connectedAccounts}
                 selection={articleSelections[item.id]}
                 onTogglePlatform={pid => toggleArticlePlatform(item.id, pid)}
-                onSetAccount={(pid, aid) => setArticleAccount(item.id, pid, aid)}
+                onSetCompany={cid => setArticleCompany(item.id, cid)}
                 onPublish={handlePublish}
                 onSave={handleSave}
               />
