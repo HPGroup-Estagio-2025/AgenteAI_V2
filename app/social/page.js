@@ -53,11 +53,12 @@ const PLATFORMS = [
 const ERROR_MESSAGES = {
   unsupported_platform: 'Plataforma não suportada.',
   missing_params: 'Parâmetros em falta na resposta OAuth.',
-  invalid_state: 'Estado OAuth inválido. Tenta novamente.',
-  token_exchange_failed: 'Falha ao obter o token de acesso.',
-  connection_failed: 'Erro ao conectar. Verifica as credenciais no .env.local.',
-  not_configured: 'Credenciais não configuradas no .env.local.',
-  access_denied: 'Acesso negado pelo utilizador.',
+  invalid_state: 'Sessão OAuth expirou. Tenta novamente.',
+  token_exchange_failed: 'Falha ao obter o token de acesso. Verifica o App Secret nas variáveis de ambiente.',
+  profile_failed: 'Conta ligada mas não foi possível obter o perfil. Tenta de novo.',
+  connection_failed: 'Erro ao conectar. Verifica as variáveis de ambiente (App ID e App Secret) no Vercel.',
+  not_configured: 'Credenciais OAuth não configuradas nas variáveis de ambiente.',
+  access_denied: 'Acesso negado. O utilizador cancelou a autorização.',
 };
 
 function SocialPageContent() {
@@ -108,10 +109,13 @@ function SocialPageContent() {
     if (connected) {
       const platform = PLATFORMS.find(p => p.id === connected);
       showToast(`${platform?.name || connected} conectado com sucesso!`, 'success');
+      // Limpa o parâmetro do URL para não repetir o toast ao refrescar
+      router.replace('/social', { scroll: false });
     } else if (error) {
       showToast(ERROR_MESSAGES[error] || `Erro: ${error}`, 'error');
+      router.replace('/social', { scroll: false });
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   async function handleConnect(platformId) {
     const token = sessionStorage.getItem('auth_token');

@@ -88,6 +88,7 @@ export async function GET(request, { params }) {
   const redirectUri = `${appUrl}/api/social/callback/${platform}`;
 
   try {
+    // 1. Troca o código pelo access token
     const tokenBody = new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecret,
@@ -102,12 +103,30 @@ export async function GET(request, { params }) {
       body: tokenBody.toString(),
     });
 
-    const tokenData = await tokenRes.json();
+    let tokenData;
+    try {
+      tokenData = await tokenRes.json();
+    } catch (e) {
+      console.error(`[oauth:${platform}] Resposta do token não é JSON (status ${tokenRes.status})`);
+      return redirect('/social?error=token_exchange_failed');
+    }
+
     const accessToken = tokenData.access_token;
-    if (!accessToken) return redirect('/social?error=token_exchange_failed');
+    if (!accessToken) {
+      console.error(`[oauth:${platform}] Token exchange falhou:`, JSON.stringify(tokenData));
+      return redirect('/social?error=token_exchange_failed');
+    }
 
-    const profile = await config.getProfile(accessToken);
+    // 2. Vai buscar o perfil
+    let profile;
+    try {
+      profile = await config.getProfile(accessToken);
+    } catch (e) {
+      console.error(`[oauth:${platform}] Falha ao obter perfil:`, e.message);
+      return redirect('/social?error=profile_failed');
+    }
 
+    // 3. Guarda a conta
     addAccount({
       platform,
       accessToken,
@@ -121,7 +140,8 @@ export async function GET(request, { params }) {
     });
 
     return redirect(`/social?connected=${platform}`);
-  } catch {
+  } catch (err) {
+    console.error(`[oauth:${platform}] Erro inesperado:`, err.message);
     return redirect('/social?error=connection_failed');
   }
 }

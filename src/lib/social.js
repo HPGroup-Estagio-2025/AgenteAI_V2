@@ -1,5 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import jwt from 'jsonwebtoken';
+
+const STATE_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'oauth-state-secret-fallback';
 
 const g = globalThis;
 const accountsFile = path.join(
@@ -104,19 +107,18 @@ export function removeAccountsByPlatform(platform) {
   writeAccounts(g._socialAccounts);
 }
 
+// Estado OAuth como JWT — funciona em qualquer instância serverless (Vercel, etc.)
 export function createState(platform) {
-  const rand = Math.random().toString(36).slice(2) + Date.now().toString(36);
-  g._oauthStates.set(rand, { platform, ts: Date.now() });
-  for (const [k, v] of g._oauthStates) {
-    if (Date.now() - v.ts > 15 * 60 * 1000) g._oauthStates.delete(k);
-  }
-  return rand;
+  const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  return jwt.sign({ platform, nonce }, STATE_SECRET, { expiresIn: '15m' });
 }
 
 export function consumeState(state) {
-  const data = g._oauthStates.get(state);
-  if (!data) return null;
-  if (Date.now() - data.ts > 15 * 60 * 1000) { g._oauthStates.delete(state); return null; }
-  g._oauthStates.delete(state);
-  return data;
+  try {
+    const data = jwt.verify(state, STATE_SECRET);
+    return { platform: data.platform };
+  } catch {
+    // token expirado ou inválido
+    return null;
+  }
 }
