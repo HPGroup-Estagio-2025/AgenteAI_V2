@@ -592,64 +592,55 @@ export default function DashboardPage() {
                   p => connectedAccounts[p.id]?.length > 0
                 );
                 return (
-                  <>
-                    <p style={{ fontSize: '.8rem', color: 'var(--gray-400)', marginTop: 10, marginBottom: 4 }}>
-                      Escolhe as redes sociais e a conta para publicar:
-                    </p>
-                    <div className="publish-options" role="group" aria-label="Redes sociais">
-                      {connectedPlatforms.length === 0 ? (
-                        <p className="publish-no-accounts">
-                          Sem contas conectadas — a notícia será guardada sem publicação social.
-                          <br />
-                          <span style={{ fontSize: '.8rem' }}>Vai a <strong>Redes Sociais</strong> para conectar contas.</span>
-                        </p>
-                      ) : (
-                        connectedPlatforms.map(platform => {
-                          const accounts = connectedAccounts[platform.id] || [];
-                          const isOn = selectedPlatforms.includes(platform.id);
-                          const chosenId = selectedAccounts[platform.id] || accounts[0]?.id;
-                          return (
-                            <div
-                              key={platform.id}
-                              className={`publish-platform-row${isOn ? '' : ' publish-platform-row--disabled'}`}
-                            >
-                              <div className="publish-platform-header">
-                                <label className="publish-option">
-                                  <input
-                                    type="checkbox"
-                                    checked={isOn}
-                                    onChange={() => togglePlatform(platform.id)}
-                                  />
-                                  <span>{platform.label}</span>
-                                </label>
+                  <div className="publish-options" role="group" aria-label="Redes sociais">
+                    {connectedPlatforms.length === 0 ? (
+                      <p className="publish-no-accounts">
+                        Sem contas conectadas.<br />
+                        <span style={{ fontSize: '.8rem' }}>A notícia será guardada. Vai a <strong>Redes Sociais</strong> para conectar contas.</span>
+                      </p>
+                    ) : connectedPlatforms.map(platform => {
+                      const accounts = connectedAccounts[platform.id] || [];
+                      const isOn = selectedPlatforms.includes(platform.id);
+                      const chosenId = selectedAccounts[platform.id] || accounts[0]?.id;
+                      const chosenAccount = accounts.find(a => a.id === chosenId) || accounts[0];
+                      return (
+                        <label
+                          key={platform.id}
+                          className={`publish-platform-row${isOn ? ' publish-platform-row--active' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="publish-checkbox"
+                            checked={isOn}
+                            onChange={() => togglePlatform(platform.id)}
+                          />
+                          <div className="publish-platform-body">
+                            <span className="publish-platform-name">{platform.label}</span>
+                            {accounts.length > 1 ? (
+                              <select
+                                className="publish-account-select"
+                                value={chosenId}
+                                disabled={!isOn}
+                                onChange={e => { e.stopPropagation(); setAccountForPlatform(platform.id, e.target.value); }}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                {accounts.map(acc => (
+                                  <option key={acc.id} value={acc.id}>{acc.name}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <div className="publish-account-name">
+                                {chosenAccount?.picture && (
+                                  <img src={chosenAccount.picture} alt="" className="publish-account-avatar" />
+                                )}
+                                <span>{chosenAccount?.name}</span>
                               </div>
-
-                              {isOn && accounts.length > 1 && (
-                                <select
-                                  className="publish-account-select"
-                                  value={chosenId}
-                                  onChange={e => setAccountForPlatform(platform.id, e.target.value)}
-                                >
-                                  {accounts.map(acc => (
-                                    <option key={acc.id} value={acc.id}>{acc.name}</option>
-                                  ))}
-                                </select>
-                              )}
-
-                              {isOn && accounts.length === 1 && (
-                                <div className="publish-account-info">
-                                  {accounts[0].picture && (
-                                    <img src={accounts[0].picture} alt="" className="publish-account-avatar" />
-                                  )}
-                                  <span>{accounts[0].name}</span>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
                 );
               })()}
 

@@ -252,16 +252,19 @@ textarea { resize: vertical; }
 .modal-header h2 { font-size: 1.125rem; font-weight: 700; color: var(--gray-900); }
 .modal-body { padding: 16px 24px; font-size: .9375rem; color: var(--gray-600); line-height: 1.6; }
 .modal-footer { padding: 0 24px 24px; display: flex; justify-content: flex-end; gap: 10px; }
-.publish-options { display: grid; gap: 0; margin-top: 14px; border: 1px solid var(--gray-200); border-radius: var(--radius-md); overflow: hidden; }
-.publish-platform-row { padding: 12px 14px; border-bottom: 1px solid var(--gray-100); transition: background var(--transition); }
-.publish-platform-row:last-child { border-bottom: none; }
-.publish-platform-row--disabled { opacity: .45; }
-.publish-platform-header { display: flex; align-items: center; gap: 10px; }
-.publish-option { display: flex; align-items: center; gap: 10px; color: var(--gray-700); font-size: .9rem; font-weight: 500; cursor: pointer; flex: 1; }
-.publish-option input { width: 16px; height: 16px; accent-color: var(--blue-600); flex-shrink: 0; }
-.publish-account-select { margin-top: 8px; width: 100%; padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-size: .8375rem; color: var(--gray-700); background: var(--white); cursor: pointer; font-family: inherit; transition: border-color var(--transition); }
-.publish-account-select:focus { border-color: var(--blue-600); outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
-.publish-account-info { display: flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--gray-500); margin-top: 7px; }
+.publish-options { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.publish-platform-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-md); cursor: pointer; transition: border-color var(--transition), background var(--transition); background: var(--white); user-select: none; }
+.publish-platform-row:hover { border-color: var(--gray-300); background: var(--gray-50); }
+.publish-platform-row--active { border-color: var(--blue-600); background: var(--blue-50); }
+.publish-platform-row--active:hover { background: #dbeafe; }
+.publish-checkbox { width: 17px; height: 17px; accent-color: var(--blue-600); flex-shrink: 0; cursor: pointer; }
+.publish-platform-body { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.publish-platform-name { font-size: .9rem; font-weight: 600; color: var(--gray-800); flex-shrink: 0; }
+.publish-account-name { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--gray-500); min-width: 0; overflow: hidden; }
+.publish-account-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.publish-account-select { padding: 4px 8px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-size: .8rem; color: var(--gray-700); background: var(--white); cursor: pointer; max-width: 160px; font-family: inherit; }
+.publish-account-select:disabled { opacity: .5; cursor: not-allowed; }
+.publish-account-select:focus { outline: none; border-color: var(--blue-600); }
 .publish-account-avatar { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .publish-no-accounts { font-size: .875rem; color: var(--gray-400); text-align: center; padding: 16px 0; }
 
