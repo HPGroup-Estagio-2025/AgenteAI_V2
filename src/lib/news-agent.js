@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import { insertNews } from './db';
 import { supabase } from './supabase';
 import { notifyClients } from './events';
 
@@ -279,46 +278,36 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
   try {
     const rawArticles = await fetchAllRss();
     const selectedArticles = scoreArticles(rawArticles, 5);
-    let insertedCount = 0;
-    let duplicateCount = 0;
 
-    for (const article of selectedArticles) {
-      const item = {
-        id: articleId(article),
-        title: article.title.slice(0, 300),
-        content: article.postDescription,
-        url: article.url || null,
-        source: article.source || 'RSS',
-        category: dashboardCategory(article.matchedSectors),
-        imageUrl: article.image || null,
-        publishedAt: article.publishedAt || new Date().toISOString(),
-        status: 'pending',
-        receivedAt: new Date().toISOString(),
-        processedAt: null,
-        processedBy: null,
-        rejectReason: null,
-      };
-
-      try {
-        await insertNews(item);
-        insertedCount += 1;
-      } catch (error) {
-        if (error.code === 'duplicate') duplicateCount += 1;
-        else throw error;
-      }
-    }
+    // Os artigos NÃO são guardados no Supabase aqui.
+    // Ficam em memória local no browser até o admin decidir publicar ou rejeitar.
+    const articles = selectedArticles.map(article => ({
+      id: articleId(),
+      title: article.title.slice(0, 300),
+      content: article.postDescription,
+      url: article.url || null,
+      source: article.source || 'RSS',
+      category: dashboardCategory(article.matchedSectors),
+      imageUrl: article.image || null,
+      publishedAt: article.publishedAt || new Date().toISOString(),
+      status: 'pending',
+      receivedAt: new Date().toISOString(),
+      processedAt: null,
+      processedBy: null,
+      rejectReason: null,
+    }));
 
     const summary = {
       fetched_count: rawArticles.length,
       selected_count: selectedArticles.length,
-      inserted_count: insertedCount,
-      duplicate_count: duplicateCount,
+      inserted_count: 0,
+      duplicate_count: 0,
     };
 
-    await finishRun(run.id, { status: 'completed', inserted_count: insertedCount, summary });
+    await finishRun(run.id, { status: 'completed', inserted_count: articles.length, summary });
     notifyClients();
 
-    return { run_id: run.id, status: 'completed', ...summary };
+    return { run_id: run.id, status: 'completed', articles, ...summary };
   } catch (error) {
     await finishRun(run.id, { status: 'failed', error: error.message });
     throw Object.assign(error, { run_id: run.id });

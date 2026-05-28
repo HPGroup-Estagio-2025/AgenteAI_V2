@@ -16,6 +16,7 @@ const SOCIAL_PLATFORMS = [
   { id: 'instagram', label: 'Instagram' },
   { id: 'linkedin', label: 'LinkedIn' },
 ];
+const PAGE_SIZE = 5;
 
 function formatDate(iso) {
   if (!iso) return '';
@@ -50,78 +51,42 @@ function NewsCard({ item, onPublish, onReject }) {
           <span className={`badge badge-${item.status}`}>
             {STATUS_LABELS[item.status] || item.status}
           </span>
-
           <SectorBadge category={item.category} />
-
           {item.source && (
-            <span className="news-meta-text">
-              Fonte: {item.source}
-            </span>
+            <span className="news-meta-text">Fonte: {item.source}</span>
           )}
         </div>
 
         <h2 className="news-card-title">{item.title}</h2>
-
-        <p className="news-card-body">
-          {item.content}
-        </p>
+        <p className="news-card-body">{item.content}</p>
 
         <div className="news-card-footer">
-          {item.publishedAt && (
-            <span>
-              Publicado: {formatDate(item.publishedAt)}
-            </span>
-          )}
-
-          <span>
-            Recebido: {formatDate(item.receivedAt)}
-          </span>
+          {item.publishedAt && <span>Publicado: {formatDate(item.publishedAt)}</span>}
+          <span>Recebido: {formatDate(item.receivedAt)}</span>
         </div>
 
         {!isPending && item.processedAt && (
           <div className="news-processed-info">
-            {item.status === 'published'
-              ? 'Publicada'
-              : 'Rejeitada'}{' '}
+            {item.status === 'published' ? 'Publicada' : 'Rejeitada'}{' '}
             em {formatDate(item.processedAt)}
-
-            {item.rejectReason &&
-              ` · Motivo: ${item.rejectReason}`}
+            {item.rejectReason && ` · Motivo: ${item.rejectReason}`}
           </div>
         )}
       </div>
 
       <div className="news-card-actions">
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-primary"
-        >
+        <a href={item.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
           Ver notícia
         </a>
 
         {isPending ? (
           <>
-            <button
-              className="btn btn-success"
-              onClick={() => onPublish(item)}
-            >
-              Publicar
-            </button>
-
-            <button
-              className="btn btn-danger"
-              onClick={() => onReject(item)}
-            >
-              Rejeitar
-            </button>
+            <button className="btn btn-success" onClick={() => onPublish(item)}>Publicar</button>
+            <button className="btn btn-danger" onClick={() => onReject(item)}>Rejeitar</button>
           </>
         ) : (
           <span className={`badge badge-${item.status}`}>
-            {item.status === 'published'
-              ? 'Publicada'
-              : 'Rejeitada'}
+            {item.status === 'published' ? 'Publicada' : 'Rejeitada'}
           </span>
         )}
       </div>
@@ -129,9 +94,26 @@ function NewsCard({ item, onPublish, onReject }) {
   );
 }
 
+// ── Helpers para localStorage ───────────────────────────────────────
+const LS_KEY = 'pending_articles';
+
+function loadPending() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; }
+}
+
+function savePending(articles) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(articles)); } catch {}
+}
+
+// ── Página principal ────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
   const [username, setUsername] = useState('admin');
+
+  // Artigos em revisão (localStorage)
+  const [pendingArticles, setPendingArticles] = useState([]);
+
+  // Artigos da BD (publicados / rejeitados)
   const [news, setNews] = useState([]);
   const [counts, setCounts] = useState({ pending: 0, published: 0, rejected: 0 });
   const [filterStatus, setFilterStatus] = useState('pending');
@@ -158,33 +140,54 @@ export default function DashboardPage() {
     toastTimer.current = setTimeout(() => setToast(null), 4000);
   }
 
+  // Carrega pendentes do localStorage no arranque
+  useEffect(() => {
+    const stored = loadPending();
+    setPendingArticles(stored);
+    setCounts(prev => ({ ...prev, pending: stored.length }));
+  }, []);
+
+  // ── Fetch de notícias da BD (publicadas/rejeitadas) ────────────────
   const fetchNews = useCallback(async ({ force = false, notify = false } = {}) => {
     if (loadingRef.current && !force) return;
     loadingRef.current = true;
     setLoading(true);
-    const token = sessionStorage.getItem('auth_token');
-    if (!token) {
+
+    // Aba "Pendentes" usa localStorage — sem chamada à BD
+    if (filterStatus === 'pending') {
+      const stored = loadPending();
+      setPendingArticles(stored);
+      const start = (page - 1) * PAGE_SIZE;
+      setNews(stored.slice(start, start + PAGE_SIZE));
+      setTotalNews(stored.length);
+      setTotalPages(Math.max(1, Math.ceil(stored.length / PAGE_SIZE)));
+      setCounts(prev => ({ ...prev, pending: stored.length }));
       loadingRef.current = false;
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
       return;
     }
-    const params = new URLSearchParams({ limit: 5, page: page.toString(), _: Date.now().toString() });
+
+    const token = sessionStorage.getItem('auth_token');
+    if (!token) { loadingRef.current = false; setLoading(false); return; }
+
+    const params = new URLSearchParams({ limit: PAGE_SIZE, page: page.toString(), _: Date.now().toString() });
     if (filterStatus) params.set('status', filterStatus);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
       const res = await fetch(`/api/news?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
         signal: controller.signal,
       });
-      if (res.status === 401 || res.status === 403) {
-        sessionStorage.clear(); router.replace('/'); return;
-      }
+      if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setNews(data.news || []);
-      setCounts(data.counts || { pending: 0, published: 0, rejected: 0 });
+      // Mantém o count de pendentes do localStorage
+      const localPending = loadPending().length;
+      setCounts({ ...(data.counts || { pending: 0, published: 0, rejected: 0 }), pending: localPending });
       setTotalNews(data.total || 0);
       setTotalPages(data.totalPages || 1);
       if (data.totalPages && page > data.totalPages) setPage(data.totalPages);
@@ -224,60 +227,17 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchNews(); }, [fetchNews]);
 
-
-  async function runAgentManually() {
-    if (agentRunning) return;
-    setAgentRunning(true);
-    const token = sessionStorage.getItem('auth_token');
-    if (!token) {
-      setAgentRunning(false);
-      sessionStorage.clear();
-      router.replace('/');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/agent/run', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.status === 401 || res.status === 403) {
-        sessionStorage.clear();
-        router.replace('/');
-        return;
-      }
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        showToast(data.error || 'Erro ao executar agente', 'error');
-        if (data.run_id) setLastAgentRun({ id: data.run_id, status: 'failed' });
-        return;
-      }
-
-      setLastAgentRun(data);
-      showToast(`Agente concluído: ${data.inserted_count || 0} notícia(s) nova(s). ID: ${data.run_id}`, 'success');
-      fetchNews({ force: true });
-    } catch {
-      showToast('Erro de ligação ao executar agente', 'error');
-    } finally {
-      setAgentRunning(false);
-    }
-  }
-
-  // Escape key closes modal
+  // Escape fecha modal
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') { setModal(null); setRejectReason(''); } }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
-  // Supabase Realtime — atualiza automaticamente quando há novos registos na tabela news
+  // Supabase Realtime (apenas para publicadas/rejeitadas)
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    // Fallback de polling caso o Realtime não esteja ativo
     const pollTimer = setInterval(() => fetchRef.current?.(), 60000);
 
     if (!supabaseUrl || supabaseUrl.includes('xxxx')) {
@@ -286,7 +246,6 @@ export default function DashboardPage() {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-
     const channel = supabase
       .channel('news-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, () => {
@@ -298,16 +257,110 @@ export default function DashboardPage() {
         if (status === 'CLOSED') setLiveStatus('desligado');
       });
 
-    return () => {
-      clearInterval(pollTimer);
-      supabase.removeChannel(channel);
-    };
+    return () => { clearInterval(pollTimer); supabase.removeChannel(channel); };
   }, []);
 
+  // ── Executar agente ───────────────────────────────────────────────
+  async function runAgentManually() {
+    if (agentRunning) return;
+    setAgentRunning(true);
+    const token = sessionStorage.getItem('auth_token');
+    if (!token) { setAgentRunning(false); sessionStorage.clear(); router.replace('/'); return; }
+
+    try {
+      const res = await fetch('/api/agent/run', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.error || 'Erro ao executar agente', 'error');
+        return;
+      }
+
+      setLastAgentRun(data);
+
+      // Adiciona artigos ao localStorage (sem duplicados por URL)
+      if (Array.isArray(data.articles) && data.articles.length > 0) {
+        const existing = loadPending();
+        const existingUrls = new Set(existing.map(a => a.url).filter(Boolean));
+        const fresh = data.articles.filter(a => !existingUrls.has(a.url));
+
+        if (fresh.length > 0) {
+          const updated = [...fresh, ...existing];
+          savePending(updated);
+          setPendingArticles(updated);
+          setCounts(prev => ({ ...prev, pending: updated.length }));
+          showToast(`${fresh.length} notícia(s) nova(s) para revisão`, 'success');
+        } else {
+          showToast('Sem notícias novas (todas já estão em revisão)', 'info');
+        }
+
+        // Muda para o separador Pendentes
+        setFilterStatus('pending');
+        setPage(1);
+      } else {
+        showToast('Agente concluído: nenhuma notícia nova encontrada', 'info');
+      }
+    } catch {
+      showToast('Erro de ligação ao executar agente', 'error');
+    } finally {
+      setAgentRunning(false);
+    }
+  }
+
+  // ── Ações sobre notícias ──────────────────────────────────────────
   async function performAction(type, item, options = {}) {
     const token = sessionStorage.getItem('auth_token');
+    const isPendingLocal = pendingArticles.some(a => a.id === item.id);
+
+    // ── Rejeitar artigo pendente (só localStorage) ──────────────────
+    if (type === 'reject' && isPendingLocal) {
+      const updated = pendingArticles.filter(a => a.id !== item.id);
+      savePending(updated);
+      setPendingArticles(updated);
+      setNews(prev => prev.filter(n => n.id !== item.id));
+      setTotalNews(prev => Math.max(0, prev - 1));
+      setCounts(prev => ({ ...prev, pending: updated.length }));
+      showToast('Notícia rejeitada', 'success');
+      return;
+    }
+
+    // ── Publicar artigo pendente (insere no Supabase + publica) ──────
+    if (type === 'publish' && isPendingLocal) {
+      try {
+        const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/publish`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            article: item,
+            socialPlatforms: options.socialPlatforms || [],
+          }),
+        });
+        if (res.status === 401 || res.status === 403) { sessionStorage.clear(); router.replace('/'); return; }
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'Erro ao publicar', 'error'); return; }
+
+        // Remove do localStorage
+        const updated = pendingArticles.filter(a => a.id !== item.id);
+        savePending(updated);
+        setPendingArticles(updated);
+        setNews(prev => prev.filter(n => n.id !== item.id));
+        setTotalNews(prev => Math.max(0, prev - 1));
+        setCounts(prev => ({ ...prev, pending: updated.length }));
+        showToast('Notícia publicada com sucesso!', 'success');
+      } catch {
+        showToast('Erro de ligação. Tenta novamente.', 'error');
+      }
+      return;
+    }
+
+    // ── Ações sobre artigos já na BD (publicadas/rejeitadas) ─────────
     const endpoint = `/api/news/${encodeURIComponent(item.id)}/${type}`;
-    const body = type === 'publish' ? { socialPlatforms: options.socialPlatforms || [] } : {};
+    const body = type === 'publish'
+      ? { socialPlatforms: options.socialPlatforms || [] }
+      : { reason: options.reason || '' };
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -332,7 +385,7 @@ export default function DashboardPage() {
       return;
     }
     setModal(null);
-    performAction(type, item, { socialPlatforms: selectedPlatforms });
+    performAction(type, item, { socialPlatforms: selectedPlatforms, reason: rejectReason });
     setRejectReason('');
   }
 
@@ -340,11 +393,14 @@ export default function DashboardPage() {
 
   function togglePlatform(platformId) {
     setSelectedPlatforms(prev =>
-      prev.includes(platformId)
-        ? prev.filter(id => id !== platformId)
-        : [...prev, platformId]
+      prev.includes(platformId) ? prev.filter(id => id !== platformId) : [...prev, platformId]
     );
   }
+
+  // Notícias a mostrar na lista
+  const displayedNews = filterStatus === 'pending'
+    ? pendingArticles.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    : news;
 
   return (
     <div className="dashboard-page">
@@ -384,15 +440,15 @@ export default function DashboardPage() {
 
       <main className="main">
         <div className="stats-bar">
-          <div className="stat-card stat-pending" style={{cursor:'pointer'}} onClick={() => { setFilterStatus('pending'); setPage(1); }}>
+          <div className="stat-card stat-pending" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('pending'); setPage(1); }}>
             <div className="stat-value">{counts.pending}</div>
-            <div className="stat-label">Pendentes</div>
+            <div className="stat-label">Para Revisão</div>
           </div>
-          <div className="stat-card stat-published" style={{cursor:'pointer'}} onClick={() => { setFilterStatus('published'); setPage(1); }}>
+          <div className="stat-card stat-published" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('published'); setPage(1); }}>
             <div className="stat-value">{counts.published}</div>
             <div className="stat-label">Publicadas</div>
           </div>
-          <div className="stat-card stat-rejected" style={{cursor:'pointer'}} onClick={() => { setFilterStatus('rejected'); setPage(1); }}>
+          <div className="stat-card stat-rejected" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('rejected'); setPage(1); }}>
             <div className="stat-value">{counts.rejected}</div>
             <div className="stat-label">Rejeitadas</div>
           </div>
@@ -401,10 +457,10 @@ export default function DashboardPage() {
         <div className="toolbar">
           <div className="filter-tabs" role="tablist">
             {[
-              { status: 'pending',   label: 'Pendentes' },
+              { status: 'pending',   label: `Para Revisão (${counts.pending})` },
               { status: 'published', label: 'Publicadas' },
               { status: 'rejected',  label: 'Rejeitadas' },
-              { status: '',          label: 'Todas' },
+              { status: '',          label: 'Todas (BD)' },
             ].map(({ status, label }) => (
               <button
                 key={status}
@@ -426,33 +482,38 @@ export default function DashboardPage() {
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
             </svg>
-            Atualizar lista
+            Atualizar
           </button>
         </div>
 
         {lastAgentRun?.run_id && (
           <div className="agent-run-info">
-            Última execução manual: <strong>{lastAgentRun.run_id}</strong>
+            Última execução: <strong>{lastAgentRun.run_id}</strong>
             {' · '}{lastAgentRun.status}
-            {typeof lastAgentRun.inserted_count === 'number' && ` · ${lastAgentRun.inserted_count} notícia(s) nova(s)`}
+            {typeof lastAgentRun.selected_count === 'number' && ` · ${lastAgentRun.selected_count} artigo(s) selecionado(s)`}
+          </div>
+        )}
+
+        {filterStatus === 'pending' && pendingArticles.length === 0 && !loading && (
+          <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: '.875rem', color: '#1D4ED8' }}>
+            Sem notícias para revisão. Clica em <strong>Executar agente</strong> para ir buscar notícias novas.
           </div>
         )}
 
         <div className="news-list">
-          {loading && news.length === 0 ? (
+          {loading && displayedNews.length === 0 ? (
             <div className="empty-state">
               <div className="loader" style={{ width: 32, height: 32, borderColor: 'rgba(0,0,0,.12)', borderTopColor: 'var(--blue-600)' }}/>
             </div>
-          ) : news.length === 0 ? (
+          ) : displayedNews.length === 0 ? (
             <div className="empty-state">
               <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>
               </svg>
               <p>Sem notícias para mostrar</p>
-              <span>As notícias da Supabase aparecerão aqui automaticamente</span>
             </div>
           ) : (
-            news.map(item => (
+            displayedNews.map(item => (
               <NewsCard
                 key={item.id}
                 item={item}
@@ -465,22 +526,14 @@ export default function DashboardPage() {
 
         {totalPages > 1 && (
           <div className="pagination" aria-label="Paginação de notícias">
-            <button
-              className="btn btn-ghost"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={loading || page <= 1}
-            >
+            <button className="btn btn-ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={loading || page <= 1}>
               Anterior
             </button>
             <span>
               Página {page} de {totalPages}
-              {totalNews > 0 && ` · ${Math.min((page - 1) * 5 + 1, totalNews)}-${Math.min(page * 5, totalNews)} de ${totalNews}`}
+              {totalNews > 0 && ` · ${Math.min((page - 1) * PAGE_SIZE + 1, totalNews)}-${Math.min(page * PAGE_SIZE, totalNews)} de ${totalNews}`}
             </span>
-            <button
-              className="btn btn-ghost"
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={loading || page >= totalPages}
-            >
+            <button className="btn btn-ghost" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={loading || page >= totalPages}>
               Seguinte
             </button>
           </div>
@@ -488,12 +541,7 @@ export default function DashboardPage() {
       </main>
 
       {modal && (
-        <div
-          className="modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          onClick={e => { if (e.target === e.currentTarget) closeModal(); }}
-        >
+        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
           <div className="modal">
             <div className="modal-header">
               <h2>{modal.type === 'publish' ? 'Publicar notícia' : 'Rejeitar notícia'}</h2>
@@ -502,7 +550,7 @@ export default function DashboardPage() {
               <p>
                 {modal.type === 'publish'
                   ? `Publicar "${modal.item.title}"?`
-                  : 'Tem a certeza que quer rejeitar a noticia?'}
+                  : 'Tem a certeza que quer rejeitar esta notícia?'}
               </p>
               {modal.type === 'publish' && (
                 <div className="publish-options" role="group" aria-label="Redes sociais">
@@ -517,6 +565,15 @@ export default function DashboardPage() {
                     </label>
                   ))}
                 </div>
+              )}
+              {modal.type === 'reject' && (
+                <textarea
+                  placeholder="Motivo da rejeição (opcional)"
+                  value={rejectReason}
+                  onChange={e => setRejectReason(e.target.value)}
+                  rows={3}
+                  style={{ marginTop: 12, width: '100%' }}
+                />
               )}
             </div>
             <div className="modal-footer">

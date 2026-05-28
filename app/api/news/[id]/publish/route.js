@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
-import { findNews, updateNews } from '@/src/lib/db';
+import { findNews, insertNews, updateNews } from '@/src/lib/db';
 import { getAccount } from '@/src/lib/social';
 
 const N8N_PUBLISH_WEBHOOK = process.env.N8N_PUBLISH_WEBHOOK || '';
@@ -23,38 +23,20 @@ function getFacebookPage(account) {
 }
 
 function buildFacebookMessage(item) {
-  const description =
-    item.description ||
-    item.summary ||
-    item.excerpt ||
-    item.content ||
-    '';
-
-  return [
-    item.title,
-    description,
-    item.url ? `🔗 Ler notícia completa:\n${item.url}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n\n')
-    .slice(0, 60000);
+  const description = item.description || item.summary || item.excerpt || item.content || '';
+  return [item.title, description, item.url ? `🔗 Ler notícia completa:\n${item.url}` : '']
+    .filter(Boolean).join('\n\n').slice(0, 60000);
 }
 
 async function publishToFacebook(item) {
   const account = getAccount('facebook');
   if (!account) throw Object.assign(new Error('Facebook nao conectado'), { code: 'facebook_not_connected' });
-
   const page = getFacebookPage(account);
   if (!page?.accessToken) {
     throw Object.assign(new Error('Nenhuma Pagina do Facebook disponivel'), { code: 'facebook_page_missing' });
   }
-
-  const body = new URLSearchParams({
-    access_token: page.accessToken,
-    message: buildFacebookMessage(item),
-  });
+  const body = new URLSearchParams({ access_token: page.accessToken, message: buildFacebookMessage(item) });
   if (item.url) body.set('link', item.url);
-
   const res = await fetch(`https://graph.facebook.com/v19.0/${page.id}/feed`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -63,11 +45,9 @@ async function publishToFacebook(item) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw Object.assign(new Error(data.error?.message || 'Falha ao publicar no Facebook'), {
-      code: 'facebook_publish_failed',
-      details: data,
+      code: 'facebook_publish_failed', details: data,
     });
   }
-
   return { platform: 'facebook', pageId: page.id, pageName: page.name, postId: data.id };
 }
 
@@ -80,13 +60,51 @@ export async function POST(request, { params }) {
   }
 
   const { id } = await params;
-  const item = await findNews(id);
-  if (!item) return NextResponse.json({ error: 'Notícia não encontrada' }, { status: 404 });
-  if (item.status !== 'pending') return NextResponse.json({ error: 'Notícia já foi processada' }, { status: 409 });
-
   const body = await request.json().catch(() => ({}));
+
+  // Tenta encontrar o artigo na base de dados
+  let item = await findNews(id);
+
+  if (!item) {
+    // Artigo ainda não está no Supabase (vem do localStorage do browser)
+    // O frontend envia os dados completos do artigo no body
+    const articleData = body.article;
+    if (!articleData?.title) {
+      return NextResponse.json({ error: 'Notícia não encontrada' }, { status: 404 });
+    }
+
+    // Insere o artigo no Supabase antes de publicar
+    const newItem = {
+      id,
+      title: String(articleData.title).slice(0, 300),
+      content: articleData.content || null,
+      url: articleData.url || null,
+      source: articleData.source || 'RSS',
+      category: articleData.category || null,
+      imageUrl: articleData.imageUrl || null,
+      publishedAt: articleData.publishedAt || new Date().toISOString(),
+      status: 'pending',
+      receivedAt: articleData.receivedAt || new Date().toISOString(),
+      processedAt: null,
+      processedBy: null,
+      rejectReason: null,
+    };
+
+    try {
+      await insertNews(newItem);
+      item = newItem;
+    } catch (err) {
+      console.error('[db] Erro ao inserir artigo antes de publicar:', err.message);
+      return NextResponse.json({ error: 'Erro ao guardar a notícia' }, { status: 500 });
+    }
+  }
+
+  if (item.status !== 'pending') {
+    return NextResponse.json({ error: 'Notícia já foi processada' }, { status: 409 });
+  }
+
   const socialPlatforms = Array.isArray(body.socialPlatforms)
-    ? body.socialPlatforms.filter(platform => VALID_SOCIAL_PLATFORMS.includes(platform))
+    ? body.socialPlatforms.filter(p => VALID_SOCIAL_PLATFORMS.includes(p))
     : [];
 
   try {
@@ -100,20 +118,22 @@ export async function POST(request, { params }) {
       }
     }
 
-    const updated = await updateNews(id, { status: 'published', processedAt: new Date().toISOString(), processedBy: user.username });
-    await notifyN8n(N8N_PUBLISH_WEBHOOK, {
-      action: 'publish',
-      newsId: id,
-      socialPlatforms,
-      socialPlatform: socialPlatforms[0] || null,
-      socialResults,
-      news: updated,
+    const updated = await updateNews(id, {
+      status: 'published',
+      processedAt: new Date().toISOString(),
+      processedBy: user.username,
     });
+
+    await notifyN8n(N8N_PUBLISH_WEBHOOK, {
+      action: 'publish', newsId: id, socialPlatforms,
+      socialPlatform: socialPlatforms[0] || null, socialResults, news: updated,
+    });
+
     console.log(`[ação] Notícia publicada: ${id} por ${user.username}`);
     return NextResponse.json({ success: true, news: updated, socialResults });
   } catch (err) {
     if (err.code === 'facebook_page_missing') {
-      return NextResponse.json({ error: 'Facebook conectado, mas sem Pagina disponivel para publicar. Confirma as permissoes e que tens uma Pagina.' }, { status: 409 });
+      return NextResponse.json({ error: 'Facebook conectado, mas sem Pagina disponivel para publicar.' }, { status: 409 });
     }
     if (err.code === 'facebook_publish_failed') {
       console.error('[facebook] Erro ao publicar:', err.details || err.message);
