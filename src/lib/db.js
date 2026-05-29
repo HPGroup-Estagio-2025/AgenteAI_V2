@@ -218,7 +218,7 @@ function listNewsFromStore({ status, sector, search, pageNum, limitNum }) {
     news: filtered.slice(start, start + limitNum),
     total,
     totalPages: Math.ceil(total / limitNum) || 1,
-    counts: { pending: countByStatus(store, 'pending'), published: countByStatus(store, 'published'), rejected: countByStatus(store, 'rejected') },
+    counts: { pending: countByStatus(store, 'pending'), published: countByStatus(store, 'published'), rejected: countByStatus(store, 'rejected'), on_hold: countByStatus(store, 'on_hold') },
     sectorCounts: Object.fromEntries(VALID_SECTORS.map(s => [s, countBySector(store, s)])),
   };
 }
@@ -233,7 +233,7 @@ export async function listNews({ status, sector, search, pageNum, limitNum }) {
       .select('*', { count: 'exact' });
 
     if (status === 'pending') query = query.in('status', PENDING_STATUSES);
-    if (status && ['published', 'rejected'].includes(status)) query = query.eq('status', status);
+    if (status && ['published', 'rejected', 'on_hold'].includes(status)) query = query.eq('status', status);
 
     if (sector && VALID_SECTORS.includes(sector)) {
       const aliases = SECTOR_ALIASES[sector] || [sector];
@@ -275,6 +275,7 @@ export async function listNews({ status, sector, search, pageNum, limitNum }) {
         pending: dashboardAllNews.filter(item => item.status === 'pending').length,
         published: dashboardAllNews.filter(item => item.status === 'published').length,
         rejected: dashboardAllNews.filter(item => item.status === 'rejected').length,
+        on_hold: dashboardAllNews.filter(item => item.status === 'on_hold').length,
       },
       sectorCounts: Object.fromEntries(
         VALID_SECTORS.map(s => [
