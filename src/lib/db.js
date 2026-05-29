@@ -319,6 +319,20 @@ export async function findNews(id) {
   return getStore().find(n => n.id === id) || null;
 }
 
+export async function findNewsByUrl(url) {
+  if (!url) return null;
+  const normalized = normalizeUrl(url);
+  if (USE_SUPABASE) {
+    const { data, error } = await supabase.from(NEWS_TABLE).select('*').eq('url', normalized).maybeSingle();
+    if (!error && data) return toDashboardNews(data);
+    // try original url too
+    const { data: data2, error: error2 } = await supabase.from(NEWS_TABLE).select('*').eq('url', url).maybeSingle();
+    if (!error2 && data2) return toDashboardNews(data2);
+    if (error && !isMissingTableError(error)) return null;
+  }
+  return getStore().find(n => normalizeUrl(n.url) === normalized) || null;
+}
+
 export async function updateNews(id, updates) {
   if (USE_SUPABASE) {
     const { data, error } = await supabase.from(NEWS_TABLE).update(toSupabaseUpdates(updates)).eq('id', id).select().single();
