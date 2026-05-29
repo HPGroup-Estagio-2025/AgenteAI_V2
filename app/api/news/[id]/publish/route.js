@@ -4,7 +4,6 @@ import { findNews, insertNews, updateNews } from '@/src/lib/db';
 import { getAccount, getAccountById } from '@/src/lib/social';
 
 const N8N_PUBLISH_WEBHOOK = process.env.N8N_PUBLISH_WEBHOOK || '';
-const FACEBOOK_DIRECT_PUBLISH = process.env.FACEBOOK_DIRECT_PUBLISH === 'true';
 const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID || '';
 const VALID_SOCIAL_PLATFORMS = ['facebook', 'instagram', 'linkedin'];
 
@@ -26,6 +25,63 @@ function buildFacebookMessage(item) {
   const description = item.description || item.summary || item.excerpt || item.content || '';
   return [item.title, description, item.url ? `🔗 Ler notícia completa:\n${item.url}` : '']
     .filter(Boolean).join('\n\n').slice(0, 60000);
+}
+
+async function publishToInstagram(item, accountId = null) {
+  const account = accountId ? getAccountById(accountId) : getAccount('instagram');
+  if (!account) throw Object.assign(new Error('Instagram nao conectado'), { code: 'instagram_not_connected' });
+  if (!account.instagramUserId) {
+    throw Object.assign(
+      new Error('Instagram User ID em falta — reconecta a conta Instagram em Redes Sociais'),
+      { code: 'instagram_user_id_missing' }
+    );
+  }
+  if (!item.imageUrl) {
+    throw Object.assign(new Error('Instagram requer uma imagem na noticia'), { code: 'instagram_no_image' });
+  }
+  const caption = buildFacebookMessage(item);
+
+  // Passo 1: criar container de media
+  const containerRes = await fetch(
+    `https://graph.facebook.com/v19.0/${account.instagramUserId}/media`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        image_url: item.imageUrl,
+        caption,
+        access_token: account.accessToken,
+      }).toString(),
+    }
+  );
+  const containerData = await containerRes.json().catch(() => ({}));
+  if (!containerRes.ok || !containerData.id) {
+    throw Object.assign(
+      new Error(containerData.error?.message || 'Falha ao criar container Instagram'),
+      { code: 'instagram_publish_failed', details: containerData }
+    );
+  }
+
+  // Passo 2: publicar o container
+  const publishRes = await fetch(
+    `https://graph.facebook.com/v19.0/${account.instagramUserId}/media_publish`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        creation_id: containerData.id,
+        access_token: account.accessToken,
+      }).toString(),
+    }
+  );
+  const publishData = await publishRes.json().catch(() => ({}));
+  if (!publishRes.ok) {
+    throw Object.assign(
+      new Error(publishData.error?.message || 'Falha ao publicar no Instagram'),
+      { code: 'instagram_publish_failed', details: publishData }
+    );
+  }
+  return { platform: 'instagram', postId: publishData.id };
 }
 
 async function publishToFacebook(item, accountId = null) {
@@ -112,14 +168,21 @@ export async function POST(request, { params }) {
 
   try {
     const socialResults = [];
+
     if (socialPlatforms.includes('facebook')) {
       const fbAccountId = selectedAccounts.facebook || null;
       if (!fbAccountId && !getAccount('facebook')) {
         return NextResponse.json({ error: 'Facebook ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
-      if (FACEBOOK_DIRECT_PUBLISH) {
-        socialResults.push(await publishToFacebook(item, fbAccountId));
+      socialResults.push(await publishToFacebook(item, fbAccountId));
+    }
+
+    if (socialPlatforms.includes('instagram')) {
+      const igAccountId = selectedAccounts.instagram || null;
+      if (!igAccountId && !getAccount('instagram')) {
+        return NextResponse.json({ error: 'Instagram ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
+      socialResults.push(await publishToInstagram(item, igAccountId));
     }
 
     const updated = await updateNews(id, {
@@ -142,6 +205,19 @@ export async function POST(request, { params }) {
     if (err.code === 'facebook_publish_failed') {
       console.error('[facebook] Erro ao publicar:', err.details || err.message);
       return NextResponse.json({ error: `Erro ao publicar no Facebook: ${err.message}` }, { status: 502 });
+    }
+    if (err.code === 'instagram_not_connected') {
+      return NextResponse.json({ error: 'Instagram ainda nao esta conectado em Redes Sociais.' }, { status: 409 });
+    }
+    if (err.code === 'instagram_user_id_missing') {
+      return NextResponse.json({ error: 'Reconecta a conta Instagram em Redes Sociais para ativar a publicacao.' }, { status: 409 });
+    }
+    if (err.code === 'instagram_no_image') {
+      return NextResponse.json({ error: 'O Instagram requer que a noticia tenha uma imagem para publicar.' }, { status: 422 });
+    }
+    if (err.code === 'instagram_publish_failed') {
+      console.error('[instagram] Erro ao publicar:', err.details || err.message);
+      return NextResponse.json({ error: `Erro ao publicar no Instagram: ${err.message}` }, { status: 502 });
     }
     console.error('[db] Erro ao publicar:', err.message);
     return NextResponse.json({ error: 'Erro ao publicar notícia' }, { status: 500 });

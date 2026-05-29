@@ -8,10 +8,10 @@ const CONFIGS = {
     clientIdEnv: 'FACEBOOK_APP_ID',
 },
   instagram: {
-  authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
-  scope: 'pages_show_list',
-  clientIdEnv: 'FACEBOOK_APP_ID',
-},
+    authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
+    scope: 'pages_show_list,instagram_basic,instagram_content_publish',
+    clientIdEnv: 'FACEBOOK_APP_ID',
+  },
   linkedin: {
     authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
     scope: 'w_member_social r_liteprofile r_emailaddress',

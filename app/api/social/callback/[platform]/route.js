@@ -33,7 +33,7 @@ const CONFIGS = {
     async getProfile(token) {
       // Get connected Instagram accounts via Facebook
       const res = await fetch(
-        `https://graph.facebook.com/me?fields=id,name,instagram_accounts{name,username,profile_picture_url}&access_token=${token}`
+        `https://graph.facebook.com/me?fields=id,name,instagram_accounts{id,name,username,profile_picture_url}&access_token=${token}`
       );
       const d = await res.json();
       const igAccount = d.instagram_accounts?.data?.[0];
@@ -41,6 +41,7 @@ const CONFIGS = {
         name: igAccount ? `@${igAccount.username}` : d.name,
         email: null,
         picture: igAccount?.profile_picture_url || null,
+        instagramUserId: igAccount?.id || null,
       };
     },
   },
@@ -134,6 +135,7 @@ export async function GET(request, { params }) {
       email: profile.email,
       picture: profile.picture,
       pages: profile.pages || [],
+      instagramUserId: profile.instagramUserId || null,
       expiresAt: tokenData.expires_in
         ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
         : null,
