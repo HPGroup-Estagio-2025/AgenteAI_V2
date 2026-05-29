@@ -11,6 +11,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Migra token antigo do sessionStorage para localStorage (utilizadores com sessão antiga)
+    if (!localStorage.getItem('auth_token')) {
+      const old = sessionStorage.getItem('auth_token');
+      const exp = sessionStorage.getItem('token_expiry');
+      if (old) {
+        localStorage.setItem('auth_token', old);
+        if (exp) localStorage.setItem('token_expiry', exp);
+        sessionStorage.removeItem('auth_token');
+        sessionStorage.removeItem('token_expiry');
+      }
+    }
     const token = localStorage.getItem('auth_token');
     if (!token) return;
     fetch('/api/verify', { headers: { Authorization: `Bearer ${token}` } })

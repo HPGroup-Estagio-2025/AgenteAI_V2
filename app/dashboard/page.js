@@ -3,6 +3,26 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
+// Remove apenas as chaves de auth (não apaga pending_articles)
+function clearAuth() {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('token_expiry');
+}
+
+// Migração única: move o token do sessionStorage para o localStorage
+function migrateAuthToken() {
+  if (!localStorage.getItem('auth_token')) {
+    const oldToken  = sessionStorage.getItem('auth_token');
+    const oldExpiry = sessionStorage.getItem('token_expiry');
+    if (oldToken) {
+      localStorage.setItem('auth_token', oldToken);
+      if (oldExpiry) localStorage.setItem('token_expiry', oldExpiry);
+      sessionStorage.removeItem('auth_token');
+      sessionStorage.removeItem('token_expiry');
+    }
+  }
+}
+
 const SECTOR_MAP = {
   'maritimo':       { label: 'Marítimo',      cls: 'badge-sector-maritimo' },
   'defesa-militar': { label: 'Defesa Militar', cls: 'badge-sector-defesa' },
@@ -340,7 +360,7 @@ export default function DashboardPage() {
         cache: 'no-store',
         signal: controller.signal,
       });
-      if (res.status === 401 || res.status === 403) { localStorage.clear(); router.replace('/'); return; }
+      if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setNews(data.news || []);
@@ -368,16 +388,17 @@ export default function DashboardPage() {
 
   // Auth check
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
+    migrateAuthToken(); // migra token antigo do sessionStorage se necessário
+    const token  = localStorage.getItem('auth_token');
     const expiry = parseInt(localStorage.getItem('token_expiry') || '0', 10);
-    if (!token || Date.now() > expiry) { localStorage.clear(); router.replace('/'); return; }
+    if (!token || Date.now() > expiry) { clearAuth(); router.replace('/'); return; }
     fetch('/api/verify', { headers: { Authorization: `Bearer ${token}` } })
       .then(async res => {
-        if (!res.ok) { localStorage.clear(); router.replace('/'); return; }
+        if (!res.ok) { clearAuth(); router.replace('/'); return; }
         const data = await res.json();
         setUsername(data.username || 'admin');
       })
-      .catch(() => { localStorage.clear(); router.replace('/'); });
+      .catch(() => { clearAuth(); router.replace('/'); });
   }, [router]);
 
   useEffect(() => { fetchNews(); }, [fetchNews]);
@@ -445,10 +466,10 @@ export default function DashboardPage() {
     if (agentRunning) return;
     setAgentRunning(true);
     const token = localStorage.getItem('auth_token');
-    if (!token) { setAgentRunning(false); localStorage.clear(); router.replace('/'); return; }
+    if (!token) { setAgentRunning(false); clearAuth(); router.replace('/'); return; }
     try {
       const res = await fetch('/api/agent/run', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-      if (res.status === 401 || res.status === 403) { localStorage.clear(); router.replace('/'); return; }
+      if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { showToast(data.error || 'Erro ao executar agente', 'error'); return; }
       setLastAgentRun(data);
@@ -491,7 +512,7 @@ export default function DashboardPage() {
           selectedAccounts: sel.accounts,
         }),
       });
-      if (res.status === 401 || res.status === 403) { localStorage.clear(); router.replace('/'); return; }
+      if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
       const data = await res.json();
       if (!res.ok) { showToast(data.error || 'Erro ao publicar', 'error'); return; }
       removePending(item.id);
@@ -510,7 +531,7 @@ export default function DashboardPage() {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ article: item }),
       });
-      if (res.status === 401 || res.status === 403) { localStorage.clear(); router.replace('/'); return; }
+      if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
       const data = await res.json();
       if (!res.ok) { showToast(data.error || 'Erro ao guardar', 'error'); return; }
       removePending(item.id);
@@ -551,7 +572,7 @@ export default function DashboardPage() {
               </svg>
               <span>{username}</span>
             </div>
-            <button className="btn btn-ghost btn-danger" onClick={() => { localStorage.clear(); router.replace('/'); }}>
+            <button className="btn btn-ghost btn-danger" onClick={() => { clearAuth(); router.replace('/'); }}>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>
               </svg>
