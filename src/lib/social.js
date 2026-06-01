@@ -1,12 +1,22 @@
 import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
 const STATE_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'oauth-state-secret-fallback';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const USE_SUPABASE = SUPABASE_URL.length > 0 && !SUPABASE_URL.includes('xxxx');
 const SOCIAL_TABLE = process.env.SOCIAL_ACCOUNTS_TABLE || 'social_accounts';
+
+// Usa service_role key para escrita server-side (bypassa RLS)
+// Cai back para anon key se não estiver configurada
+const supabaseAdmin = USE_SUPABASE
+  ? createClient(
+      SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    )
+  : null;
 
 const g = globalThis;
 const accountsFile = path.join(
@@ -126,7 +136,7 @@ async function supabaseUpsert(account) {
 
   let lastError = null;
   for (const row of rowVariants) {
-    const { error } = await supabase.from(SOCIAL_TABLE).upsert(row, { onConflict: 'id' });
+    const { error } = await supabaseAdmin.from(SOCIAL_TABLE).upsert(row, { onConflict: 'id' });
     if (!error) return;
     if (error.code === '23505') {
       lastError = error;
@@ -141,12 +151,12 @@ async function supabaseUpsert(account) {
 }
 
 async function supabaseDelete(id) {
-  const { error } = await supabase.from(SOCIAL_TABLE).delete().eq('id', id);
+  const { error } = await supabaseAdmin.from(SOCIAL_TABLE).delete().eq('id', id);
   if (error) console.error('[social] Erro ao apagar conta do Supabase:', error.message);
 }
 
 async function supabaseDeleteByPlatform(platform) {
-  const { error } = await supabase.from(SOCIAL_TABLE).delete().eq('platform', platform);
+  const { error } = await supabaseAdmin.from(SOCIAL_TABLE).delete().eq('platform', platform);
   if (error) console.error('[social] Erro ao apagar contas do Supabase:', error.message);
 }
 
