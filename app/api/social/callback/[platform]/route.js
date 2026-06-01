@@ -174,7 +174,7 @@ export async function GET(request, { params }) {
     // 4. Guarda a conta
     // Para Instagram: usa o page token (nunca expira) guardado em profile.accessToken se disponível
     const tokenToStore = profile.accessToken || accessToken;
-    addAccount({
+    await addAccount({
       platform,
       accessToken: tokenToStore,
       name: profile.name,

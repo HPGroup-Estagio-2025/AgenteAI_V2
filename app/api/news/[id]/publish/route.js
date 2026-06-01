@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
-import { findNews, insertNews, updateNews } from '@/src/lib/db';
+import { findNews, findNewsByUrl, insertNews, updateNews } from '@/src/lib/db';
 import { getAccount, getAccountById, waitForAccounts } from '@/src/lib/social';
 
 const N8N_PUBLISH_WEBHOOK = process.env.N8N_PUBLISH_WEBHOOK || '';
@@ -150,8 +150,17 @@ export async function POST(request, { params }) {
       await insertNews(newItem);
       item = newItem;
     } catch (err) {
-      console.error('[db] Erro ao inserir artigo antes de publicar:', err.message);
-      return NextResponse.json({ error: 'Erro ao guardar a notícia' }, { status: 500 });
+      if (err.code === 'duplicate') {
+        const existing = articleData.url ? await findNewsByUrl(articleData.url) : null;
+        if (existing) {
+          item = existing;
+        } else {
+          return NextResponse.json({ error: 'Notícia já existe na base de dados' }, { status: 409 });
+        }
+      } else {
+        console.error('[db] Erro ao inserir artigo antes de publicar:', err.message);
+        return NextResponse.json({ error: 'Erro ao guardar a notícia' }, { status: 500 });
+      }
     }
   }
 

@@ -1,11 +1,12 @@
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
-import { getAccounts, removeAccount, removeAccountsByPlatform } from '@/src/lib/social';
+import { getAccounts, removeAccount, removeAccountsByPlatform, waitForAccounts } from '@/src/lib/social';
 
 export async function GET(request) {
   const token = getTokenFromRequest(request);
   try { if (!token) throw new Error(); verifyToken(token); } catch {
     return Response.json({ error: 'Não autenticado' }, { status: 401 });
   }
+  await waitForAccounts();
   const accounts = getAccounts();
   const grouped = {};
   for (const account of accounts) {
@@ -35,12 +36,12 @@ export async function DELETE(request) {
   const body = await request.json();
   const { accountId, platform } = body;
   if (accountId) {
-    removeAccount(accountId);
+    await removeAccount(accountId);
   } else if (platform) {
     if (!['facebook', 'instagram', 'linkedin'].includes(platform)) {
       return Response.json({ error: 'Plataforma inválida' }, { status: 400 });
     }
-    removeAccountsByPlatform(platform);
+    await removeAccountsByPlatform(platform);
   } else {
     return Response.json({ error: 'accountId ou platform obrigatório' }, { status: 400 });
   }
