@@ -100,9 +100,23 @@ async function supabaseReadAll() {
 }
 
 async function supabaseUpsert(account) {
-  const { error } = await supabase
-    .from(SOCIAL_TABLE)
-    .upsert(toDbRow(account), { onConflict: 'id' });
+  const fullRow = toDbRow(account);
+  let { error } = await supabase.from(SOCIAL_TABLE).upsert(fullRow, { onConflict: 'id' });
+
+  // Se falhou por coluna inexistente, tenta upsert mínimo com colunas garantidas
+  if (error && error.code !== '23505') {
+    console.warn('[social] upsert completo falhou, a tentar upsert mínimo:', error.message);
+    const minRow = {
+      id: fullRow.id,
+      platform: fullRow.platform,
+      name: fullRow.name || null,
+      access_token: fullRow.access_token || null,
+      connected_at: fullRow.connected_at || new Date().toISOString(),
+    };
+    const fallback = await supabase.from(SOCIAL_TABLE).upsert(minRow, { onConflict: 'id' });
+    error = fallback.error;
+  }
+
   if (error) {
     console.error('[social] Erro ao guardar conta no Supabase:', error.message);
     throw error;
