@@ -50,8 +50,8 @@ export async function POST(request, { params }) {
           return NextResponse.json({ error: 'Notícia já existe na base de dados' }, { status: 409 });
         }
       } else {
-        console.error('[save] Erro ao inserir artigo:', err.message);
-        return NextResponse.json({ error: 'Erro ao guardar a notícia' }, { status: 500 });
+        console.error('[save] Erro ao inserir artigo:', err.message, err.details || '');
+        return NextResponse.json({ error: `Erro ao guardar a notícia: ${err.message}` }, { status: 500 });
       }
     }
   }
@@ -66,7 +66,7 @@ export async function POST(request, { params }) {
     console.log(`[ação] Notícia guardada (on_hold): ${targetId} por ${user.username}`);
     return NextResponse.json({ success: true, news: updated });
   } catch (err) {
-    console.error('[save] Erro ao atualizar estado:', err.message);
-    return NextResponse.json({ error: 'Erro ao guardar notícia' }, { status: 500 });
+    console.error('[save] Erro ao atualizar estado:', err.message, err.details || '');
+    return NextResponse.json({ error: `Erro ao atualizar notícia: ${err.message}` }, { status: 500 });
   }
 }

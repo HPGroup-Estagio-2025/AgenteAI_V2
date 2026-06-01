@@ -153,25 +153,42 @@ function toDashboardNews(row) {
 async function fetchNewsForDuplicateCheck() {
   const rows = [];
   const pageSize = 1000;
-  const selectColumns = 'id,title,post,url,source,created_at';
 
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await supabase
-      .from(NEWS_TABLE)
-      .select(selectColumns)
-      .order('created_at', { ascending: false })
-      .range(from, from + pageSize - 1);
+  // Tenta primeiro com todas as colunas úteis; se falhar por coluna inexistente,
+  // cai back para apenas id+title+url (colunas garantidas pelo schema mínimo).
+  const columnSets = ['id,title,post,url,source,created_at', 'id,title,url'];
 
-    if (error) {
-      if (isMissingTableError(error)) return null;
-      throw error;
+  for (const selectColumns of columnSets) {
+    try {
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await supabase
+          .from(NEWS_TABLE)
+          .select(selectColumns)
+          .order('created_at', { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (error) {
+          if (isMissingTableError(error)) return null;
+          // Coluna não existe — tenta o próximo set
+          throw error;
+        }
+
+        rows.push(...(data || []));
+        if (!data || data.length < pageSize) break;
+      }
+      return rows; // sucesso
+    } catch (err) {
+      if (isMissingTableError(err)) return null;
+      rows.length = 0; // limpa e tenta o próximo set de colunas
+      if (selectColumns === columnSets[columnSets.length - 1]) {
+        // Último fallback — desiste da verificação de duplicados
+        console.warn('[db] fetchNewsForDuplicateCheck falhou, a ignorar verificação:', err.message);
+        return null;
+      }
     }
-
-    rows.push(...(data || []));
-    if (!data || data.length < pageSize) break;
   }
 
-  return rows;
+  return null;
 }
 
 function toSupabaseInsert(item) {
@@ -296,10 +313,33 @@ export async function insertNews(item) {
       throw Object.assign(new Error('duplicate'), { code: 'duplicate' });
     }
 
-    const { error } = await supabase.from(NEWS_TABLE).insert(toSupabaseInsert(item));
+    const fullInsert = toSupabaseInsert(item);
+    let { error } = await supabase.from(NEWS_TABLE).insert(fullInsert);
+
+    // Se falhou por coluna inexistente, tenta insert mínimo com colunas garantidas
+    if (error && !isMissingTableError(error) && error.code !== '23505') {
+      console.warn('[db] insert completo falhou, a tentar insert mínimo:', error.message);
+      const minInsert = {
+        id: fullInsert.id,
+        title: fullInsert.title,
+        url: fullInsert.url || null,
+        source: fullInsert.source || null,
+        status: fullInsert.status || 'draft',
+        created_at: fullInsert.created_at || new Date().toISOString(),
+        updated_at: fullInsert.updated_at || new Date().toISOString(),
+      };
+      const fallback = await supabase.from(NEWS_TABLE).insert(minInsert);
+      error = fallback.error;
+    }
+
     if (error) {
       if (error.code === '23505') throw Object.assign(new Error('duplicate'), { code: 'duplicate' });
-      if (!isMissingTableError(error)) throw error;
+      if (!isMissingTableError(error)) {
+        const enriched = new Error(error.message || JSON.stringify(error));
+        enriched.details = error.details || error.hint || error.code || '';
+        enriched.supabaseCode = error.code;
+        throw enriched;
+      }
     } else {
       notifyClients();
       return;
@@ -336,9 +376,18 @@ export async function findNewsByUrl(url) {
 
 export async function updateNews(id, updates) {
   if (USE_SUPABASE) {
-    const { data, error } = await supabase.from(NEWS_TABLE).update(toSupabaseUpdates(updates)).eq('id', id).select().single();
+    const mapped = toSupabaseUpdates(updates);
+    const { data, error } = await supabase.from(NEWS_TABLE).update(mapped).eq('id', id).select().single();
     if (!error) return toDashboardNews(data);
-    if (!isMissingTableError(error)) throw error;
+
+    if (!isMissingTableError(error)) {
+      // Tenta update mínimo (só status + updated_at) se o mapeamento completo falhar
+      console.warn('[db] updateNews completo falhou, a tentar update mínimo:', error.message);
+      const minUpdate = { status: mapped.status, updated_at: mapped.updated_at || new Date().toISOString() };
+      const fallback = await supabase.from(NEWS_TABLE).update(minUpdate).eq('id', id).select().single();
+      if (!fallback.error) return toDashboardNews(fallback.data);
+      if (!isMissingTableError(fallback.error)) throw fallback.error;
+    }
   }
   const item = getStore().find(n => n.id === id);
   if (!item) return null;

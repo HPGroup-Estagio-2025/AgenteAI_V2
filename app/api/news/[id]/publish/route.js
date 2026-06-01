@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
 import { findNews, insertNews, updateNews } from '@/src/lib/db';
-import { getAccount, getAccountById } from '@/src/lib/social';
+import { getAccount, getAccountById, waitForAccounts } from '@/src/lib/social';
 
 const N8N_PUBLISH_WEBHOOK = process.env.N8N_PUBLISH_WEBHOOK || '';
 const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID || '';
@@ -167,6 +167,9 @@ export async function POST(request, { params }) {
     ? body.selectedAccounts : {};
 
   try {
+    // Garante que as contas estão carregadas do Supabase antes de publicar
+    await waitForAccounts();
+
     const socialResults = [];
 
     if (socialPlatforms.includes('facebook')) {
@@ -219,7 +222,7 @@ export async function POST(request, { params }) {
       console.error('[instagram] Erro ao publicar:', err.details || err.message);
       return NextResponse.json({ error: `Erro ao publicar no Instagram: ${err.message}` }, { status: 502 });
     }
-    console.error('[db] Erro ao publicar:', err.message);
-    return NextResponse.json({ error: 'Erro ao publicar notícia' }, { status: 500 });
+    console.error('[db] Erro ao publicar:', err.message, err.details || '');
+    return NextResponse.json({ error: `Erro ao publicar notícia: ${err.message}` }, { status: 500 });
   }
 }
