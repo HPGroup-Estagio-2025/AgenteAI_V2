@@ -214,9 +214,13 @@ export async function addAccount(data) {
   // Atualiza cache em memória imediatamente
   g._socialAccounts.push(account);
 
-  // Persiste
+  // Persiste — falha de Supabase não bloqueia a ligação OAuth
   if (USE_SUPABASE) {
-    await supabaseUpsert(account);
+    try {
+      await supabaseUpsert(account);
+    } catch (err) {
+      console.error('[social] Falha ao persistir conta no Supabase (conta guardada em memória):', err.message);
+    }
   } else {
     writeAccountsToFile(g._socialAccounts);
   }
