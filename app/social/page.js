@@ -133,7 +133,9 @@ function SocialPageContent() {
       // Limpa o parâmetro do URL para não repetir o toast ao refrescar
       router.replace('/social', { scroll: false });
     } else if (error) {
-      showToast(ERROR_MESSAGES[error] || `Erro: ${error}`, 'error');
+      const detail = searchParams.get('detail');
+      const base = ERROR_MESSAGES[error] || `Erro: ${error}`;
+      showToast(detail ? `${base} (${detail})` : base, 'error');
       router.replace('/social', { scroll: false });
     }
   }, [searchParams, router]);

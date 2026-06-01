@@ -149,8 +149,9 @@ export async function GET(request, { params }) {
 
     let accessToken = tokenData.access_token;
     if (!accessToken) {
-      console.error(`[oauth:${platform}] Token exchange falhou:`, JSON.stringify(tokenData));
-      return redirect('/social?error=token_exchange_failed');
+      const fbError = tokenData?.error?.message || tokenData?.error_description || JSON.stringify(tokenData);
+      console.error(`[oauth:${platform}] Token exchange falhou:`, fbError);
+      return redirect(`/social?error=token_exchange_failed&detail=${encodeURIComponent(fbError)}`);
     }
 
     // 2. Para Meta (Facebook/Instagram): troca por token de longa duração (60 dias)
