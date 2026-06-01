@@ -105,6 +105,64 @@ function SectorBadge({ category }) {
   return <span className="badge badge-category">{category}</span>;
 }
 
+// ── Modal: sem redes sociais conectadas ────────────────────────────
+function NoSocialModal({ onClose, onGoToSocial }) {
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#fff', borderRadius: 12, padding: '32px 28px',
+          maxWidth: 380, width: '90%', textAlign: 'center',
+          boxShadow: '0 20px 60px rgba(0,0,0,.18)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </div>
+        <h3 style={{ margin: '0 0 8px', fontSize: '1.1rem', fontWeight: 600, color: '#111' }}>
+          Nenhuma rede social conectada
+        </h3>
+        <p style={{ margin: '0 0 24px', fontSize: '.9rem', color: '#6B7280', lineHeight: 1.5 }}>
+          Para publicar ou guardar notícias precisas de ter pelo menos uma conta de rede social ligada.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button
+            onClick={onGoToSocial}
+            style={{
+              padding: '10px 0', borderRadius: 8, border: 'none',
+              background: '#2563EB', color: '#fff', fontWeight: 600,
+              fontSize: '.9rem', cursor: 'pointer',
+            }}
+          >
+            Ir para Redes Sociais
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '10px 0', borderRadius: 8, border: '1px solid #E5E7EB',
+              background: '#fff', color: '#374151', fontWeight: 500,
+              fontSize: '.9rem', cursor: 'pointer',
+            }}
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // SVG placeholder para notícias sem imagem
 function ImagePlaceholder() {
   return (
@@ -279,6 +337,7 @@ export default function DashboardPage() {
 
   // Contas sociais conectadas
   const [connectedAccounts, setConnectedAccounts] = useState({});
+  const [showNoSocialModal, setShowNoSocialModal] = useState(false);
 
   const loadingRef = useRef(false);
   const toastTimer = useRef(null);
@@ -498,8 +557,13 @@ export default function DashboardPage() {
     }
   }
 
+  function hasConnectedAccounts() {
+    return Object.values(connectedAccounts).some(arr => Array.isArray(arr) && arr.length > 0);
+  }
+
   // ── Publicar artigo ───────────────────────────────────────────────
   async function handlePublish(item) {
+    if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
     const token = localStorage.getItem('auth_token');
     const sel = articleSelections[item.id] || { platforms: [], accounts: {} };
     try {
@@ -524,6 +588,7 @@ export default function DashboardPage() {
 
   // ── Guardar artigo (on_hold) ──────────────────────────────────────
   async function handleSave(item) {
+    if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
     const token = localStorage.getItem('auth_token');
     try {
       const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/save`, {
@@ -699,6 +764,13 @@ export default function DashboardPage() {
         <div className={`toast toast-${toast.type}`} role="alert" aria-live="polite">
           {toast.message}
         </div>
+      )}
+
+      {showNoSocialModal && (
+        <NoSocialModal
+          onClose={() => setShowNoSocialModal(false)}
+          onGoToSocial={() => router.push('/social')}
+        />
       )}
     </div>
   );

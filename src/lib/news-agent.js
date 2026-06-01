@@ -135,6 +135,49 @@ function parseRss(xml, feedUrl) {
   });
 }
 
+async function fetchOgImage(url) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'dashboard-news-agent/1.0' },
+    });
+    clearTimeout(timeout);
+    if (!response.ok) return '';
+    const html = await response.text();
+    const match =
+      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
+      html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i);
+    return match?.[1] || '';
+  } catch {
+    return '';
+  }
+}
+
+async function enrichWithImages(articles) {
+  const missing = articles.filter(a => !a.image && a.url);
+  if (missing.length === 0) return articles;
+
+  const fetched = await Promise.allSettled(
+    missing.map(a => fetchOgImage(a.url))
+  );
+
+  const imageMap = new Map();
+  missing.forEach((a, i) => {
+    const result = fetched[i];
+    if (result.status === 'fulfilled' && result.value) {
+      imageMap.set(a.url, result.value);
+    }
+  });
+
+  return articles.map(a =>
+    !a.image && imageMap.has(a.url) ? { ...a, image: imageMap.get(a.url) } : a
+  );
+}
+
 function sourceFromUrl(url) {
   try {
     const host = new URL(url).hostname.replace(/^www\./, '');
@@ -277,7 +320,8 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
 
   try {
     const rawArticles = await fetchAllRss();
-    const selectedArticles = scoreArticles(rawArticles, 5);
+    const enrichedArticles = await enrichWithImages(rawArticles);
+    const selectedArticles = scoreArticles(enrichedArticles, 5);
 
     // Os artigos NÃO são guardados no Supabase aqui.
     // Ficam em memória local no browser até o admin decidir publicar ou rejeitar.
