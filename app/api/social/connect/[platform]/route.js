@@ -39,10 +39,7 @@ export async function GET(request, { params }) {
   }
 
   const state = createState(platform);
-  const reqUrl = new URL(request.url);
-  const host = request.headers.get('x-forwarded-host') || reqUrl.host;
-  const proto = request.headers.get('x-forwarded-proto') || reqUrl.protocol.replace(':', '');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://agente-ai-v2.vercel.app';
   const redirectUri = `${appUrl}/api/social/callback/${platform}`;
 
   const url = new URL(config.authUrl);
