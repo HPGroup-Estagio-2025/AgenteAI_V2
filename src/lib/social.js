@@ -101,26 +101,43 @@ async function supabaseReadAll() {
 
 async function supabaseUpsert(account) {
   const fullRow = toDbRow(account);
-  let { error } = await supabase.from(SOCIAL_TABLE).upsert(fullRow, { onConflict: 'id' });
 
-  // Se falhou por coluna inexistente, tenta upsert mínimo com colunas garantidas
-  if (error && error.code !== '23505') {
-    console.warn('[social] upsert completo falhou, a tentar upsert mínimo:', error.message);
-    const minRow = {
+  // Tenta upserts com progressivamente menos colunas até um funcionar.
+  // Nível 2 mantém instagram_user_id e pages que são críticos para publicação.
+  const rowVariants = [
+    fullRow,
+    {
+      id: fullRow.id,
+      platform: fullRow.platform,
+      name: fullRow.name || null,
+      access_token: fullRow.access_token || null,
+      pages: fullRow.pages || [],
+      instagram_user_id: fullRow.instagram_user_id || null,
+      connected_at: fullRow.connected_at || new Date().toISOString(),
+    },
+    {
       id: fullRow.id,
       platform: fullRow.platform,
       name: fullRow.name || null,
       access_token: fullRow.access_token || null,
       connected_at: fullRow.connected_at || new Date().toISOString(),
-    };
-    const fallback = await supabase.from(SOCIAL_TABLE).upsert(minRow, { onConflict: 'id' });
-    error = fallback.error;
+    },
+  ];
+
+  let lastError = null;
+  for (const row of rowVariants) {
+    const { error } = await supabase.from(SOCIAL_TABLE).upsert(row, { onConflict: 'id' });
+    if (!error) return;
+    if (error.code === '23505') {
+      lastError = error;
+      break;
+    }
+    console.warn('[social] upsert falhou, a tentar com menos colunas:', error.message);
+    lastError = error;
   }
 
-  if (error) {
-    console.error('[social] Erro ao guardar conta no Supabase:', error.message);
-    throw error;
-  }
+  console.error('[social] Erro ao guardar conta no Supabase:', lastError.message);
+  throw lastError;
 }
 
 async function supabaseDelete(id) {
