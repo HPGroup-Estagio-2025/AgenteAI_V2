@@ -534,8 +534,9 @@ export default function DashboardPage() {
       setLastAgentRun(data);
       if (Array.isArray(data.articles) && data.articles.length > 0) {
         const existing = loadPending();
-        const existingUrls = new Set(existing.map(a => a.url).filter(Boolean));
-        const fresh = data.articles.filter(a => !existingUrls.has(a.url));
+        const normalizeUrl = u => String(u || '').trim().replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
+        const existingUrls = new Set(existing.map(a => normalizeUrl(a.url)).filter(Boolean));
+        const fresh = data.articles.filter(a => !existingUrls.has(normalizeUrl(a.url)));
         if (fresh.length > 0) {
           const updated = [...fresh, ...existing];
           savePending(updated);

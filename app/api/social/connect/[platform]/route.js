@@ -25,7 +25,7 @@ function isConfiguredValue(value) {
 
 export async function GET(request, { params }) {
   const token = getTokenFromRequest(request);
-  if (!token || !verifyToken(token)) {
+  try { if (!token) throw new Error(); verifyToken(token); } catch {
     return Response.json({ error: 'Nao autenticado' }, { status: 401 });
   }
 
