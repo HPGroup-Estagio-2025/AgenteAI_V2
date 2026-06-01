@@ -58,6 +58,7 @@ const CONFIGS = {
         `https://graph.facebook.com/me?fields=id,name,instagram_accounts{id,name,username,profile_picture_url},accounts{id,name,access_token,instagram_business_account{id}}&access_token=${token}`
       );
       const d = await res.json();
+      console.log('[oauth:instagram] API response:', JSON.stringify({ id: d.id, name: d.name, instagram_accounts: d.instagram_accounts, accounts_count: d.accounts?.data?.length }));
       const igAccount = d.instagram_accounts?.data?.[0];
 
       // Tenta encontrar o Page Access Token da página ligada ao Instagram
