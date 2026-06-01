@@ -70,11 +70,17 @@ const CONFIGS = {
         if (linkedPage?.access_token) igPageToken = linkedPage.access_token;
       }
 
+      // Fallback: usa INSTAGRAM_USER_ID da env se a API não devolveu o ID
+      const instagramUserId = igAccount?.id || process.env.INSTAGRAM_USER_ID || null;
+      if (!igAccount && instagramUserId) {
+        console.log('[oauth:instagram] A usar INSTAGRAM_USER_ID da env como fallback:', instagramUserId);
+      }
+
       return {
-        name: igAccount ? `@${igAccount.username}` : d.name,
+        name: igAccount ? `@${igAccount.username}` : (d.name || process.env.INSTAGRAM_USERNAME || 'Instagram'),
         email: null,
         picture: igAccount?.profile_picture_url || null,
-        instagramUserId: igAccount?.id || null,
+        instagramUserId,
         // Page token nunca expira — preferido para publicar no Instagram
         accessToken: igPageToken || token,
       };
