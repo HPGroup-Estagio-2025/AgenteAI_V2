@@ -88,7 +88,8 @@ function fromDbRow(row) {
 
 async function supabaseReadAll() {
   try {
-    const { data, error } = await supabase
+    const client = supabaseAdmin || supabase;
+    const { data, error } = await client
       .from(SOCIAL_TABLE)
       .select('*')
       .order('connected_at', { ascending: true });
@@ -96,7 +97,7 @@ async function supabaseReadAll() {
     if (error) {
       const isMissingTable = error.code === 'PGRST205' || error.message?.includes('Could not find the table');
       if (isMissingTable) {
-        console.warn('[social] Tabela social_accounts não existe no Supabase — usa ficheiro local. Cria a tabela com o SQL fornecido.');
+        console.warn('[social] Tabela social_accounts não existe no Supabase — usa ficheiro local.');
         return null;
       }
       console.error('[social] Erro ao ler do Supabase:', error.message);
