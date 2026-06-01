@@ -1,14 +1,35 @@
 import { redirect } from 'next/navigation';
 import { consumeState, addAccount } from '@/src/lib/social';
 
+// Troca um User Access Token curto (1-2h) por um de longa duração (60 dias).
+// Os Page Access Tokens obtidos a partir de um token longo NUNCA expiram.
+async function exchangeForLongLivedToken(shortToken, clientId, clientSecret) {
+  const url = new URL('https://graph.facebook.com/v19.0/oauth/access_token');
+  url.searchParams.set('grant_type', 'fb_exchange_token');
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('client_secret', clientSecret);
+  url.searchParams.set('fb_exchange_token', shortToken);
+
+  const res = await fetch(url.toString());
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.access_token) {
+    console.warn('[oauth:meta] Falha ao obter token longo, usa token curto:', data?.error?.message);
+    return { token: shortToken, expiresIn: null };
+  }
+  console.log('[oauth:meta] Token longo obtido, expira em', data.expires_in, 'segundos (~60 dias)');
+  return { token: data.access_token, expiresIn: data.expires_in || null };
+}
+
 const CONFIGS = {
   facebook: {
     tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
     clientIdEnv: 'FACEBOOK_APP_ID',
     clientSecretEnv: 'FACEBOOK_APP_SECRET',
+    longLived: true, // troca para token de longa duração automaticamente
     async getProfile(token) {
       const [profileRes, pagesRes] = await Promise.all([
         fetch(`https://graph.facebook.com/me?fields=id,name,email,picture.width(200)&access_token=${token}`),
+        // Com token longo, os page tokens retornados aqui NUNCA expiram
         fetch(`https://graph.facebook.com/me/accounts?fields=id,name,access_token,picture.width(200)&access_token=${token}`),
       ]);
       const d = await profileRes.json();
@@ -20,7 +41,7 @@ const CONFIGS = {
         pages: Array.isArray(pages.data) ? pages.data.map(page => ({
           id: page.id,
           name: page.name,
-          accessToken: page.access_token,
+          accessToken: page.access_token, // nunca expira (obtido via token longo)
           picture: page.picture?.data?.url || null,
         })) : [],
       };
@@ -30,18 +51,31 @@ const CONFIGS = {
     tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
     clientIdEnv: 'FACEBOOK_APP_ID',
     clientSecretEnv: 'FACEBOOK_APP_SECRET',
+    longLived: true, // troca para token de longa duração automaticamente
     async getProfile(token) {
-      // Get connected Instagram accounts via Facebook
+      // Vai buscar conta Instagram e também as Páginas (para ter page token que não expira)
       const res = await fetch(
-        `https://graph.facebook.com/me?fields=id,name,instagram_accounts{id,name,username,profile_picture_url}&access_token=${token}`
+        `https://graph.facebook.com/me?fields=id,name,instagram_accounts{id,name,username,profile_picture_url},accounts{id,name,access_token,instagram_business_account{id}}&access_token=${token}`
       );
       const d = await res.json();
       const igAccount = d.instagram_accounts?.data?.[0];
+
+      // Tenta encontrar o Page Access Token da página ligada ao Instagram
+      let igPageToken = null;
+      if (igAccount && Array.isArray(d.accounts?.data)) {
+        const linkedPage = d.accounts.data.find(
+          p => p.instagram_business_account?.id === igAccount.id
+        );
+        if (linkedPage?.access_token) igPageToken = linkedPage.access_token;
+      }
+
       return {
         name: igAccount ? `@${igAccount.username}` : d.name,
         email: null,
         picture: igAccount?.profile_picture_url || null,
         instagramUserId: igAccount?.id || null,
+        // Page token nunca expira — preferido para publicar no Instagram
+        accessToken: igPageToken || token,
       };
     },
   },
@@ -49,6 +83,7 @@ const CONFIGS = {
     tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
     clientIdEnv: 'LINKEDIN_CLIENT_ID',
     clientSecretEnv: 'LINKEDIN_CLIENT_SECRET',
+    longLived: false,
     async getProfile(token) {
       const res = await fetch('https://api.linkedin.com/v2/userinfo', {
         headers: { Authorization: `Bearer ${token}` },
@@ -112,13 +147,22 @@ export async function GET(request, { params }) {
       return redirect('/social?error=token_exchange_failed');
     }
 
-    const accessToken = tokenData.access_token;
+    let accessToken = tokenData.access_token;
     if (!accessToken) {
       console.error(`[oauth:${platform}] Token exchange falhou:`, JSON.stringify(tokenData));
       return redirect('/social?error=token_exchange_failed');
     }
 
-    // 2. Vai buscar o perfil
+    // 2. Para Meta (Facebook/Instagram): troca por token de longa duração (60 dias)
+    //    Os Page Access Tokens obtidos a seguir com este token NUNCA expiram.
+    let finalExpiresIn = tokenData.expires_in || null;
+    if (config.longLived) {
+      const longLived = await exchangeForLongLivedToken(accessToken, clientId, clientSecret);
+      accessToken = longLived.token;
+      finalExpiresIn = longLived.expiresIn;
+    }
+
+    // 3. Vai buscar o perfil (já com o token longo)
     let profile;
     try {
       profile = await config.getProfile(accessToken);
@@ -127,18 +171,21 @@ export async function GET(request, { params }) {
       return redirect('/social?error=profile_failed');
     }
 
-    // 3. Guarda a conta
+    // 4. Guarda a conta
+    // Para Instagram: usa o page token (nunca expira) guardado em profile.accessToken se disponível
+    const tokenToStore = profile.accessToken || accessToken;
     addAccount({
       platform,
-      accessToken,
+      accessToken: tokenToStore,
       name: profile.name,
       email: profile.email,
       picture: profile.picture,
       pages: profile.pages || [],
       instagramUserId: profile.instagramUserId || null,
-      expiresAt: tokenData.expires_in
-        ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
-        : null,
+      // Page tokens nunca expiram; user tokens longos expiram em ~60 dias
+      expiresAt: (profile.accessToken || !finalExpiresIn)
+        ? null // page token — sem expiração
+        : new Date(Date.now() + finalExpiresIn * 1000).toISOString(),
     });
 
     return redirect(`/social?connected=${platform}`);
