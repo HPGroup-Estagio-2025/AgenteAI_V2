@@ -259,7 +259,28 @@ function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform
 }
 
 // ── Card para artigos já guardados na BD ───────────────────────────
-function SavedArticleCard({ item }) {
+function SavedArticleCard({ item, connectedAccounts, onPublish }) {
+  const companies = buildCompanies(connectedAccounts || {});
+  const [selectedCompanyId, setSelectedCompanyId] = useState(companies[0]?.id || null);
+  const [selectedPlatforms, setSelectedPlatforms] = useState(companies[0]?.platforms ? [...companies[0].platforms] : []);
+  const [selectedAccounts, setSelectedAccounts] = useState(companies[0]?.accountIds || {});
+
+  function handleSetCompany(companyId) {
+    const company = companies.find(c => c.id === companyId);
+    if (!company) return;
+    setSelectedCompanyId(companyId);
+    setSelectedPlatforms([...company.platforms]);
+    setSelectedAccounts({ ...company.accountIds });
+  }
+
+  function togglePlatform(pid) {
+    setSelectedPlatforms(prev =>
+      prev.includes(pid) ? prev.filter(p => p !== pid) : [...prev, pid]
+    );
+  }
+
+  const selectedCompany = companies.find(c => c.id === selectedCompanyId) || companies[0];
+
   return (
     <article className="news-card">
       <div className="news-card-image">
@@ -281,6 +302,29 @@ function SavedArticleCard({ item }) {
         <h2 className="news-card-title">{item.title}</h2>
         <p className="news-card-body">{item.content}</p>
 
+        {item.status === 'on_hold' && companies.length > 0 && (
+          <div className="card-platforms">
+            <span className="card-platforms-label">Publicar em:</span>
+            <div className="card-platform-item card-platform-item--on">
+              <select value={selectedCompanyId || ''} onChange={e => handleSetCompany(e.target.value)}>
+                {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              {selectedCompany?.picture && (
+                <img src={selectedCompany.picture} alt="" className="card-platform-avatar" />
+              )}
+              {(selectedCompany?.platforms || []).map(pid => {
+                const platform = SOCIAL_PLATFORMS.find(p => p.id === pid);
+                return (
+                  <label key={pid} className="card-platform-check">
+                    <input type="checkbox" checked={selectedPlatforms.includes(pid)} onChange={() => togglePlatform(pid)} />
+                    <span>{platform?.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="news-card-footer">
           {item.publishedAt && <span>Publicado: {formatDate(item.publishedAt)}</span>}
           {item.processedAt && (
@@ -297,6 +341,11 @@ function SavedArticleCard({ item }) {
           <a href={item.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
             Ver notícia
           </a>
+        )}
+        {item.status === 'on_hold' && onPublish && (
+          <button className="btn btn-success" onClick={() => onPublish(item, selectedPlatforms, selectedAccounts)}>
+            Publicar
+          </button>
         )}
       </div>
     </article>
@@ -399,7 +448,19 @@ export default function DashboardPage() {
       setNews(stored.slice(start, start + PAGE_SIZE));
       setTotalNews(stored.length);
       setTotalPages(Math.max(1, Math.ceil(stored.length / PAGE_SIZE)));
-      setCounts(prev => ({ ...prev, pending: stored.length }));
+      // Busca também os contadores do Supabase para published/on_hold
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        fetch(`/api/news?limit=1&page=1&status=published`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (data && isMountedRef.current) {
+              setCounts({ pending: stored.length, published: data.counts?.published || 0, on_hold: data.counts?.on_hold || 0 });
+            }
+          }).catch(() => {});
+      } else {
+        setCounts(prev => ({ ...prev, pending: stored.length }));
+      }
       loadingRef.current = false;
       if (isMountedRef.current) setLoading(false);
       return;
@@ -587,6 +648,26 @@ export default function DashboardPage() {
     }
   }
 
+  // ── Publicar artigo guardado (on_hold → published) ───────────────
+  async function handlePublishSaved(item, platforms, accounts) {
+    if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/publish`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ article: item, socialPlatforms: platforms, selectedAccounts: accounts }),
+      });
+      if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Erro ao publicar', 'error'); return; }
+      showToast('Notícia publicada com sucesso!', 'success');
+      fetchNews({ force: true });
+    } catch {
+      showToast('Erro de ligação. Tenta novamente.', 'error');
+    }
+  }
+
   // ── Guardar artigo (on_hold) ──────────────────────────────────────
   async function handleSave(item) {
     if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
@@ -740,7 +821,12 @@ export default function DashboardPage() {
             ))
           ) : (
             displayedNews.map(item => (
-              <SavedArticleCard key={item.id} item={item} />
+              <SavedArticleCard
+                key={item.id}
+                item={item}
+                connectedAccounts={connectedAccounts}
+                onPublish={filterStatus === 'on_hold' ? handlePublishSaved : null}
+              />
             ))
           )}
         </div>
