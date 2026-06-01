@@ -120,7 +120,10 @@ export async function GET(request, { params }) {
   const clientSecret = process.env[config.clientSecretEnv];
   if (!isConfiguredValue(clientId) || !isConfiguredValue(clientSecret)) return redirect('/social?error=not_configured');
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+  const reqUrl = new URL(request.url);
+  const host = request.headers.get('x-forwarded-host') || reqUrl.host;
+  const proto = request.headers.get('x-forwarded-proto') || reqUrl.protocol.replace(':', '');
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`;
   const redirectUri = `${appUrl}/api/social/callback/${platform}`;
 
   try {
