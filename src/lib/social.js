@@ -59,6 +59,7 @@ function writeAccountsToFile(accounts) {
 function toDbRow(account) {
   return {
     id: account.id,
+    account_id: account.accountId || account.providerAccountId || account.id,
     platform: account.platform,
     name: account.name || null,
     email: account.email || null,
@@ -124,6 +125,7 @@ async function supabaseUpsert(account) {
     fullRow,
     {
       id: fullRow.id,
+      account_id: fullRow.account_id,
       platform: fullRow.platform,
       name: fullRow.name || null,
       access_token: fullRow.access_token || null,
@@ -135,6 +137,7 @@ async function supabaseUpsert(account) {
     },
     {
       id: fullRow.id,
+      account_id: fullRow.account_id,
       platform: fullRow.platform,
       name: fullRow.name || null,
       access_token: fullRow.access_token || null,
@@ -143,6 +146,7 @@ async function supabaseUpsert(account) {
     },
     {
       id: fullRow.id,
+      account_id: fullRow.account_id,
       platform: fullRow.platform,
       name: fullRow.name || null,
       access_token: fullRow.access_token || null,
@@ -323,3 +327,4 @@ export function consumeState(state) {
     return null;
   }
 }
+

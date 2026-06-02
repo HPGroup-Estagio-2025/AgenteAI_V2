@@ -2,6 +2,7 @@
 
 create table if not exists public.social_accounts (
   id uuid primary key,
+  account_id text not null,
   platform text not null,
   name text,
   email text,
@@ -17,6 +18,9 @@ create table if not exists public.social_accounts (
 );
 
 alter table public.social_accounts add column if not exists platform text;
+alter table public.social_accounts add column if not exists account_id text;
+update public.social_accounts set account_id = id::text where account_id is null;
+alter table public.social_accounts alter column account_id set not null;
 alter table public.social_accounts add column if not exists name text;
 alter table public.social_accounts add column if not exists email text;
 alter table public.social_accounts add column if not exists picture text;
@@ -34,4 +38,3 @@ create index if not exists social_accounts_platform_idx
 
 create index if not exists social_accounts_company_id_idx
   on public.social_accounts(company_id);
-
