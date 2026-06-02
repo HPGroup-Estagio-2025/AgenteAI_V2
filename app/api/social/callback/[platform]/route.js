@@ -182,6 +182,11 @@ export async function GET(request, { params }) {
     // 4. Guarda a conta
     // Para Instagram: usa o page token (nunca expira) guardado em profile.accessToken se disponível
     const tokenToStore = profile.accessToken || accessToken;
+
+    // Recupera o nome da empresa do cookie se foi definido
+    const companyNameCookie = request.cookies.get('pending_company_name')?.value;
+    const companyName = companyNameCookie ? decodeURIComponent(companyNameCookie) : null;
+
     await addAccount({
       platform,
       accessToken: tokenToStore,
@@ -190,6 +195,7 @@ export async function GET(request, { params }) {
       picture: profile.picture,
       pages: profile.pages || [],
       instagramUserId: profile.instagramUserId || null,
+      companyName, // Adiciona o nome da empresa se foi definido
       // Page tokens nunca expiram; user tokens longos expiram em ~60 dias
       expiresAt: (profile.accessToken || !finalExpiresIn)
         ? null // page token — sem expiração

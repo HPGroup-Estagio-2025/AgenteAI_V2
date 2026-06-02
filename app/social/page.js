@@ -80,7 +80,8 @@ function groupCompaniesByName(accounts) {
   const companies = {};
   for (const [platform, platformAccounts] of Object.entries(accounts)) {
     for (const account of platformAccounts) {
-      const companyName = account.name || 'Sem nome';
+      // Usa o companyName se foi definido, senão usa o name da conta
+      const companyName = account.companyName || account.name || 'Sem nome';
       if (!companies[companyName]) {
         companies[companyName] = { name: companyName, platforms: {} };
       }
@@ -101,6 +102,8 @@ function SocialPageContent() {
   const [connecting, setConnecting] = useState(null);
   const [toast, setToast] = useState(null);
   const [appOrigin, setAppOrigin] = useState('');
+  const [newCompanyName, setNewCompanyName] = useState('');
+  const [showingNewCompanyForm, setShowingNewCompanyForm] = useState(false);
 
   function showToast(message, type = 'info') {
     setToast({ message, type });
@@ -142,6 +145,8 @@ function SocialPageContent() {
     if (connected) {
       const platform = PLATFORMS.find(p => p.id === connected);
       showToast(`${platform?.name || connected} conectado com sucesso!`, 'success');
+      // Carrega as contas atualizadas
+      loadAccounts();
       // Limpa o parâmetro do URL para não repetir o toast ao refrescar
       router.replace('/social', { scroll: false });
     } else if (error) {
@@ -150,12 +155,20 @@ function SocialPageContent() {
       showToast(detail ? `${base} (${detail})` : base, 'error');
       router.replace('/social', { scroll: false });
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, loadAccounts]);
 
-  async function handleConnect(platformId) {
+  async function handleConnect(platformId, companyName = null) {
     const token = localStorage.getItem('auth_token');
     setConnecting(platformId);
     try {
+      // Se está a criar uma nova empresa, guarda o nome num cookie
+      if (companyName) {
+        await fetch('/api/social/set-pending-company', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ companyName }),
+        });
+      }
       const res = await fetch(`/api/social/connect/${platformId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -247,13 +260,97 @@ function SocialPageContent() {
           </div>
         ) : (
           <div className="social-grid">
-            {groupCompaniesByName(accounts).length === 0 ? (
-              <div className="empty-state">
+            {/* Card: Nova Empresa */}
+            <div className="social-company-card social-new-company-card">
+              <h3 style={{ fontSize: '.9rem', fontWeight: 600, color: '#6B7280', marginBottom: 12 }}>ADICIONAR NOVA EMPRESA</h3>
+
+              {!showingNewCompanyForm ? (
+                <button
+                  className="btn btn-primary"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={() => setShowingNewCompanyForm(true)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Nova Empresa
+                </button>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <input
+                    type="text"
+                    placeholder="Nome da empresa"
+                    value={newCompanyName}
+                    onChange={e => setNewCompanyName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && newCompanyName.trim()) {
+                        setShowingNewCompanyForm(false);
+                      }
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      border: '1.5px solid #E5E7EB',
+                      borderRadius: '6px',
+                      fontSize: '.875rem',
+                      outline: 'none',
+                    }}
+                    autoFocus
+                  />
+                  {newCompanyName.trim() && (
+                    <div className="social-platforms-grid">
+                      {PLATFORMS.map(({ id, name, color, Icon }) => (
+                        <button
+                          key={id}
+                          className="btn btn-primary"
+                          style={{
+                            background: color,
+                            borderColor: color,
+                            width: '100%',
+                            padding: '6px 8px',
+                            fontSize: '.8rem',
+                            height: 'auto',
+                            justifyContent: 'center',
+                            gap: 4,
+                          }}
+                          disabled={connecting === id}
+                          onClick={() => handleConnect(id, newCompanyName.trim())}
+                        >
+                          {connecting === id ? (
+                            <>
+                              <span className="loader" style={{ width: 10, height: 10 }} />
+                              Ligando...
+                            </>
+                          ) : (
+                            <>
+                              <Icon />
+                              {name}
+                            </>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    className="btn btn-ghost"
+                    style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
+                    onClick={() => {
+                      setShowingNewCompanyForm(false);
+                      setNewCompanyName('');
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {groupCompaniesByName(accounts).length === 0 && !showingNewCompanyForm ? (
+              <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
                   <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
                 </svg>
-                <p>Nenhuma conta conectada. Conecta a primeira rede social para começar.</p>
+                <p>Nenhuma empresa conectada. Clica em "Nova Empresa" para começar.</p>
               </div>
             ) : (
               groupCompaniesByName(accounts).map(company => (
