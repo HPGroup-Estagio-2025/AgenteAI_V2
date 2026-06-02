@@ -26,12 +26,18 @@ async function fetchFacebookPagesFromToken(account) {
       console.error('[facebook] Falha ao buscar paginas no momento da publicacao:', data.error?.message || data);
       return [];
     }
-    return Array.isArray(data.data) ? data.data.map(page => ({
+    const pages = Array.isArray(data.data) ? data.data.map(page => ({
       id: page.id,
       name: page.name,
       accessToken: page.access_token,
       picture: page.picture?.data?.url || null,
     })) : [];
+    console.log('[facebook] Paginas buscadas ao vivo:', pages.map(page => ({
+      id: page.id,
+      name: page.name,
+      hasAccessToken: Boolean(page.accessToken),
+    })));
+    return pages;
   } catch (err) {
     console.error('[facebook] Erro ao buscar paginas no momento da publicacao:', err.message);
     return [];
@@ -131,7 +137,7 @@ async function publishToFacebook(item, accountId = null) {
 
   if (!page?.accessToken) {
     throw Object.assign(
-      new Error('Nenhuma Pagina do Facebook disponivel. Reconecta o Facebook e garante que autorizas paginas_show_list e pages_manage_posts.'),
+      new Error('A pagina Facebook foi encontrada, mas falta o token da pagina. Reconecta o Facebook e seleciona/autoriza a pagina na janela da Meta.'),
       { code: 'facebook_page_missing' }
     );
   }

@@ -642,6 +642,10 @@ export default function DashboardPage() {
     if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
     const token = localStorage.getItem('auth_token');
     const sel = articleSelections[item.id] || { platforms: [], accounts: {} };
+    if (!sel.platforms || sel.platforms.length === 0) {
+      showToast('Seleciona pelo menos uma rede social para publicar.', 'error');
+      return;
+    }
     try {
       const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/publish`, {
         method: 'POST',
@@ -665,6 +669,10 @@ export default function DashboardPage() {
   // ── Publicar artigo guardado (on_hold → published) ───────────────
   async function handlePublishSaved(item, platforms, accounts) {
     if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
+    if (!platforms || platforms.length === 0) {
+      showToast('Seleciona pelo menos uma rede social para publicar.', 'error');
+      return;
+    }
     const token = localStorage.getItem('auth_token');
     try {
       const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/publish`, {
