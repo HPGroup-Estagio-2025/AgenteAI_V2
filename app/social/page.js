@@ -122,18 +122,9 @@ function SocialPageContent() {
       const data = await res.json();
       const accounts = data.accounts || {};
       setAccounts(accounts);
-      localStorage.setItem('social_accounts_cache', JSON.stringify(accounts));
     } catch (err) {
       console.error('[social] Erro ao carregar contas:', err);
-      const cached = localStorage.getItem('social_accounts_cache');
-      if (cached) {
-        try {
-          const accounts = JSON.parse(cached);
-          setAccounts(accounts);
-        } catch (e) {
-          console.error('[social] Erro ao parsear cache:', e);
-        }
-      }
+      setAccounts({});
     } finally {
       setLoading(false);
     }
@@ -142,12 +133,6 @@ function SocialPageContent() {
   useEffect(() => {
     setAppOrigin(window.location.origin);
 
-    const cached = localStorage.getItem('social_accounts_cache');
-    if (cached) {
-      try {
-        setAccounts(JSON.parse(cached));
-      } catch {}
-    }
   }, []);
 
   useEffect(() => {
@@ -316,6 +301,83 @@ function SocialPageContent() {
     return grouped;
   }
 
+  function SocialPlatformCard({ platform, company }) {
+    const { id, name, color, bg, Icon } = platform;
+    const companyAccounts = getAccountsByCompany(company.id);
+    const platformAccounts = companyAccounts[id] || [];
+    const isConnecting = connecting === id;
+    const hasAccounts = platformAccounts.length > 0;
+
+    return (
+      <div className="social-platform-card">
+        <div className="social-platform-top">
+          <div style={{ background: bg, padding: 8, borderRadius: 8, display: 'flex' }}>
+            <Icon />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, color: '#1F2937', fontSize: '.9rem' }}>{name}</div>
+            <div style={{ fontSize: '.75rem', color: hasAccounts ? '#10B981' : '#6B7280', marginTop: 2 }}>
+              {hasAccounts ? '✓ Conectado' : '○ Desconectado'}
+            </div>
+          </div>
+        </div>
+
+        {hasAccounts && (
+          <div className="social-platform-account-list">
+            {platformAccounts.map(account => (
+              <div key={account.id} className="social-account-item">
+                <div style={{ fontWeight: 500, fontSize: '.8rem', color: '#1F2937' }}>
+                  {account.email || account.name}
+                </div>
+                {id === 'facebook' && account.pages?.length > 0 && (
+                  <div style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 3 }}>
+                    Página: {account.pages[0].name}
+                  </div>
+                )}
+                <div style={{ fontSize: '.7rem', color: '#9CA3AF', marginTop: 3 }}>
+                  {formatDate(account.connectedAt)}
+                </div>
+                <button
+                  className="btn btn-danger"
+                  onClick={() => handleDisconnect(account.id)}
+                  style={{ marginTop: 6, padding: '4px 8px', fontSize: '.75rem', height: 'auto' }}
+                >
+                  Desconectar
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!hasAccounts && (
+          <button
+            className="btn btn-primary"
+            style={{
+              width: '100%',
+              marginTop: 10,
+              background: color,
+              borderColor: color,
+              fontSize: '.8rem',
+              padding: '8px 12px',
+              height: 'auto'
+            }}
+            disabled={isConnecting}
+            onClick={() => handleConnect(id, company.name)}
+          >
+            {isConnecting ? (
+              <>
+                <span className="loader" style={{ width: 11, height: 11 }} />
+                Ligando...
+              </>
+            ) : (
+              'Conectar'
+            )}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-page">
       <header className="header">
@@ -452,12 +514,17 @@ function SocialPageContent() {
                     {confirmDeleteCompanyId === company.id && (
                       <button
                         className="btn btn-ghost"
-                        style={{ padding: '4px 8px', fontSize: '.75rem', height: 'auto', width: '100%' }}
+                        style={{ padding: '4px 8px', fontSize: '.75rem', height: 'auto', width: '100%', marginBottom: 12 }}
                         onClick={() => setConfirmDeleteCompanyId(null)}
                       >
                         Cancelar
                       </button>
                     )}
+                    <div className="social-platforms-grid">
+                      {PLATFORMS.map(platform => (
+                        <SocialPlatformCard key={platform.id} platform={platform} company={company} />
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -473,7 +540,7 @@ function SocialPageContent() {
             </div>
 
             {/* SECTION: Redes Sociais por Empresa */}
-            {companies.length > 0 && (
+            {false && companies.length > 0 && (
               <div>
                 <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1F2937', marginBottom: 16 }}>
                   Conectar Redes Sociais

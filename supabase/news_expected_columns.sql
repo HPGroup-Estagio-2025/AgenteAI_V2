@@ -12,10 +12,15 @@ create table if not exists public.news (
   sector text,
   score integer,
   status text not null default 'draft',
+  processed_by text,
+  reject_reason text,
   date timestamp with time zone,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now()
 );
+
+alter table public.news add column if not exists processed_by text;
+alter table public.news add column if not exists reject_reason text;
 
 create unique index if not exists news_url_unique_idx
   on public.news (url)

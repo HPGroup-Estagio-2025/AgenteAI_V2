@@ -402,19 +402,11 @@ export default function DashboardPage() {
     toastTimer.current = setTimeout(() => setToast(null), 4000);
   }
 
-  // Carrega pendentes + contas no arranque
+  // Carrega pendentes no arranque
   useEffect(() => {
     const stored = loadPending();
     setPendingArticles(stored);
     setCounts(prev => ({ ...prev, pending: stored.length }));
-
-    // Carrega contas do cache no arranque
-    const cached = localStorage.getItem('social_accounts_cache');
-    if (cached) {
-      try {
-        setConnectedAccounts(JSON.parse(cached));
-      } catch {}
-    }
   }, []);
 
   useEffect(() => {
@@ -429,22 +421,10 @@ export default function DashboardPage() {
           const accounts = data.accounts || {};
           console.log('[dashboard] Contas carregadas:', Object.keys(accounts));
           setConnectedAccounts(accounts);
-          // Sempre guarda no cache (mesmo se vazio, para manter sincronizado)
-          localStorage.setItem('social_accounts_cache', JSON.stringify(accounts));
         })
         .catch(err => {
           console.error('[dashboard] Erro ao carregar contas:', err);
-          // Se houver erro, recupera do cache
-          const cached = localStorage.getItem('social_accounts_cache');
-          if (cached) {
-            try {
-              const accounts = JSON.parse(cached);
-              console.log('[dashboard] Usando contas do cache');
-              setConnectedAccounts(accounts);
-            } catch (e) {
-              console.error('[dashboard] Erro ao parsear cache:', e);
-            }
-          }
+          setConnectedAccounts({});
         });
     };
 

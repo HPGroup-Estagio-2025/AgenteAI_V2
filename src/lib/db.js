@@ -146,7 +146,8 @@ function toDashboardNews(row) {
     publishedAt: row.publishedAt || row.date || row.created_at || null,
     receivedAt: row.receivedAt || row.created_at || row.updated_at || null,
     processedAt: row.processedAt || (status !== 'pending' ? row.updated_at : null),
-    rejectReason: row.rejectReason || null,
+    processedBy: row.processedBy || row.processed_by || null,
+    rejectReason: row.rejectReason || row.reject_reason || null,
   };
 }
 
@@ -215,6 +216,8 @@ function toSupabaseUpdates(updates) {
   if (updates.publishedAt !== undefined) mapped.date = updates.publishedAt;
   if (updates.imageUrl !== undefined) mapped.image = updates.imageUrl;
   if (updates.category !== undefined) mapped.sector = updates.category ? JSON.stringify([updates.category]) : null;
+  if (updates.processedBy !== undefined) mapped.processed_by = updates.processedBy;
+  if (updates.rejectReason !== undefined) mapped.reject_reason = updates.rejectReason;
   mapped.updated_at = updates.processedAt || new Date().toISOString();
   return mapped;
 }

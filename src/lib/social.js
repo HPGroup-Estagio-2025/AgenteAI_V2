@@ -70,6 +70,7 @@ function toDbRow(account) {
     company_name: account.companyName || null, // backward compat
     expires_at: account.expiresAt || null,
     connected_at: account.connectedAt || new Date().toISOString(),
+    active: true,
   };
 }
 
@@ -102,15 +103,15 @@ async function supabaseReadAll() {
       const isMissingTable = error.code === 'PGRST205' || error.message?.includes('Could not find the table');
       if (isMissingTable) {
         console.warn('[social] Tabela social_accounts não existe no Supabase — usa ficheiro local.');
-        return null;
+        return [];
       }
       console.error('[social] Erro ao ler do Supabase:', error.message);
-      return null;
+      return [];
     }
     return (data || []).map(fromDbRow);
   } catch (err) {
     console.error('[social] Erro inesperado ao ler do Supabase:', err.message);
-    return null;
+    return [];
   }
 }
 
@@ -128,6 +129,7 @@ async function supabaseUpsert(account) {
       access_token: fullRow.access_token || null,
       pages: fullRow.pages || [],
       instagram_user_id: fullRow.instagram_user_id || null,
+      company_id: fullRow.company_id || null,
       company_name: fullRow.company_name || null,
       connected_at: fullRow.connected_at || new Date().toISOString(),
     },
@@ -136,6 +138,7 @@ async function supabaseUpsert(account) {
       platform: fullRow.platform,
       name: fullRow.name || null,
       access_token: fullRow.access_token || null,
+      company_id: fullRow.company_id || null,
       company_name: fullRow.company_name || null,
       connected_at: fullRow.connected_at || new Date().toISOString(),
     },
@@ -191,10 +194,10 @@ if (!g._socialAccounts) {
         });
       } else {
         // Supabase não tem a tabela — fallback para ficheiro
-        g._socialAccounts = readAccountsFromFile();
+        g._socialAccounts = [];
       }
     }).catch(() => {
-      g._socialAccounts = readAccountsFromFile();
+      g._socialAccounts = [];
     });
   } else {
     g._socialAccounts = readAccountsFromFile();
@@ -254,9 +257,13 @@ export async function addAccount(data) {
     connectedAt: data.connectedAt || new Date().toISOString(),
   };
 
-  // Atualiza cache em memória imediatamente
-  g._socialAccounts.push(account);
+  if (USE_SUPABASE) {
+    await supabaseUpsert(account);
+    g._socialAccounts.push(account);
+    return account;
+  }
 
+  // Atualiza cache em memória imediatamente
   // Persiste — falha de Supabase não bloqueia a ligação OAuth
   if (USE_SUPABASE) {
     try {
@@ -265,9 +272,10 @@ export async function addAccount(data) {
       console.error('[social] Falha ao persistir conta no Supabase (conta guardada em memória):', err.message);
     }
   } else {
-    writeAccountsToFile(g._socialAccounts);
+    writeAccountsToFile([...g._socialAccounts, account]);
   }
 
+  g._socialAccounts.push(account);
   return account;
 }
 
