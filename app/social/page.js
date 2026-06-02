@@ -157,6 +157,17 @@ function SocialPageContent() {
     }
   }, [searchParams, router, loadAccounts]);
 
+  // Carrega contas quando a aba volta a ficar visível
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadAccounts();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [loadAccounts]);
+
   async function handleConnect(platformId, companyName = null) {
     const token = localStorage.getItem('auth_token');
     setConnecting(platformId);
