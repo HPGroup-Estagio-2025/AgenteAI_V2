@@ -404,31 +404,31 @@ function SocialPageContent() {
                             </div>
                           )}
 
-                          <button
-                            className="btn btn-primary"
-                            style={{
-                              width: '100%',
-                              marginTop: 10,
-                              background: color,
-                              borderColor: color,
-                              fontSize: '.8rem',
-                              padding: '8px 12px',
-                              height: 'auto'
-                            }}
-                            disabled={isConnecting}
-                            onClick={() => handleConnect(id)}
-                          >
-                            {isConnecting ? (
-                              <>
-                                <span className="loader" style={{ width: 11, height: 11 }} />
-                                Ligando...
-                              </>
-                            ) : hasAccounts ? (
-                              'Adicionar conta'
-                            ) : (
-                              'Conectar'
-                            )}
-                          </button>
+                          {!hasAccounts && (
+                            <button
+                              className="btn btn-primary"
+                              style={{
+                                width: '100%',
+                                marginTop: 10,
+                                background: color,
+                                borderColor: color,
+                                fontSize: '.8rem',
+                                padding: '8px 12px',
+                                height: 'auto'
+                              }}
+                              disabled={isConnecting}
+                              onClick={() => handleConnect(id)}
+                            >
+                              {isConnecting ? (
+                                <>
+                                  <span className="loader" style={{ width: 11, height: 11 }} />
+                                  Ligando...
+                                </>
+                              ) : (
+                                'Conectar'
+                              )}
+                            </button>
+                          )}
                         </div>
                       );
                     })}
