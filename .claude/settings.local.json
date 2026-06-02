@@ -61,7 +61,28 @@
       "mcp__Claude_in_Chrome__switch_browser",
       "Bash(awk '{print $2}')",
       "Bash(xargs kill -9)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Skill(deep-research)",
+      "Skill(deep-research:*)",
+      "WebSearch",
+      "WebFetch(domain:developers.facebook.com)",
+      "WebFetch(domain:elfsight.com)",
+      "WebFetch(domain:www.getphyllo.com)",
+      "WebFetch(domain:zernio.com)",
+      "WebFetch(domain:n8n.io)",
+      "WebFetch(domain:www.upload-post.com)",
+      "WebFetch(domain:datkira.medium.com)",
+      "WebFetch(domain:sociavault.com)",
+      "WebFetch(domain:www.marketingseo.in)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "WebFetch(domain:postproxy.dev)",
+      "WebFetch(domain:www.digitalapplied.com)",
+      "WebFetch(domain:www.graphed.com)",
+      "Bash(powershell -Command \"Get-Date -Format 'yyyy-MM-dd'\")",
+      "WebFetch(domain:soiposervices.com)",
+      "WebFetch(domain:creatorflow.so)",
+      "WebFetch(domain:instantdm.com)",
+      "WebFetch(domain:blog.postly.ai)"
     ]
   }
 }
