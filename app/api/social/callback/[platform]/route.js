@@ -189,7 +189,7 @@ export async function GET(request, { params }) {
     console.log(`[oauth:${platform}] Cookie pending_company_name: ${companyNameCookie || 'não encontrado'}`);
     console.log(`[oauth:${platform}] Guardando conta com companyName: ${companyName || 'null'}`);
 
-    await addAccount({
+    const accountData = {
       platform,
       accessToken: tokenToStore,
       name: profile.name,
@@ -197,12 +197,20 @@ export async function GET(request, { params }) {
       picture: profile.picture,
       pages: profile.pages || [],
       instagramUserId: profile.instagramUserId || null,
-      companyName, // Adiciona o nome da empresa se foi definido
-      // Page tokens nunca expiram; user tokens longos expiram em ~60 dias
+      companyName,
       expiresAt: (profile.accessToken || !finalExpiresIn)
-        ? null // page token — sem expiração
+        ? null
         : new Date(Date.now() + finalExpiresIn * 1000).toISOString(),
+    };
+
+    console.log(`[oauth:${platform}] Guardando conta no Supabase:`, {
+      name: accountData.name,
+      pages: accountData.pages.length,
+      instagramUserId: accountData.instagramUserId || 'null',
     });
+
+    await addAccount(accountData);
+    console.log(`[oauth:${platform}] ✓ Conta guardada com sucesso no Supabase`);
 
     return redirect(`/social?connected=${platform}`);
   } catch (err) {
