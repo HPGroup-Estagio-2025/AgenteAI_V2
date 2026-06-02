@@ -87,6 +87,14 @@ async function publishToInstagram(item, accountId = null) {
 async function publishToFacebook(item, accountId = null) {
   const account = accountId ? getAccountById(accountId) : getAccount('facebook');
   if (!account) throw Object.assign(new Error('Facebook nao conectado'), { code: 'facebook_not_connected' });
+
+  console.log('[facebook] Conta encontrada:', {
+    id: account.id,
+    name: account.name,
+    pagesCount: Array.isArray(account.pages) ? account.pages.length : 0,
+    pages: Array.isArray(account.pages) ? account.pages.map(p => ({ id: p.id, name: p.name })) : [],
+  });
+
   const page = getFacebookPage(account);
   if (!page?.accessToken) {
     throw Object.assign(new Error('Nenhuma Pagina do Facebook disponivel'), { code: 'facebook_page_missing' });
