@@ -5,11 +5,33 @@ import { notifyClients } from './events';
 const AGENT_RUNS_TABLE = process.env.SUPABASE_AGENT_RUNS_TABLE || 'agent_runs';
 
 const RSS_FEEDS = [
+  // Fontes especializadas
   'https://www.defensenews.com/arc/outboundfeeds/rss/',
-  'https://news.google.com/rss/search?q=naval+technology&hl=en-US&gl=US&ceid=US:en',
   'https://www.railway-technology.com/feed/',
   'https://spacenews.com/feed/',
+  'https://www.naval-technology.com/feed/',
+  // Google News — Marítimo / Naval
+  'https://news.google.com/rss/search?q=maritime+naval+shipping+port&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=maritimo+naval+marinha+porto&hl=pt-PT&gl=PT&ceid=PT:pt',
+  // Google News — Defesa / Militar
+  'https://news.google.com/rss/search?q=defense+military+army+navy+air+force&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=defesa+militar+forcas+armadas&hl=pt-PT&gl=PT&ceid=PT:pt',
+  // Google News — Aeroespacial / Aviação
+  'https://news.google.com/rss/search?q=aerospace+aviation+aircraft+space+satellite&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=aeroespacial+aviacao+espaco+satelite&hl=pt-PT&gl=PT&ceid=PT:pt',
+  // Google News — Ferroviário
+  'https://news.google.com/rss/search?q=railway+train+rail+transport+rolling+stock&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=ferroviario+comboio+caminho+ferro&hl=pt-PT&gl=PT&ceid=PT:pt',
 ];
+
+// Imagens de fallback estáveis por categoria (usadas quando o artigo não tem imagem)
+const FALLBACK_IMAGES = {
+  'maritimo':       'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+  'defesa-militar': 'https://images.unsplash.com/photo-1547745369-5fa52b64e8ac?w=800&q=80',
+  'aeroespacial':   'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=800&q=80',
+  'ferroviario':    'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800&q=80',
+  'default':        'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&q=80',
+};
 
 const sectors = {
   supplyChain: ['supply chain', 'procurement', 'sourcing', 'inventory', 'warehouse', 'supplier'],
@@ -327,21 +349,25 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
 
     // Os artigos NÃO são guardados no Supabase aqui.
     // Ficam em memória local no browser até o admin decidir publicar ou rejeitar.
-    const articles = selectedArticles.map(article => ({
-      id: articleId(),
-      title: article.title.slice(0, 300),
-      content: article.postDescription,
-      url: article.url || null,
-      source: article.source || 'RSS',
-      category: dashboardCategory(article.matchedSectors),
-      imageUrl: article.image || null,
-      publishedAt: article.publishedAt || new Date().toISOString(),
-      status: 'pending',
-      receivedAt: new Date().toISOString(),
-      processedAt: null,
-      processedBy: null,
-      rejectReason: null,
-    }));
+    const articles = selectedArticles.map(article => {
+      const category = dashboardCategory(article.matchedSectors);
+      const fallback = FALLBACK_IMAGES[category] || FALLBACK_IMAGES['default'];
+      return {
+        id: articleId(),
+        title: article.title.slice(0, 300),
+        content: article.postDescription,
+        url: article.url || null,
+        source: article.source || 'RSS',
+        category,
+        imageUrl: article.image || fallback,
+        publishedAt: article.publishedAt || new Date().toISOString(),
+        status: 'pending',
+        receivedAt: new Date().toISOString(),
+        processedAt: null,
+        processedBy: null,
+        rejectReason: null,
+      };
+    });
 
     const summary = {
       fetched_count: rawArticles.length,
