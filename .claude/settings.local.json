@@ -47,7 +47,17 @@
       "Bash(wmic process *)",
       "PowerShell(Get-WmiObject *)",
       "Bash(taskkill /F /PID 3296)",
-      "PowerShell(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(64\\).toString\\('hex'\\)\\)\")"
+      "PowerShell(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(64\\).toString\\('hex'\\)\\)\")",
+      "Bash(dir C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\dashboard_news_agent_interno_fix_uuid\\\\dashboard_news /B /S)",
+      "Bash(findstr /E \"\\\\.\\(py|js|jsx|tsx|ts|json\\)$\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(cat vercel.json)",
+      "Bash(ls .vercel)",
+      "Bash(vercel --version)",
+      "Bash(git commit *)",
+      "Bash(git reset *)"
     ]
   }
 }

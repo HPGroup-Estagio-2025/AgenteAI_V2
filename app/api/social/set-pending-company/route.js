@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
 
 export async function POST(request) {
@@ -13,7 +14,7 @@ export async function POST(request) {
     return Response.json({ error: 'companyName obrigatório' }, { status: 400 });
   }
 
-  const response = Response.json({ success: true });
+  const response = NextResponse.json({ success: true });
   response.cookies.set('pending_company_name', encodeURIComponent(companyName), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
