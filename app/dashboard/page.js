@@ -387,16 +387,7 @@ export default function DashboardPage() {
   const [lastAgentRun, setLastAgentRun] = useState(null);
 
   // Contas sociais conectadas
-  const [connectedAccounts, setConnectedAccounts] = useState(() => {
-    // Inicializa com cache se disponível
-    const cached = localStorage.getItem('social_accounts_cache');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch {}
-    }
-    return {};
-  });
+  const [connectedAccounts, setConnectedAccounts] = useState({});
   const [showNoSocialModal, setShowNoSocialModal] = useState(false);
 
   const loadingRef = useRef(false);
@@ -415,6 +406,14 @@ export default function DashboardPage() {
     const stored = loadPending();
     setPendingArticles(stored);
     setCounts(prev => ({ ...prev, pending: stored.length }));
+
+    // Carrega contas do cache no arranque
+    const cached = localStorage.getItem('social_accounts_cache');
+    if (cached) {
+      try {
+        setConnectedAccounts(JSON.parse(cached));
+      } catch {}
+    }
   }, []);
 
   useEffect(() => {

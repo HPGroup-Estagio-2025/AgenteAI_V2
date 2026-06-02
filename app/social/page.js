@@ -97,16 +97,7 @@ function groupCompaniesByName(accounts) {
 function SocialPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [accounts, setAccounts] = useState(() => {
-    // Inicializa com cache se disponível
-    const cached = localStorage.getItem('social_accounts_cache');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch {}
-    }
-    return {};
-  });
+  const [accounts, setAccounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(null);
   const [toast, setToast] = useState(null);
@@ -151,6 +142,14 @@ function SocialPageContent() {
 
   useEffect(() => {
     setAppOrigin(window.location.origin);
+
+    // Carrega contas do cache no arranque
+    const cached = localStorage.getItem('social_accounts_cache');
+    if (cached) {
+      try {
+        setAccounts(JSON.parse(cached));
+      } catch {}
+    }
   }, []);
 
   useEffect(() => {
