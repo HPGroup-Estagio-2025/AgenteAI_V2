@@ -186,6 +186,8 @@ export async function GET(request, { params }) {
     // Recupera o nome da empresa do cookie se foi definido
     const companyNameCookie = request.cookies.get('pending_company_name')?.value;
     const companyName = companyNameCookie ? decodeURIComponent(companyNameCookie) : null;
+    console.log(`[oauth:${platform}] Cookie pending_company_name: ${companyNameCookie || 'não encontrado'}`);
+    console.log(`[oauth:${platform}] Guardando conta com companyName: ${companyName || 'null'}`);
 
     await addAccount({
       platform,
