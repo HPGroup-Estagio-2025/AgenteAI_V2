@@ -60,7 +60,7 @@ function buildCompanies(connectedAccounts) {
     for (const acc of primaryAccs) {
       companies.push({
         id:         `meta-${acc.id}`,
-        name:       acc.name,
+        name:       acc.companyName || acc.name,
         picture:    acc.picture,
         platforms:  metaPlatforms,
         accountIds: {
@@ -75,7 +75,7 @@ function buildCompanies(connectedAccounts) {
   for (const acc of liAccs) {
     companies.push({
       id:         `linkedin-${acc.id}`,
-      name:       acc.name,
+      name:       acc.companyName || acc.name,
       picture:    acc.picture,
       platforms:  ['linkedin'],
       accountIds: { linkedin: acc.id },
