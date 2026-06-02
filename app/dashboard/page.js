@@ -387,7 +387,16 @@ export default function DashboardPage() {
   const [lastAgentRun, setLastAgentRun] = useState(null);
 
   // Contas sociais conectadas
-  const [connectedAccounts, setConnectedAccounts] = useState({});
+  const [connectedAccounts, setConnectedAccounts] = useState(() => {
+    // Inicializa com cache se disponível
+    const cached = localStorage.getItem('social_accounts_cache');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {}
+    }
+    return {};
+  });
   const [showNoSocialModal, setShowNoSocialModal] = useState(false);
 
   const loadingRef = useRef(false);
@@ -418,12 +427,10 @@ export default function DashboardPage() {
         .then(r => r.json())
         .then(data => {
           const accounts = data.accounts || {};
-          console.log('[dashboard] Contas carregadas:', accounts);
+          console.log('[dashboard] Contas carregadas:', Object.keys(accounts));
           setConnectedAccounts(accounts);
-          // Guarda em cache para nunca perder as contas
-          if (Object.keys(accounts).length > 0) {
-            localStorage.setItem('social_accounts_cache', JSON.stringify(accounts));
-          }
+          // Sempre guarda no cache (mesmo se vazio, para manter sincronizado)
+          localStorage.setItem('social_accounts_cache', JSON.stringify(accounts));
         })
         .catch(err => {
           console.error('[dashboard] Erro ao carregar contas:', err);
@@ -432,9 +439,11 @@ export default function DashboardPage() {
           if (cached) {
             try {
               const accounts = JSON.parse(cached);
-              console.log('[dashboard] Usando contas do cache:', accounts);
+              console.log('[dashboard] Usando contas do cache');
               setConnectedAccounts(accounts);
-            } catch {}
+            } catch (e) {
+              console.error('[dashboard] Erro ao parsear cache:', e);
+            }
           }
         });
     };
@@ -442,8 +451,8 @@ export default function DashboardPage() {
     // Carrega imediatamente
     loadAccounts();
 
-    // Recarrega a cada 5 segundos para manter sempre atualizado
-    const interval = setInterval(loadAccounts, 5000);
+    // Recarrega a cada 3 segundos (mais rápido para sincronizar)
+    const interval = setInterval(loadAccounts, 3000);
 
     return () => clearInterval(interval);
   }, []);

@@ -97,7 +97,16 @@ function groupCompaniesByName(accounts) {
 function SocialPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [accounts, setAccounts] = useState({});
+  const [accounts, setAccounts] = useState(() => {
+    // Inicializa com cache se disponível
+    const cached = localStorage.getItem('social_accounts_cache');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {}
+    }
+    return {};
+  });
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(null);
   const [toast, setToast] = useState(null);
@@ -121,18 +130,19 @@ function SocialPageContent() {
       const data = await res.json();
       const accounts = data.accounts || {};
       setAccounts(accounts);
-      // Guarda em cache para nunca perder as contas
-      if (Object.keys(accounts).length > 0) {
-        localStorage.setItem('social_accounts_cache', JSON.stringify(accounts));
-      }
+      // Sempre guarda no cache (mesmo se vazio, para manter sincronizado)
+      localStorage.setItem('social_accounts_cache', JSON.stringify(accounts));
     } catch (err) {
       console.error('[social] Erro ao carregar contas:', err);
       // Se houver erro, recupera do cache
       const cached = localStorage.getItem('social_accounts_cache');
       if (cached) {
         try {
-          setAccounts(JSON.parse(cached));
-        } catch {}
+          const accounts = JSON.parse(cached);
+          setAccounts(accounts);
+        } catch (e) {
+          console.error('[social] Erro ao parsear cache:', e);
+        }
       }
     } finally {
       setLoading(false);
@@ -179,12 +189,12 @@ function SocialPageContent() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Recarrega a cada 5 segundos para manter sempre atualizado
+    // Recarrega a cada 3 segundos para manter sempre atualizado e sincronizado
     const interval = setInterval(() => {
       if (!document.hidden) {
         loadAccounts();
       }
-    }, 5000);
+    }, 3000);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
