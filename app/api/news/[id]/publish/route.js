@@ -211,6 +211,14 @@ export async function POST(request, { params }) {
     console.log(`[ação] Notícia publicada: ${id} por ${user.username}`);
     return NextResponse.json({ success: true, news: updated, socialResults });
   } catch (err) {
+    // Log detalhado para debugging
+    console.error('[publish] Erro ao publicar:', {
+      message: err.message,
+      code: err.code,
+      details: err.details || '',
+      stack: err.stack?.split('\n')[0],
+    });
+
     if (err.code === 'facebook_page_missing') {
       return NextResponse.json({ error: 'Facebook conectado, mas sem Pagina disponivel para publicar.' }, { status: 409 });
     }
