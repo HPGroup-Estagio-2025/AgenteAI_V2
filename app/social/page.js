@@ -182,6 +182,8 @@ function SocialPageContent() {
       window.location.href = data.url;
     } catch (err) {
       console.error('[social] Erro ao conectar:', err);
+      const errorMsg = err?.message || String(err);
+      alert(`Erro detalhado: ${errorMsg}`);
       showToast('Erro de ligação. Tenta novamente.', 'error');
     } finally {
       setConnecting(null);
