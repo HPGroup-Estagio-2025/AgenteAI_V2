@@ -217,6 +217,7 @@ export async function GET(request, { params }) {
     console.log(`[oauth:${platform}] Guardando conta no Supabase:`, {
       name: accountData.name,
       pages: accountData.pages.length,
+      pageNames: accountData.pages.map(page => page.name),
       instagramUserId: accountData.instagramUserId || 'null',
     });
 
