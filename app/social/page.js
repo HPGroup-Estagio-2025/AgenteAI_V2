@@ -163,11 +163,16 @@ function SocialPageContent() {
     try {
       // Se está a criar uma nova empresa, guarda o nome num cookie
       if (companyName) {
-        await fetch('/api/social/set-pending-company', {
+        const cookieRes = await fetch('/api/social/set-pending-company', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ companyName }),
         });
+        if (!cookieRes.ok) {
+          const cookieData = await cookieRes.json();
+          showToast(cookieData.error || 'Erro ao guardar nome da empresa', 'error');
+          return;
+        }
       }
       const res = await fetch(`/api/social/connect/${platformId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -417,7 +422,7 @@ function SocialPageContent() {
                                 height: 'auto'
                               }}
                               disabled={isConnecting}
-                              onClick={() => handleConnect(id)}
+                              onClick={() => handleConnect(id, company.name)}
                             >
                               {isConnecting ? (
                                 <>
