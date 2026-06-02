@@ -58,32 +58,40 @@ const CONFIGS = {
     async getProfile(token) {
       // Vai buscar conta Instagram e também as Páginas (para ter page token que não expira)
       const res = await fetch(
-        `https://graph.facebook.com/me?fields=id,name,instagram_accounts{id,name,username,profile_picture_url},accounts{id,name,access_token,instagram_business_account{id}}&access_token=${token}`
+        `https://graph.facebook.com/me?fields=id,name,instagram_accounts{id,name,username,profile_picture_url},accounts{id,name,access_token,instagram_business_account{id,username,name,profile_picture_url}}&access_token=${token}`
       );
       const d = await res.json();
-      console.log('[oauth:instagram] API response:', JSON.stringify({ id: d.id, name: d.name, instagram_accounts: d.instagram_accounts, accounts_count: d.accounts?.data?.length }));
-      const igAccount = d.instagram_accounts?.data?.[0];
+      const pages = Array.isArray(d.accounts?.data) ? d.accounts.data : [];
+      const linkedPage = pages.find(page => page.instagram_business_account?.id);
+      const igBusinessAccount = linkedPage?.instagram_business_account || null;
+      const fallbackIgAccount = d.instagram_accounts?.data?.[0] || null;
+      console.log('[oauth:instagram] API response:', JSON.stringify({
+        id: d.id,
+        name: d.name,
+        instagram_accounts: d.instagram_accounts,
+        accounts_count: pages.length,
+        business_account_id: igBusinessAccount?.id || null,
+        linked_page: linkedPage ? { id: linkedPage.id, name: linkedPage.name, hasAccessToken: Boolean(linkedPage.access_token) } : null,
+      }));
 
       // Tenta encontrar o Page Access Token da página ligada ao Instagram
-      let igPageToken = null;
-      if (igAccount && Array.isArray(d.accounts?.data)) {
-        const linkedPage = d.accounts.data.find(
-          p => p.instagram_business_account?.id === igAccount.id
-        );
-        if (linkedPage?.access_token) igPageToken = linkedPage.access_token;
-      }
+      const igPageToken = linkedPage?.access_token || null;
 
       // Fallback: usa INSTAGRAM_USER_ID da env se a API não devolveu o ID
-      const instagramUserId = igAccount?.id || process.env.INSTAGRAM_USER_ID || null;
-      if (!igAccount && instagramUserId) {
+      const instagramUserId = igBusinessAccount?.id || fallbackIgAccount?.id || process.env.INSTAGRAM_USER_ID || null;
+      if (!igBusinessAccount && !fallbackIgAccount && instagramUserId) {
         console.log('[oauth:instagram] A usar INSTAGRAM_USER_ID da env como fallback:', instagramUserId);
       }
 
       return {
         accountId: instagramUserId || d.id || null,
-        name: igAccount ? `@${igAccount.username}` : (d.name || process.env.INSTAGRAM_USERNAME || 'Instagram'),
+        name: igBusinessAccount?.username
+          ? `@${igBusinessAccount.username}`
+          : fallbackIgAccount?.username
+            ? `@${fallbackIgAccount.username}`
+            : (d.name || process.env.INSTAGRAM_USERNAME || 'Instagram'),
         email: null,
-        picture: igAccount?.profile_picture_url || null,
+        picture: igBusinessAccount?.profile_picture_url || fallbackIgAccount?.profile_picture_url || null,
         instagramUserId,
         // Page token nunca expira — preferido para publicar no Instagram
         accessToken: igPageToken || token,

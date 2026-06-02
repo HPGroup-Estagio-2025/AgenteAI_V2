@@ -71,6 +71,11 @@ async function publishToInstagram(item, accountId = null) {
     throw Object.assign(new Error('Instagram requer uma imagem na noticia'), { code: 'instagram_no_image' });
   }
   const caption = buildFacebookMessage(item);
+  console.log('[instagram] A publicar com conta:', {
+    id: account.id,
+    name: account.name,
+    instagramUserId: account.instagramUserId,
+  });
 
   // Passo 1: criar container de media
   const containerRes = await fetch(
