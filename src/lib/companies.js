@@ -43,6 +43,7 @@ export async function createCompany(name, createdBy) {
       .from(COMPANIES_TABLE)
       .insert([
         {
+          id: crypto.randomUUID(),
           name: trimmedName,
           created_by: createdBy || null,
           created_at: new Date().toISOString(),

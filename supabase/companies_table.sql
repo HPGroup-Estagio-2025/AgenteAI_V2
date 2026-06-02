@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS companies (
   active BOOLEAN DEFAULT TRUE
 );
 
+ALTER TABLE companies ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
 -- Disable RLS or add policy to allow service_role full access
 ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
 
