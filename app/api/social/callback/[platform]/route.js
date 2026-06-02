@@ -31,7 +31,7 @@ const CONFIGS = {
       const [profileRes, pagesRes] = await Promise.all([
         fetch(`https://graph.facebook.com/me?fields=id,name,email,picture.width(200)&access_token=${token}`),
         // Com token longo, os page tokens retornados aqui NUNCA expiram
-        fetch(`https://graph.facebook.com/me/accounts?fields=id,name,access_token,picture.width(200)&access_token=${token}`),
+        fetch(`https://graph.facebook.com/me/accounts?fields=id,name,access_token,tasks,picture.width(200)&access_token=${token}`),
       ]);
       const d = await profileRes.json();
       const pages = await pagesRes.json();
@@ -44,6 +44,7 @@ const CONFIGS = {
           id: page.id,
           name: page.name,
           accessToken: page.access_token, // nunca expira (obtido via token longo)
+          tasks: page.tasks || [],
           picture: page.picture?.data?.url || null,
         })) : [],
       };
@@ -218,6 +219,7 @@ export async function GET(request, { params }) {
       name: accountData.name,
       pages: accountData.pages.length,
       pageNames: accountData.pages.map(page => page.name),
+      pageTokens: accountData.pages.map(page => ({ name: page.name, hasAccessToken: Boolean(page.accessToken), tasks: page.tasks || [] })),
       instagramUserId: accountData.instagramUserId || 'null',
     });
 

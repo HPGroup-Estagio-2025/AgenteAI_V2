@@ -19,7 +19,7 @@ async function fetchFacebookPagesFromToken(account) {
   if (!account?.accessToken) return [];
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,picture.width(200)&access_token=${encodeURIComponent(account.accessToken)}`
+      `https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,tasks,picture.width(200)&access_token=${encodeURIComponent(account.accessToken)}`
     );
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -30,12 +30,14 @@ async function fetchFacebookPagesFromToken(account) {
       id: page.id,
       name: page.name,
       accessToken: page.access_token,
+      tasks: page.tasks || [],
       picture: page.picture?.data?.url || null,
     })) : [];
     console.log('[facebook] Paginas buscadas ao vivo:', pages.map(page => ({
       id: page.id,
       name: page.name,
       hasAccessToken: Boolean(page.accessToken),
+      tasks: page.tasks || [],
     })));
     return pages;
   } catch (err) {
