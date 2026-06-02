@@ -8,6 +8,9 @@ export async function GET(request) {
   }
   await waitForAccounts();
   const accounts = getAccounts();
+  console.log('[social/accounts] GET: %d contas carregadas', accounts.length);
+  accounts.forEach(a => console.log('  - %s (%s) id=%s companyName=%s', a.platform, a.name, a.id, a.companyName || 'none'));
+
   const grouped = {};
   for (const account of accounts) {
     if (!grouped[account.platform]) grouped[account.platform] = [];
@@ -26,6 +29,7 @@ export async function GET(request) {
       })) : [],
     });
   }
+  console.log('[social/accounts] Retornando grupos: %s', Object.keys(grouped).join(', '));
   return Response.json({ accounts: grouped });
 }
 

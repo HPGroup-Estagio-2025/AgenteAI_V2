@@ -58,7 +58,10 @@
       "Bash(vercel --version)",
       "Bash(git commit *)",
       "Bash(git reset *)",
-      "mcp__Claude_in_Chrome__switch_browser"
+      "mcp__Claude_in_Chrome__switch_browser",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs kill -9)",
+      "Read(//tmp/**)"
     ]
   }
 }

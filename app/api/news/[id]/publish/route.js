@@ -179,21 +179,34 @@ export async function POST(request, { params }) {
     // Garante que as contas estão carregadas do Supabase antes de publicar
     await waitForAccounts();
 
+    console.log('[publish] Processando publicação:', {
+      platforms: socialPlatforms,
+      selectedAccounts,
+      cacheCounts: {
+        facebook: getAccount('facebook') ? 1 : 0,
+        instagram: getAccount('instagram') ? 1 : 0,
+      }
+    });
+
     const socialResults = [];
 
     if (socialPlatforms.includes('facebook')) {
       const fbAccountId = selectedAccounts.facebook || null;
       if (!fbAccountId && !getAccount('facebook')) {
+        console.error('[publish] Facebook: nenhuma conta selecionada (accountId=%s) ou na cache', fbAccountId);
         return NextResponse.json({ error: 'Facebook ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
+      console.log('[publish] Publicando no Facebook com accountId=%s', fbAccountId || 'default');
       socialResults.push(await publishToFacebook(item, fbAccountId));
     }
 
     if (socialPlatforms.includes('instagram')) {
       const igAccountId = selectedAccounts.instagram || null;
       if (!igAccountId && !getAccount('instagram')) {
+        console.error('[publish] Instagram: nenhuma conta selecionada (accountId=%s) ou na cache', igAccountId);
         return NextResponse.json({ error: 'Instagram ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
+      console.log('[publish] Publicando no Instagram com accountId=%s', igAccountId || 'default');
       socialResults.push(await publishToInstagram(item, igAccountId));
     }
 
