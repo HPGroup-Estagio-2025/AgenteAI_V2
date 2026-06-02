@@ -34,13 +34,13 @@ const FALLBACK_IMAGES = {
 };
 
 const sectors = {
-  supplyChain: ['supply chain', 'procurement', 'sourcing', 'inventory', 'warehouse', 'supplier'],
-  logistics: ['logistics', 'freight', 'shipping', 'transport', 'distribution', 'cargo'],
-  marine: ['marine', 'maritime', 'shipbuilding', 'naval', 'port', 'vessel'],
-  defense: ['defense', 'defence', 'military', 'army', 'navy', 'air force'],
-  aviation: ['aviation', 'aircraft', 'airline', 'aerospace', 'airport'],
-  space: ['space', 'satellite', 'orbital', 'launch', 'spacecraft'],
-  railway: ['railway', 'rail', 'train', 'rolling stock', 'metro'],
+  supplyChain: ['supply chain', 'procurement', 'sourcing', 'inventory', 'warehouse', 'supplier', 'cadeia de abastecimento', 'fornecedor'],
+  logistics: ['logistics', 'freight', 'shipping', 'transport', 'distribution', 'cargo', 'logística', 'transporte', 'carga'],
+  marine: ['marine', 'maritime', 'shipbuilding', 'naval', 'port', 'vessel', 'marítimo', 'maritimo', 'marinha', 'naval', 'porto', 'navio', 'embarcação'],
+  defense: ['defense', 'defence', 'military', 'army', 'navy', 'air force', 'defesa', 'militar', 'exército', 'exercito', 'forças armadas', 'forcas armadas'],
+  aviation: ['aviation', 'aircraft', 'airline', 'aerospace', 'airport', 'aviação', 'aviacao', 'aeronave', 'aeroporto', 'aeroespacial'],
+  space: ['space', 'satellite', 'orbital', 'launch', 'spacecraft', 'espaço', 'espaco', 'satélite', 'satelite', 'lançamento', 'lancamento'],
+  railway: ['railway', 'rail', 'train', 'rolling stock', 'metro', 'ferroviário', 'ferroviario', 'comboio', 'caminho de ferro', 'metropolitano'],
   industry: ['industry', 'industrial', 'manufacturing', 'factory', 'production'],
   automotive: ['automotive', 'vehicle', 'ev', 'battery', 'mobility', 'car'],
   engineering: ['engineering', 'infrastructure', 'systems integration', 'project'],
@@ -216,9 +216,19 @@ function sourceFromUrl(url) {
 async function fetchAllRss() {
   const results = await Promise.allSettled(
     RSS_FEEDS.map(async feedUrl => {
-      const response = await fetch(feedUrl, { headers: { 'User-Agent': 'dashboard-news-agent/1.0' }, cache: 'no-store' });
-      if (!response.ok) throw new Error(`${feedUrl} respondeu ${response.status}`);
-      return parseRss(await response.text(), feedUrl);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch(feedUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; dashboard-news-agent/1.0)' },
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error(`${feedUrl} respondeu ${response.status}`);
+        return parseRss(await response.text(), feedUrl);
+      } finally {
+        clearTimeout(timeout);
+      }
     })
   );
 
@@ -344,12 +354,13 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
 
   try {
     const rawArticles = await fetchAllRss();
-    const enrichedArticles = await enrichWithImages(rawArticles);
-    const selectedArticles = scoreArticles(enrichedArticles, 5);
+    const selectedArticles = scoreArticles(rawArticles, 5);
+    // Enriquece imagens apenas nos 5 artigos finais (evita timeout)
+    const enrichedArticles = await enrichWithImages(selectedArticles);
 
     // Os artigos NÃO são guardados no Supabase aqui.
     // Ficam em memória local no browser até o admin decidir publicar ou rejeitar.
-    const articles = selectedArticles.map(article => {
+    const articles = enrichedArticles.map(article => {
       const category = dashboardCategory(article.matchedSectors);
       const fallback = FALLBACK_IMAGES[category] || FALLBACK_IMAGES['default'];
       return {
