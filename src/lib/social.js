@@ -66,6 +66,7 @@ function toDbRow(account) {
     access_token: account.accessToken || null,
     pages: account.pages || [],
     instagram_user_id: account.instagramUserId || null,
+    company_name: account.companyName || null,
     expires_at: account.expiresAt || null,
     connected_at: account.connectedAt || new Date().toISOString(),
   };
@@ -81,6 +82,7 @@ function fromDbRow(row) {
     accessToken: row.access_token,
     pages: Array.isArray(row.pages) ? row.pages : [],
     instagramUserId: row.instagram_user_id || null,
+    companyName: row.company_name || null,
     expiresAt: row.expires_at || null,
     connectedAt: row.connected_at,
   };
@@ -124,6 +126,7 @@ async function supabaseUpsert(account) {
       access_token: fullRow.access_token || null,
       pages: fullRow.pages || [],
       instagram_user_id: fullRow.instagram_user_id || null,
+      company_name: fullRow.company_name || null,
       connected_at: fullRow.connected_at || new Date().toISOString(),
     },
     {
@@ -131,6 +134,7 @@ async function supabaseUpsert(account) {
       platform: fullRow.platform,
       name: fullRow.name || null,
       access_token: fullRow.access_token || null,
+      company_name: fullRow.company_name || null,
       connected_at: fullRow.connected_at || new Date().toISOString(),
     },
   ];
