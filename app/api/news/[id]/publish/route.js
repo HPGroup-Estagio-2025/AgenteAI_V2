@@ -207,7 +207,7 @@ export async function POST(request, { params }) {
       }
     });
 
-    const socialResults = [];
+    const publishTasks = [];
 
     if (socialPlatforms.includes('facebook')) {
       const fbAccountId = selectedAccounts.facebook || null;
@@ -216,7 +216,7 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: 'Facebook ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
       console.log('[publish] Publicando no Facebook com accountId=%s', fbAccountId || 'default');
-      socialResults.push(await publishToFacebook(item, fbAccountId));
+      publishTasks.push(publishToFacebook(item, fbAccountId));
     }
 
     if (socialPlatforms.includes('instagram')) {
@@ -226,8 +226,10 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: 'Instagram ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
       console.log('[publish] Publicando no Instagram com accountId=%s', igAccountId || 'default');
-      socialResults.push(await publishToInstagram(item, igAccountId));
+      publishTasks.push(publishToInstagram(item, igAccountId));
     }
+
+    const socialResults = await Promise.all(publishTasks);
 
     const updated = await updateNews(id, {
       status: 'published',

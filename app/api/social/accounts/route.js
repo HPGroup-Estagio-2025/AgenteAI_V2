@@ -20,6 +20,7 @@ export async function GET(request) {
       name: account.name,
       email: account.email,
       picture: account.picture,
+      companyId: account.companyId || null,
       companyName: account.companyName || null,
       connectedAt: account.connectedAt,
       pages: Array.isArray(account.pages) ? account.pages.map(page => ({

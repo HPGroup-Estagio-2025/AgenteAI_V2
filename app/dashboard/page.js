@@ -46,32 +46,33 @@ const SOCIAL_PLATFORMS = [
 // Meta (Facebook + Instagram) partilham a mesma entrada; LinkedIn é separado.
 function buildCompanies(connectedAccounts) {
   console.log('[buildCompanies] Contas recebidas:', connectedAccounts);
-  const companies = [];
   const fbAccs = connectedAccounts.facebook  || [];
   const igAccs = connectedAccounts.instagram || [];
   const liAccs = connectedAccounts.linkedin  || [];
   console.log('[buildCompanies] FB:', fbAccs.length, 'IG:', igAccs.length, 'LI:', liAccs.length);
 
-  // Grupo Meta: usa contas Facebook como primário; fallback para Instagram
-  if (fbAccs.length > 0 || igAccs.length > 0) {
-    const primaryAccs = fbAccs.length > 0 ? fbAccs : igAccs;
-    const metaPlatforms = [
-      ...(fbAccs.length > 0 ? ['facebook']  : []),
-      ...(igAccs.length > 0 ? ['instagram'] : []),
-    ];
-    for (const acc of primaryAccs) {
-      companies.push({
-        id:         `meta-${acc.id}`,
-        name:       acc.companyName || acc.name,
-        picture:    acc.picture,
-        platforms:  metaPlatforms,
-        accountIds: {
-          ...(fbAccs.length > 0 ? { facebook:  acc.id        } : {}),
-          ...(igAccs.length > 0 ? { instagram: igAccs[0]?.id } : {}),
-        },
-      });
-    }
+  const metaCompanies = new Map();
+  const getMetaKey = acc => acc.companyId || acc.companyName || acc.id;
+
+  function upsertMetaAccount(acc, platform) {
+    const key = getMetaKey(acc);
+    const current = metaCompanies.get(key) || {
+      id:         `meta-${key}`,
+      name:       acc.companyName || acc.name,
+      picture:    acc.picture,
+      platforms:  [],
+      accountIds: {},
+    };
+    if (!current.platforms.includes(platform)) current.platforms.push(platform);
+    current.accountIds[platform] = acc.id;
+    if (!current.picture && acc.picture) current.picture = acc.picture;
+    metaCompanies.set(key, current);
   }
+
+  fbAccs.forEach(acc => upsertMetaAccount(acc, 'facebook'));
+  igAccs.forEach(acc => upsertMetaAccount(acc, 'instagram'));
+
+  const companies = [...metaCompanies.values()];
 
   // LinkedIn: cada conta é uma entrada independente
   for (const acc of liAccs) {
