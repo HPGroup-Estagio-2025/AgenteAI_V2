@@ -32,7 +32,7 @@ const SECTOR_MAP = {
 
 const STATUS_LABELS = {
   published: 'Publicada',
-  on_hold:   'Em Espera',
+  on_hold:   'Guardada',
   pending:   'Pendente',
 };
 
@@ -463,6 +463,7 @@ export default function DashboardPage() {
       }
       loadingRef.current = false;
       if (isMountedRef.current) setLoading(false);
+      if (notify) showToast('Notícias atualizadas', 'success');
       return;
     }
 
@@ -594,23 +595,14 @@ export default function DashboardPage() {
       if (!res.ok) { showToast(data.error || 'Erro ao executar agente', 'error'); return; }
       setLastAgentRun(data);
       if (Array.isArray(data.articles) && data.articles.length > 0) {
-        const existing = loadPending();
-        const normalizeUrl = u => String(u || '').trim().replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
-        const existingUrls = new Set(existing.map(a => normalizeUrl(a.url)).filter(Boolean));
-        const fresh = data.articles.filter(a => !existingUrls.has(normalizeUrl(a.url)));
-        if (fresh.length > 0) {
-          const updated = [...fresh, ...existing];
-          savePending(updated);
-          setPendingArticles(updated);
-          setCounts(prev => ({ ...prev, pending: updated.length }));
-          showToast(`${fresh.length} notícia(s) nova(s) para revisão`, 'success');
-        } else {
-          showToast('Sem notícias novas (todas já estão em revisão)', 'info');
-        }
+        savePending(data.articles);
+        setPendingArticles(data.articles);
+        setCounts(prev => ({ ...prev, pending: data.articles.length }));
+        showToast(`${data.articles.length} notícia(s) carregadas para revisão`, 'success');
         setFilterStatus('pending');
         setPage(1);
       } else {
-        showToast('Agente concluído: nenhuma notícia nova encontrada', 'info');
+        showToast('Agente concluído: nenhuma notícia encontrada', 'info');
       }
     } catch {
       showToast('Erro de ligação ao executar agente', 'error');
@@ -742,7 +734,7 @@ export default function DashboardPage() {
           </div>
           <div className="stat-card stat-onhold" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('on_hold'); setPage(1); }}>
             <div className="stat-value">{counts.on_hold}</div>
-            <div className="stat-label">Em Espera</div>
+            <div className="stat-label">Guardados</div>
           </div>
         </div>
 
@@ -752,7 +744,7 @@ export default function DashboardPage() {
             {[
               { status: 'pending',   label: `Para Revisão (${counts.pending})` },
               { status: 'published', label: 'Publicadas' },
-              { status: 'on_hold',   label: 'Em Espera' },
+              { status: 'on_hold',   label: 'Guardados' },
             ].map(({ status, label }) => (
               <button
                 key={status}
