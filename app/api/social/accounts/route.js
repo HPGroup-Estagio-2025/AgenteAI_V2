@@ -26,6 +26,7 @@ export async function GET(request) {
         id: page.id,
         name: page.name,
         picture: page.picture || null,
+        accessToken: page.accessToken || null,
       })) : [],
     });
   }
