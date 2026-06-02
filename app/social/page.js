@@ -180,7 +180,8 @@ function SocialPageContent() {
       const data = await res.json();
       if (!res.ok) { showToast(data.error || 'Erro ao iniciar ligação', 'error'); return; }
       window.location.href = data.url;
-    } catch {
+    } catch (err) {
+      console.error('[social] Erro ao conectar:', err);
       showToast('Erro de ligação. Tenta novamente.', 'error');
     } finally {
       setConnecting(null);
