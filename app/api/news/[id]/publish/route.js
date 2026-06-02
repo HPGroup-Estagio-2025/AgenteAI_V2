@@ -15,10 +15,33 @@ async function notifyN8n(url, body) {
   } catch (err) { console.error('[n8n] Falha ao notificar:', err.message); }
 }
 
-function getFacebookPage(account) {
-  const pages = Array.isArray(account?.pages) ? account.pages : [];
-  if (FACEBOOK_PAGE_ID) return pages.find(page => page.id === FACEBOOK_PAGE_ID) || null;
-  return pages[0] || null;
+async function fetchFacebookPagesFromToken(account) {
+  if (!account?.accessToken) return [];
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,picture.width(200)&access_token=${encodeURIComponent(account.accessToken)}`
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error('[facebook] Falha ao buscar paginas no momento da publicacao:', data.error?.message || data);
+      return [];
+    }
+    return Array.isArray(data.data) ? data.data.map(page => ({
+      id: page.id,
+      name: page.name,
+      accessToken: page.access_token,
+      picture: page.picture?.data?.url || null,
+    })) : [];
+  } catch (err) {
+    console.error('[facebook] Erro ao buscar paginas no momento da publicacao:', err.message);
+    return [];
+  }
+}
+
+function selectFacebookPage(pages) {
+  const availablePages = Array.isArray(pages) ? pages : [];
+  if (FACEBOOK_PAGE_ID) return availablePages.find(page => page.id === FACEBOOK_PAGE_ID) || null;
+  return availablePages[0] || null;
 }
 
 function buildFacebookMessage(item) {
@@ -95,9 +118,14 @@ async function publishToFacebook(item, accountId = null) {
     pages: Array.isArray(account.pages) ? account.pages.map(p => ({ id: p.id, name: p.name })) : [],
   });
 
-  const page = getFacebookPage(account);
+  const storedPages = Array.isArray(account.pages) ? account.pages : [];
+  const livePages = storedPages.length > 0 ? [] : await fetchFacebookPagesFromToken(account);
+  const page = selectFacebookPage(storedPages.length > 0 ? storedPages : livePages);
   if (!page?.accessToken) {
-    throw Object.assign(new Error('Nenhuma Pagina do Facebook disponivel'), { code: 'facebook_page_missing' });
+    throw Object.assign(
+      new Error('Nenhuma Pagina do Facebook disponivel. Reconecta o Facebook e garante que autorizas paginas_show_list e pages_manage_posts.'),
+      { code: 'facebook_page_missing' }
+    );
   }
   const body = new URLSearchParams({ access_token: page.accessToken, message: buildFacebookMessage(item) });
   if (item.url) body.set('link', item.url);
@@ -254,7 +282,7 @@ export async function POST(request, { params }) {
     });
 
     if (err.code === 'facebook_page_missing') {
-      return NextResponse.json({ error: 'Facebook conectado, mas sem Pagina disponivel para publicar.' }, { status: 409 });
+      return NextResponse.json({ error: err.message || 'Facebook conectado, mas sem Pagina disponivel para publicar.' }, { status: 409 });
     }
     if (err.code === 'facebook_publish_failed') {
       console.error('[facebook] Erro ao publicar:', err.details || err.message);
