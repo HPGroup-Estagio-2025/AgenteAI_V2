@@ -6,11 +6,10 @@ const PLATFORMS = [
   {
     id: 'facebook',
     name: 'Facebook',
-    description: 'Publica notícias em Páginas do Facebook',
     color: '#1877F2',
     bg: '#E7F3FF',
     Icon: () => (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="#1877F2">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2">
         <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.514c-1.491 0-1.956.93-1.956 1.887v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
       </svg>
     ),
@@ -18,11 +17,10 @@ const PLATFORMS = [
   {
     id: 'instagram',
     name: 'Instagram',
-    description: 'Publica em contas Instagram Business (via Facebook App)',
     color: '#E1306C',
     bg: '#FCE4EC',
     Icon: () => (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="url(#ig-grad)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="url(#ig-grad)">
         <defs>
           <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#f09433"/>
@@ -39,11 +37,10 @@ const PLATFORMS = [
   {
     id: 'linkedin',
     name: 'LinkedIn',
-    description: 'Partilha notícias e artigos no LinkedIn',
     color: '#0A66C2',
     bg: '#E8F4FE',
     Icon: () => (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="#0A66C2">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#0A66C2">
         <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
       </svg>
     ),
@@ -61,13 +58,11 @@ const ERROR_MESSAGES = {
   access_denied: 'Acesso negado. O utilizador cancelou a autorização.',
 };
 
-// Remove apenas as chaves de auth (não apaga pending_articles nem outros dados)
 function clearAuth() {
   localStorage.removeItem('auth_token');
   localStorage.removeItem('token_expiry');
 }
 
-// Migração única: move o token do sessionStorage para o localStorage
 function migrateAuthToken() {
   if (!localStorage.getItem('auth_token')) {
     const oldToken  = sessionStorage.getItem('auth_token');
@@ -79,6 +74,23 @@ function migrateAuthToken() {
       sessionStorage.removeItem('token_expiry');
     }
   }
+}
+
+function groupCompaniesByName(accounts) {
+  const companies = {};
+  for (const [platform, platformAccounts] of Object.entries(accounts)) {
+    for (const account of platformAccounts) {
+      const companyName = account.name || 'Sem nome';
+      if (!companies[companyName]) {
+        companies[companyName] = { name: companyName, platforms: {} };
+      }
+      if (!companies[companyName].platforms[platform]) {
+        companies[companyName].platforms[platform] = [];
+      }
+      companies[companyName].platforms[platform].push(account);
+    }
+  }
+  return Object.values(companies).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function SocialPageContent() {
@@ -235,76 +247,95 @@ function SocialPageContent() {
           </div>
         ) : (
           <div className="social-grid">
-            {PLATFORMS.map(({ id, name, description, color, bg, Icon }) => {
-              const platformAccounts = accounts[id] || [];
-              const hasAccounts = platformAccounts.length > 0;
-              const isConnecting = connecting === id;
-              return (
-                <div key={id} className={`social-card${hasAccounts ? ' social-card--connected' : ''}`}>
-                  <div className="social-card-top">
-                    <div className="social-card-icon" style={{ background: bg }}>
-                      <Icon />
-                    </div>
-                    <div className="social-card-info">
-                      <h2 className="social-card-name">{name}</h2>
-                      <p className="social-card-desc">{description}</p>
-                    </div>
-                    <div className={`social-status ${hasAccounts ? 'social-status--on' : 'social-status--off'}`}>
-                      {hasAccounts
-                        ? `${platformAccounts.length} conta${platformAccounts.length > 1 ? 's' : ''}`
-                        : 'Desconectado'}
-                    </div>
-                  </div>
+            {groupCompaniesByName(accounts).length === 0 ? (
+              <div className="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                </svg>
+                <p>Nenhuma conta conectada. Conecta a primeira rede social para começar.</p>
+              </div>
+            ) : (
+              groupCompaniesByName(accounts).map(company => (
+                <div key={company.name} className="social-company-card">
+                  <h3 className="social-company-name">{company.name}</h3>
 
-                  {platformAccounts.map(account => (
-                    <div key={account.id} className="social-account-info" style={{ alignItems: 'flex-start' }}>
-                      {account.picture && (
-                        <img src={account.picture} alt="" className="social-account-avatar" style={{ flexShrink: 0 }} />
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="social-account-name">{account.name}</div>
-                        {account.email && <div className="social-account-email">{account.email}</div>}
-                        {id === 'facebook' && account.pages?.length > 0 && (
-                          <div className="social-account-email">Página: {account.pages[0].name}</div>
-                        )}
-                        {id === 'facebook' && account.pages?.length === 0 && (
-                          <div className="social-account-email">Nenhuma Página disponível para publicar</div>
-                        )}
-                        <div className="social-account-date">Conectado em {formatDate(account.connectedAt)}</div>
-                      </div>
-                      <button
-                        className="btn btn-danger"
-                        onClick={() => handleDisconnect(account.id)}
-                        style={{ flexShrink: 0 }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>
-                        </svg>
-                        Desconectar
-                      </button>
-                    </div>
-                  ))}
+                  <div className="social-platforms-grid">
+                    {PLATFORMS.map(({ id, name, color, bg, Icon }) => {
+                      const platformAccounts = company.platforms[id] || [];
+                      const isConnecting = connecting === `${company.name}-${id}`;
 
-                  <div className="social-card-actions">
-                    <button
-                      className="btn btn-primary"
-                      style={{ background: color, borderColor: color }}
-                      disabled={isConnecting}
-                      onClick={() => handleConnect(id)}
-                    >
-                      {isConnecting ? (
-                        <span className="loader" style={{ width: 14, height: 14 }} />
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                        </svg>
-                      )}
-                      {isConnecting ? 'A conectar...' : hasAccounts ? 'Adicionar conta' : 'Conectar'}
-                    </button>
+                      return (
+                        <div key={id} className="social-platform-section">
+                          <div className="social-platform-header" style={{ borderColor: color }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ background: bg, padding: 6, borderRadius: 6 }}>
+                                <Icon />
+                              </div>
+                              <span style={{ fontWeight: 500, color: '#1F2937' }}>{name}</span>
+                            </div>
+                            <span style={{ fontSize: '.8rem', color: platformAccounts.length > 0 ? '#10B981' : '#6B7280' }}>
+                              {platformAccounts.length > 0 ? `✓ Conectado` : '○ Desconectado'}
+                            </span>
+                          </div>
+
+                          {platformAccounts.length > 0 && (
+                            <div className="social-platform-accounts">
+                              {platformAccounts.map(account => (
+                                <div key={account.id} style={{ fontSize: '.85rem', color: '#4B5563', padding: '8px 0' }}>
+                                  <div style={{ fontWeight: 500 }}>{account.email || 'Sem email'}</div>
+                                  {id === 'facebook' && account.pages?.length > 0 && (
+                                    <div style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 2 }}>
+                                      Página: {account.pages[0].name}
+                                    </div>
+                                  )}
+                                  <div style={{ fontSize: '.75rem', color: '#D1D5DB', marginTop: 2 }}>
+                                    Conectado em {formatDate(account.connectedAt)}
+                                  </div>
+                                  <button
+                                    className="btn btn-danger"
+                                    onClick={() => handleDisconnect(account.id)}
+                                    style={{ marginTop: 6, padding: '4px 8px', fontSize: '.8rem', height: 'auto' }}
+                                  >
+                                    Desconectar
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <button
+                            className="btn btn-primary"
+                            style={{
+                              width: '100%',
+                              marginTop: platformAccounts.length > 0 ? 8 : 0,
+                              background: color,
+                              borderColor: color,
+                              fontSize: '.85rem',
+                              padding: '8px 12px',
+                              height: 'auto'
+                            }}
+                            disabled={isConnecting}
+                            onClick={() => handleConnect(id)}
+                          >
+                            {isConnecting ? (
+                              <>
+                                <span className="loader" style={{ width: 12, height: 12 }} />
+                                A conectar...
+                              </>
+                            ) : platformAccounts.length > 0 ? (
+                              'Adicionar conta'
+                            ) : (
+                              'Conectar'
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              );
-            })}
+              ))
+            )}
           </div>
         )}
 
