@@ -52,13 +52,13 @@ function buildCompanies(connectedAccounts) {
   console.log('[buildCompanies] FB:', fbAccs.length, 'IG:', igAccs.length, 'LI:', liAccs.length);
 
   const metaCompanies = new Map();
-  const getMetaKey = acc => acc.companyId || acc.companyName || acc.id;
+  const getMetaKey = acc => acc.companyId || acc.companyName || 'unassigned-meta';
 
   function upsertMetaAccount(acc, platform) {
     const key = getMetaKey(acc);
     const current = metaCompanies.get(key) || {
       id:         `meta-${key}`,
-      name:       acc.companyName || acc.name,
+      name:       acc.companyName || 'Conta Meta',
       picture:    acc.picture,
       platforms:  [],
       accountIds: {},

@@ -293,10 +293,18 @@ function SocialPageContent() {
   // Group accounts by company
   function getAccountsByCompany(companyId) {
     const grouped = {};
+    const company = companies.find(c => c.id === companyId);
+    const shouldUseUnassignedAccounts = companies.length === 1;
+
     for (const [platform, platformAccounts] of Object.entries(accounts)) {
-      grouped[platform] = platformAccounts.filter(acc =>
-        acc.companyId === companyId || (acc.companyName && companies.find(c => c.id === companyId)?.name === acc.companyName)
-      );
+      grouped[platform] = platformAccounts.filter(acc => {
+        const hasCompanyBinding = Boolean(acc.companyId || acc.companyName);
+        return (
+          acc.companyId === companyId ||
+          (acc.companyName && company?.name === acc.companyName) ||
+          (shouldUseUnassignedAccounts && !hasCompanyBinding)
+        );
+      });
     }
     return grouped;
   }
@@ -473,13 +481,17 @@ function SocialPageContent() {
                 </div>
 
                 {/* Company Cards */}
-                {companies.map(company => (
+                {companies.map(company => {
+                  const companyAccounts = getAccountsByCompany(company.id);
+                  const visibleAccountCount = Object.values(companyAccounts).reduce((sum, platformAccounts) => sum + platformAccounts.length, 0);
+
+                  return (
                   <div key={company.id} className="social-company-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 12 }}>
                       <div>
                         <h3 className="social-company-name">{company.name}</h3>
                         <p style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 4 }}>
-                          {company.accountCount || 0} contas
+                          {visibleAccountCount || company.accountCount || 0} contas
                         </p>
                       </div>
                       <button
@@ -526,7 +538,8 @@ function SocialPageContent() {
                       ))}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {companies.length === 0 && (
