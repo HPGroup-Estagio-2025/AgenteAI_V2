@@ -105,6 +105,16 @@ function SocialPageContent() {
   const [newCompanyName, setNewCompanyName] = useState('');
   const [showingNewCompanyForm, setShowingNewCompanyForm] = useState(false);
 
+  // Persistir o nome da empresa no localStorage
+  const handleSetNewCompanyName = (value) => {
+    setNewCompanyName(value);
+    if (value.trim()) {
+      localStorage.setItem('pending_company_name_form', value);
+    } else {
+      localStorage.removeItem('pending_company_name_form');
+    }
+  };
+
   function showToast(message, type = 'info') {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5000);
@@ -149,6 +159,12 @@ function SocialPageContent() {
       try {
         setAccounts(JSON.parse(cached));
       } catch {}
+    }
+
+    // Carrega o nome da empresa pendente do localStorage
+    const pendingCompanyName = localStorage.getItem('pending_company_name_form');
+    if (pendingCompanyName) {
+      setNewCompanyName(pendingCompanyName);
     }
   }, []);
 
@@ -331,7 +347,7 @@ function SocialPageContent() {
                     type="text"
                     placeholder="Nome da empresa"
                     value={newCompanyName}
-                    onChange={e => setNewCompanyName(e.target.value)}
+                    onChange={e => handleSetNewCompanyName(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter' && newCompanyName.trim()) {
                         setShowingNewCompanyForm(false);
@@ -385,7 +401,7 @@ function SocialPageContent() {
                     style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
                     onClick={() => {
                       setShowingNewCompanyForm(false);
-                      setNewCompanyName('');
+                      handleSetNewCompanyName('');
                     }}
                   >
                     Cancelar
