@@ -198,6 +198,21 @@ export function waitForAccounts() {
   return g._socialReady || Promise.resolve();
 }
 
+// Força o recarregamento das contas do Supabase (ignora cache em memória)
+export async function refreshAccountsFromSupabase() {
+  if (USE_SUPABASE) {
+    try {
+      const freshAccounts = await supabaseReadAll();
+      if (freshAccounts !== null) {
+        g._socialAccounts = freshAccounts;
+        console.log('[social] Cache recarregada do Supabase:', freshAccounts.length, 'contas');
+      }
+    } catch (err) {
+      console.error('[social] Erro ao recarregar do Supabase:', err.message);
+    }
+  }
+}
+
 // ─── API pública (leitura — síncrona, usa cache) ────────────────────────────
 
 export function getAccounts() {

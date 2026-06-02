@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
 import { findNews, findNewsByUrl, insertNews, updateNews } from '@/src/lib/db';
-import { getAccount, getAccountById, waitForAccounts } from '@/src/lib/social';
+import { getAccount, getAccountById, waitForAccounts, refreshAccountsFromSupabase } from '@/src/lib/social';
 
 const N8N_PUBLISH_WEBHOOK = process.env.N8N_PUBLISH_WEBHOOK || '';
 const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID || '';
@@ -186,6 +186,11 @@ export async function POST(request, { params }) {
   try {
     // Garante que as contas estão carregadas do Supabase antes de publicar
     await waitForAccounts();
+
+    // IMPORTANTE: Recarrega as contas do Supabase para ter dados frescos
+    // Isto garante que se o utilizador reconectou uma conta recentemente,
+    // o servidor tem a versão mais atualizada (com páginas e tokens)
+    await refreshAccountsFromSupabase();
 
     console.log('[publish] Processando publicação:', {
       platforms: socialPlatforms,
