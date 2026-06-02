@@ -45,10 +45,12 @@ const SOCIAL_PLATFORMS = [
 // Constrói lista de empresas a partir das contas ligadas.
 // Meta (Facebook + Instagram) partilham a mesma entrada; LinkedIn é separado.
 function buildCompanies(connectedAccounts) {
+  console.log('[buildCompanies] Contas recebidas:', connectedAccounts);
   const companies = [];
   const fbAccs = connectedAccounts.facebook  || [];
   const igAccs = connectedAccounts.instagram || [];
   const liAccs = connectedAccounts.linkedin  || [];
+  console.log('[buildCompanies] FB:', fbAccs.length, 'IG:', igAccs.length, 'LI:', liAccs.length);
 
   // Grupo Meta: usa contas Facebook como primário; fallback para Instagram
   if (fbAccs.length > 0 || igAccs.length > 0) {
@@ -409,10 +411,25 @@ export default function DashboardPage() {
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
-    fetch('/api/social/accounts', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(data => setConnectedAccounts(data.accounts || {}))
-      .catch(() => {});
+
+    // Função para carregar contas
+    const loadAccounts = () => {
+      fetch('/api/social/accounts', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => {
+          console.log('[dashboard] Contas carregadas:', data.accounts);
+          setConnectedAccounts(data.accounts || {});
+        })
+        .catch(err => console.error('[dashboard] Erro ao carregar contas:', err));
+    };
+
+    // Carrega imediatamente
+    loadAccounts();
+
+    // Recarrega a cada 5 segundos para manter sempre atualizado
+    const interval = setInterval(loadAccounts, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Inicializa seleção por empresa para novos artigos
