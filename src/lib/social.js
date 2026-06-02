@@ -210,13 +210,14 @@ async function findExistingAccountId(platform, accountId) {
       .select('id')
       .eq('platform', platform)
       .eq('account_id', accountId)
-      .maybeSingle();
+      .order('connected_at', { ascending: false })
+      .limit(1);
 
     if (error) {
       console.warn('[social] Falha ao procurar conta existente:', error.message);
       return null;
     }
-    return data?.id || null;
+    return data?.[0]?.id || null;
   } catch (err) {
     console.warn('[social] Erro ao procurar conta existente:', err.message);
     return null;
@@ -315,7 +316,19 @@ export async function addAccount(data) {
 
   if (USE_SUPABASE) {
     await supabaseUpsert(account);
-    g._socialAccounts.push(account);
+    const existingIndex = g._socialAccounts.findIndex(existing =>
+      existing.id === account.id ||
+      (
+        account.accountId &&
+        existing.platform === account.platform &&
+        existing.accountId === account.accountId
+      )
+    );
+    if (existingIndex >= 0) {
+      g._socialAccounts[existingIndex] = account;
+    } else {
+      g._socialAccounts.push(account);
+    }
     return account;
   }
 

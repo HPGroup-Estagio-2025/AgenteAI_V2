@@ -124,7 +124,6 @@ function SocialPageContent() {
       setAccounts(accounts);
     } catch (err) {
       console.error('[social] Erro ao carregar contas:', err);
-      setAccounts({});
     } finally {
       setLoading(false);
     }
@@ -175,7 +174,7 @@ function SocialPageContent() {
         loadAccounts();
         loadCompanies();
       }
-    }, 3000);
+    }, 15000);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
