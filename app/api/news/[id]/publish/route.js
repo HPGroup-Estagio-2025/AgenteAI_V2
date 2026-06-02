@@ -172,8 +172,14 @@ export async function POST(request, { params }) {
     }
   }
 
-  if (item.status !== 'pending') {
-    return NextResponse.json({ error: 'Notícia já foi processada' }, { status: 409 });
+  // Permite publicar se está pending (novo) ou on_hold (guardado)
+  // Rejeita se já foi published
+  if (item.status === 'published') {
+    return NextResponse.json({ error: 'Notícia já foi publicada' }, { status: 409 });
+  }
+
+  if (!['pending', 'on_hold'].includes(item.status)) {
+    return NextResponse.json({ error: 'Notícia não pode ser publicada' }, { status: 409 });
   }
 
   const socialPlatforms = Array.isArray(body.socialPlatforms)
