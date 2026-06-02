@@ -425,7 +425,7 @@ textarea { resize: vertical; }
 
 .social-new-company-card { border-color: #BFDBFE; background: linear-gradient(135deg, rgba(59,130,246,0.02) 0%, rgba(59,130,246,0.01) 100%); }
 
-.social-platforms-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
+.social-platforms-grid { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
 
 .social-platform-card { background: var(--gray-50); border-radius: var(--radius-sm); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 
