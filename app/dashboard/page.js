@@ -417,10 +417,26 @@ export default function DashboardPage() {
       fetch('/api/social/accounts', { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json())
         .then(data => {
-          console.log('[dashboard] Contas carregadas:', data.accounts);
-          setConnectedAccounts(data.accounts || {});
+          const accounts = data.accounts || {};
+          console.log('[dashboard] Contas carregadas:', accounts);
+          setConnectedAccounts(accounts);
+          // Guarda em cache para nunca perder as contas
+          if (Object.keys(accounts).length > 0) {
+            localStorage.setItem('social_accounts_cache', JSON.stringify(accounts));
+          }
         })
-        .catch(err => console.error('[dashboard] Erro ao carregar contas:', err));
+        .catch(err => {
+          console.error('[dashboard] Erro ao carregar contas:', err);
+          // Se houver erro, recupera do cache
+          const cached = localStorage.getItem('social_accounts_cache');
+          if (cached) {
+            try {
+              const accounts = JSON.parse(cached);
+              console.log('[dashboard] Usando contas do cache:', accounts);
+              setConnectedAccounts(accounts);
+            } catch {}
+          }
+        });
     };
 
     // Carrega imediatamente

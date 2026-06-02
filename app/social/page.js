@@ -119,9 +119,21 @@ function SocialPageContent() {
       });
       if (res.status === 401) { clearAuth(); router.replace('/'); return; }
       const data = await res.json();
-      setAccounts(data.accounts || {});
-    } catch {
-      showToast('Erro ao carregar contas', 'error');
+      const accounts = data.accounts || {};
+      setAccounts(accounts);
+      // Guarda em cache para nunca perder as contas
+      if (Object.keys(accounts).length > 0) {
+        localStorage.setItem('social_accounts_cache', JSON.stringify(accounts));
+      }
+    } catch (err) {
+      console.error('[social] Erro ao carregar contas:', err);
+      // Se houver erro, recupera do cache
+      const cached = localStorage.getItem('social_accounts_cache');
+      if (cached) {
+        try {
+          setAccounts(JSON.parse(cached));
+        } catch {}
+      }
     } finally {
       setLoading(false);
     }
