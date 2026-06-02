@@ -425,11 +425,15 @@ textarea { resize: vertical; }
 
 .social-new-company-card { border-color: #BFDBFE; background: linear-gradient(135deg, rgba(59,130,246,0.02) 0%, rgba(59,130,246,0.01) 100%); }
 
-.social-platforms-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.social-platforms-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
 
-.social-platform-section { display: flex; flex-direction: column; gap: 8px; }
-.social-platform-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 2px solid var(--gray-200); margin-bottom: 8px; }
-.social-platform-accounts { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; max-height: 120px; overflow-y: auto; }
+.social-platform-card { background: var(--gray-50); border-radius: var(--radius-sm); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+.social-platform-top { display: flex; align-items: flex-start; gap: 12px; }
+
+.social-platform-account-list { display: flex; flex-direction: column; gap: 10px; padding: 10px; background: var(--white); border-radius: 6px; border: 1px solid var(--gray-200); max-height: 150px; overflow-y: auto; }
+
+.social-account-item { padding: 8px; background: var(--gray-50); border-radius: 6px; border-left: 3px solid var(--blue-600); }
 
 /* ── Setup Guide ───────────────────────────────────────────────── */
 .social-setup-guide { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-md); padding: 28px; }

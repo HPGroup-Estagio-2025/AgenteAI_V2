@@ -360,39 +360,42 @@ function SocialPageContent() {
                   <div className="social-platforms-grid">
                     {PLATFORMS.map(({ id, name, color, bg, Icon }) => {
                       const platformAccounts = company.platforms[id] || [];
-                      const isConnecting = connecting === `${company.name}-${id}`;
+                      const isConnecting = connecting === id;
+                      const hasAccounts = platformAccounts.length > 0;
 
                       return (
-                        <div key={id} className="social-platform-section">
-                          <div className="social-platform-header" style={{ borderColor: color }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div style={{ background: bg, padding: 6, borderRadius: 6 }}>
-                                <Icon />
-                              </div>
-                              <span style={{ fontWeight: 500, color: '#1F2937' }}>{name}</span>
+                        <div key={id} className="social-platform-card">
+                          <div className="social-platform-top">
+                            <div style={{ background: bg, padding: 8, borderRadius: 8, display: 'flex' }}>
+                              <Icon />
                             </div>
-                            <span style={{ fontSize: '.8rem', color: platformAccounts.length > 0 ? '#10B981' : '#6B7280' }}>
-                              {platformAccounts.length > 0 ? `✓ Conectado` : '○ Desconectado'}
-                            </span>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 600, color: '#1F2937', fontSize: '.9rem' }}>{name}</div>
+                              <div style={{ fontSize: '.75rem', color: hasAccounts ? '#10B981' : '#6B7280', marginTop: 2 }}>
+                                {hasAccounts ? '✓ Conectado' : '○ Desconectado'}
+                              </div>
+                            </div>
                           </div>
 
-                          {platformAccounts.length > 0 && (
-                            <div className="social-platform-accounts">
+                          {hasAccounts && (
+                            <div className="social-platform-account-list">
                               {platformAccounts.map(account => (
-                                <div key={account.id} style={{ fontSize: '.85rem', color: '#4B5563', padding: '8px 0' }}>
-                                  <div style={{ fontWeight: 500 }}>{account.email || 'Sem email'}</div>
+                                <div key={account.id} className="social-account-item">
+                                  <div style={{ fontWeight: 500, fontSize: '.8rem', color: '#1F2937' }}>
+                                    {account.email || account.name}
+                                  </div>
                                   {id === 'facebook' && account.pages?.length > 0 && (
-                                    <div style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 2 }}>
+                                    <div style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 3 }}>
                                       Página: {account.pages[0].name}
                                     </div>
                                   )}
-                                  <div style={{ fontSize: '.75rem', color: '#D1D5DB', marginTop: 2 }}>
-                                    Conectado em {formatDate(account.connectedAt)}
+                                  <div style={{ fontSize: '.7rem', color: '#9CA3AF', marginTop: 3 }}>
+                                    {formatDate(account.connectedAt)}
                                   </div>
                                   <button
                                     className="btn btn-danger"
                                     onClick={() => handleDisconnect(account.id)}
-                                    style={{ marginTop: 6, padding: '4px 8px', fontSize: '.8rem', height: 'auto' }}
+                                    style={{ marginTop: 6, padding: '4px 8px', fontSize: '.75rem', height: 'auto' }}
                                   >
                                     Desconectar
                                   </button>
@@ -405,10 +408,10 @@ function SocialPageContent() {
                             className="btn btn-primary"
                             style={{
                               width: '100%',
-                              marginTop: platformAccounts.length > 0 ? 8 : 0,
+                              marginTop: 10,
                               background: color,
                               borderColor: color,
-                              fontSize: '.85rem',
+                              fontSize: '.8rem',
                               padding: '8px 12px',
                               height: 'auto'
                             }}
@@ -417,10 +420,10 @@ function SocialPageContent() {
                           >
                             {isConnecting ? (
                               <>
-                                <span className="loader" style={{ width: 12, height: 12 }} />
-                                A conectar...
+                                <span className="loader" style={{ width: 11, height: 11 }} />
+                                Ligando...
                               </>
-                            ) : platformAccounts.length > 0 ? (
+                            ) : hasAccounts ? (
                               'Adicionar conta'
                             ) : (
                               'Conectar'
