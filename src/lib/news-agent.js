@@ -278,10 +278,12 @@ function scoreArticles(items, maxArticles = 5) {
     return { ...finalArticle, postDescription: generatePostDescription(finalArticle) };
   });
 
-  return validatedItems
-    .filter(article => article.isValidated)
-    .sort((a, b) => b.finalScore - a.finalScore)
-    .slice(0, maxArticles);
+  const sorted = validatedItems.sort((a, b) => b.finalScore - a.finalScore);
+  const validated = sorted.filter(a => a.isValidated);
+  if (validated.length >= maxArticles) return validated.slice(0, maxArticles);
+  // Se não há validados suficientes, completa com os melhores restantes
+  const rest = sorted.filter(a => !a.isValidated);
+  return [...validated, ...rest].slice(0, maxArticles);
 }
 
 function articleId() {
