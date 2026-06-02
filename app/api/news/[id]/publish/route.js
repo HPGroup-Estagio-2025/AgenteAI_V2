@@ -119,8 +119,16 @@ async function publishToFacebook(item, accountId = null) {
   });
 
   const storedPages = Array.isArray(account.pages) ? account.pages : [];
-  const livePages = storedPages.length > 0 ? [] : await fetchFacebookPagesFromToken(account);
-  const page = selectFacebookPage(storedPages.length > 0 ? storedPages : livePages);
+  const storedPage = selectFacebookPage(storedPages);
+  let page = storedPage;
+
+  if (!page?.accessToken) {
+    const livePages = await fetchFacebookPagesFromToken(account);
+    page = storedPage?.id
+      ? livePages.find(livePage => livePage.id === storedPage.id) || selectFacebookPage(livePages)
+      : selectFacebookPage(livePages);
+  }
+
   if (!page?.accessToken) {
     throw Object.assign(
       new Error('Nenhuma Pagina do Facebook disponivel. Reconecta o Facebook e garante que autorizas paginas_show_list e pages_manage_posts.'),
