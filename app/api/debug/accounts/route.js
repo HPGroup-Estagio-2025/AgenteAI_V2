@@ -1,12 +1,7 @@
-import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
-import { getAccounts } from '@/src/lib/social';
+import { getAccounts, waitForAccounts } from '@/src/lib/social';
 
 export async function GET(request) {
-  const token = getTokenFromRequest(request);
-  try { if (!token) throw new Error(); verifyToken(token); } catch {
-    return Response.json({ error: 'Não autenticado' }, { status: 401 });
-  }
-
+  await waitForAccounts();
   const accounts = getAccounts();
 
   const debug = accounts.map(acc => ({
