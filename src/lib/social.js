@@ -138,7 +138,6 @@ async function supabaseUpsert(account) {
       platform: fullRow.platform,
       name: fullRow.name || null,
       access_token: fullRow.access_token || null,
-      company_id: fullRow.company_id || null,
       company_name: fullRow.company_name || null,
       connected_at: fullRow.connected_at || new Date().toISOString(),
     },

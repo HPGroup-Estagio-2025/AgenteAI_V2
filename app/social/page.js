@@ -53,7 +53,7 @@ const ERROR_MESSAGES = {
   invalid_state: 'Sessão OAuth expirou. Tenta novamente.',
   token_exchange_failed: 'Falha ao obter o token de acesso. Verifica o App Secret nas variáveis de ambiente.',
   profile_failed: 'Conta ligada mas não foi possível obter o perfil. Tenta de novo.',
-  connection_failed: 'Erro ao conectar. Verifica as variáveis de ambiente (App ID e App Secret) no Vercel.',
+  connection_failed: 'Erro ao conectar ou guardar a conta. Verifica as variáveis no Vercel e a tabela social_accounts no Supabase.',
   not_configured: 'Credenciais OAuth não configuradas nas variáveis de ambiente.',
   access_denied: 'Acesso negado. O utilizador cancelou a autorização.',
 };

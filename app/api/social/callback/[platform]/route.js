@@ -226,6 +226,6 @@ export async function GET(request, { params }) {
     // If redirect() was called inside this try block, re-throw it so Next.js handles it correctly.
     if (err?.digest?.startsWith?.('NEXT_REDIRECT')) throw err;
     console.error(`[oauth:${platform}] Erro inesperado:`, err.message);
-    return redirect('/social?error=connection_failed');
+    return redirect(`/social?error=connection_failed&detail=${encodeURIComponent(err.message || 'erro desconhecido')}`);
   }
 }
