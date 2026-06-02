@@ -157,15 +157,27 @@ function SocialPageContent() {
     }
   }, [searchParams, router, loadAccounts]);
 
-  // Carrega contas quando a aba volta a ficar visível
+  // Recarrega contas continuamente para manter sempre sincronizado
   useEffect(() => {
+    // Carrega imediatamente quando fica visível
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         loadAccounts();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+    // Recarrega a cada 5 segundos para manter sempre atualizado
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        loadAccounts();
+      }
+    }, 5000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(interval);
+    };
   }, [loadAccounts]);
 
   async function handleConnect(platformId, companyName = null) {
