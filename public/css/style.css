@@ -419,11 +419,11 @@ textarea { resize: vertical; }
 .social-card-actions { display: flex; justify-content: flex-end; }
 
 /* ── Social Company Cards (reorganized by company) ─────────────── */
-.social-company-card { background: var(--white); border-radius: var(--radius-md); border: 1.5px solid var(--gray-200); padding: 20px; }
+.social-company-card { background: var(--white); border-radius: var(--radius-md); border: 1.5px solid var(--gray-200); padding: 20px; min-height: 300px; display: flex; flex-direction: column; }
 .social-company-card:hover { box-shadow: var(--shadow-md); }
 .social-company-name { font-size: 1.1rem; font-weight: 700; color: var(--gray-900); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--gray-100); }
 
-.social-new-company-card { border-color: #BFDBFE; background: linear-gradient(135deg, rgba(59,130,246,0.02) 0%, rgba(59,130,246,0.01) 100%); }
+.social-new-company-card { border-color: #BFDBFE; background: linear-gradient(135deg, rgba(59,130,246,0.02) 0%, rgba(59,130,246,0.01) 100%); justify-content: center; align-items: center; }
 
 .social-platforms-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
 
