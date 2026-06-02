@@ -36,6 +36,7 @@ const CONFIGS = {
       const d = await profileRes.json();
       const pages = await pagesRes.json();
       return {
+        accountId: d.id || null,
         name: d.name,
         email: d.email,
         picture: d.picture?.data?.url || null,
@@ -78,6 +79,7 @@ const CONFIGS = {
       }
 
       return {
+        accountId: instagramUserId || d.id || null,
         name: igAccount ? `@${igAccount.username}` : (d.name || process.env.INSTAGRAM_USERNAME || 'Instagram'),
         email: null,
         picture: igAccount?.profile_picture_url || null,
@@ -97,7 +99,7 @@ const CONFIGS = {
         headers: { Authorization: `Bearer ${token}` },
       });
       const d = await res.json();
-      return { name: d.name || `${d.given_name} ${d.family_name}`, email: d.email || null, picture: d.picture || null };
+      return { accountId: d.sub || d.id || null, name: d.name || `${d.given_name} ${d.family_name}`, email: d.email || null, picture: d.picture || null };
     },
   },
 };
@@ -198,6 +200,7 @@ export async function GET(request, { params }) {
 
     const accountData = {
       platform,
+      accountId: profile.accountId || null,
       accessToken: tokenToStore,
       name: profile.name,
       email: profile.email,

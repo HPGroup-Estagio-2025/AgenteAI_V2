@@ -78,6 +78,7 @@ function toDbRow(account) {
 function fromDbRow(row) {
   return {
     id: row.id,
+    accountId: row.account_id || null,
     platform: row.platform,
     name: row.name,
     email: row.email || null,
@@ -180,6 +181,27 @@ async function supabaseDeleteByPlatform(platform) {
   if (error) console.error('[social] Erro ao apagar contas do Supabase:', error.message);
 }
 
+async function findExistingAccountId(platform, accountId) {
+  if (!USE_SUPABASE || !platform || !accountId) return null;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from(SOCIAL_TABLE)
+      .select('id')
+      .eq('platform', platform)
+      .eq('account_id', accountId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[social] Falha ao procurar conta existente:', error.message);
+      return null;
+    }
+    return data?.id || null;
+  } catch (err) {
+    console.warn('[social] Erro ao procurar conta existente:', err.message);
+    return null;
+  }
+}
+
 // ─── Inicialização da cache em memória ─────────────────────────────────────
 // _socialReady é uma Promise que resolve quando os dados estão carregados.
 // As funções de leitura síncronas (getAccount, etc.) usam a cache em memória.
@@ -261,9 +283,12 @@ export function getAccount(platform) {
 // ─── API pública (escrita — async, persiste no Supabase ou ficheiro) ────────
 
 export async function addAccount(data) {
+  const accountId = data.accountId || data.providerAccountId || null;
+  const existingId = await findExistingAccountId(data.platform, accountId);
   const account = {
-    id: data.id || crypto.randomUUID(),
+    id: data.id || existingId || crypto.randomUUID(),
     ...data,
+    accountId,
     connectedAt: data.connectedAt || new Date().toISOString(),
   };
 
