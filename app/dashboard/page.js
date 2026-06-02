@@ -658,7 +658,15 @@ export default function DashboardPage() {
       });
       if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
       const data = await res.json();
-      if (!res.ok) { showToast(data.error || 'Erro ao publicar', 'error'); return; }
+      if (!res.ok) {
+        if (data.alreadyPublished) {
+          removePending(item.id);
+          showToast('Notícia já estava publicada. Removida da revisão.', 'info');
+          return;
+        }
+        showToast(data.error || 'Erro ao publicar', 'error');
+        return;
+      }
       removePending(item.id);
       showToast('Notícia publicada com sucesso!', 'success');
     } catch {
@@ -682,7 +690,15 @@ export default function DashboardPage() {
       });
       if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
       const data = await res.json();
-      if (!res.ok) { showToast(data.error || 'Erro ao publicar', 'error'); return; }
+      if (!res.ok) {
+        if (data.alreadyPublished) {
+          showToast('Notícia já estava publicada.', 'info');
+          fetchNews({ force: true });
+          return;
+        }
+        showToast(data.error || 'Erro ao publicar', 'error');
+        return;
+      }
       showToast('Notícia publicada com sucesso!', 'success');
       fetchNews({ force: true });
     } catch {

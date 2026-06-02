@@ -219,7 +219,7 @@ export async function POST(request, { params }) {
   // Permite publicar se está pending (novo) ou on_hold (guardado)
   // Rejeita se já foi published
   if (item.status === 'published') {
-    return NextResponse.json({ error: 'Notícia já foi publicada' }, { status: 409 });
+    return NextResponse.json({ error: 'Notícia já foi publicada', alreadyPublished: true }, { status: 409 });
   }
 
   if (!['pending', 'on_hold'].includes(item.status)) {
@@ -229,6 +229,9 @@ export async function POST(request, { params }) {
   const socialPlatforms = Array.isArray(body.socialPlatforms)
     ? body.socialPlatforms.filter(p => VALID_SOCIAL_PLATFORMS.includes(p))
     : [];
+  if (socialPlatforms.length === 0) {
+    return NextResponse.json({ error: 'Seleciona pelo menos uma rede social para publicar.' }, { status: 400 });
+  }
   // Conta específica escolhida pelo admin para cada plataforma: { facebook: 'uuid', ... }
   const selectedAccounts = body.selectedAccounts && typeof body.selectedAccounts === 'object'
     ? body.selectedAccounts : {};
