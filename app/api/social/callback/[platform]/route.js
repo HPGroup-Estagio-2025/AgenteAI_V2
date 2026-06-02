@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { consumeState, addAccount } from '@/src/lib/social';
+import { ensureCompanyExists } from '@/src/lib/companies';
 
 // Troca um User Access Token curto (1-2h) por um de longa duração (60 dias).
 // Os Page Access Tokens obtidos a partir de um token longo NUNCA expiram.
@@ -187,7 +188,13 @@ export async function GET(request, { params }) {
     const companyNameCookie = request.cookies.get('pending_company_name')?.value;
     const companyName = companyNameCookie ? decodeURIComponent(companyNameCookie) : null;
     console.log(`[oauth:${platform}] Cookie pending_company_name: ${companyNameCookie || 'não encontrado'}`);
-    console.log(`[oauth:${platform}] Guardando conta com companyName: ${companyName || 'null'}`);
+
+    // Garante que a empresa existe e obtém seu ID
+    let companyId = null;
+    if (companyName) {
+      companyId = await ensureCompanyExists(companyName, 'oauth');
+      console.log(`[oauth:${platform}] Empresa '${companyName}' mapeada para ID: ${companyId}`);
+    }
 
     const accountData = {
       platform,
@@ -197,7 +204,8 @@ export async function GET(request, { params }) {
       picture: profile.picture,
       pages: profile.pages || [],
       instagramUserId: profile.instagramUserId || null,
-      companyName,
+      companyId,
+      companyName, // backward compat
       expiresAt: (profile.accessToken || !finalExpiresIn)
         ? null
         : new Date(Date.now() + finalExpiresIn * 1000).toISOString(),

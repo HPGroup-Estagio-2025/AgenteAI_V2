@@ -66,7 +66,8 @@ function toDbRow(account) {
     access_token: account.accessToken || null,
     pages: account.pages || [],
     instagram_user_id: account.instagramUserId || null,
-    company_name: account.companyName || null,
+    company_id: account.companyId || null,
+    company_name: account.companyName || null, // backward compat
     expires_at: account.expiresAt || null,
     connected_at: account.connectedAt || new Date().toISOString(),
   };
@@ -82,7 +83,8 @@ function fromDbRow(row) {
     accessToken: row.access_token,
     pages: Array.isArray(row.pages) ? row.pages : [],
     instagramUserId: row.instagram_user_id || null,
-    companyName: row.company_name || null,
+    companyId: row.company_id || null,
+    companyName: row.company_name || null, // backward compat
     expiresAt: row.expires_at || null,
     connectedAt: row.connected_at,
   };
@@ -176,6 +178,17 @@ if (!g._socialAccounts) {
     g._socialReady = supabaseReadAll().then(accounts => {
       if (accounts !== null) {
         g._socialAccounts = accounts;
+        // Trigger migration of old company_name data to company_id
+        // Import here to avoid circular dependency
+        import('./companies.js').then(m => {
+          if (m.migrateCompanyNamesToIds) {
+            m.migrateCompanyNamesToIds().catch(err => {
+              console.error('[social] Migration error:', err.message);
+            });
+          }
+        }).catch(err => {
+          console.warn('[social] Could not import companies module for migration:', err.message);
+        });
       } else {
         // Supabase não tem a tabela — fallback para ficheiro
         g._socialAccounts = readAccountsFromFile();

@@ -76,49 +76,40 @@ function migrateAuthToken() {
   }
 }
 
-function groupCompaniesByName(accounts) {
-  const companies = {};
-  for (const [platform, platformAccounts] of Object.entries(accounts)) {
-    for (const account of platformAccounts) {
-      // Usa o companyName se foi definido, senão usa o name da conta
-      const companyName = account.companyName || account.name || 'Sem nome';
-      if (!companies[companyName]) {
-        companies[companyName] = { name: companyName, platforms: {} };
-      }
-      if (!companies[companyName].platforms[platform]) {
-        companies[companyName].platforms[platform] = [];
-      }
-      companies[companyName].platforms[platform].push(account);
-    }
-  }
-  return Object.values(companies).sort((a, b) => a.name.localeCompare(b.name));
-}
-
 function SocialPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [accounts, setAccounts] = useState({});
+  const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(null);
+  const [deletingCompany, setDeletingCompany] = useState(null);
   const [toast, setToast] = useState(null);
   const [appOrigin, setAppOrigin] = useState('');
-  const [newCompanyName, setNewCompanyName] = useState('');
-  const [showingNewCompanyForm, setShowingNewCompanyForm] = useState(false);
-
-  // Persistir o nome da empresa no localStorage
-  const handleSetNewCompanyName = (value) => {
-    setNewCompanyName(value);
-    if (value.trim()) {
-      localStorage.setItem('pending_company_name_form', value);
-    } else {
-      localStorage.removeItem('pending_company_name_form');
-    }
-  };
+  const [newCompanyInput, setNewCompanyInput] = useState('');
+  const [confirmDeleteCompanyId, setConfirmDeleteCompanyId] = useState(null);
+  const [showCompanySelector, setShowCompanySelector] = useState(null);
 
   function showToast(message, type = 'info') {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5000);
   }
+
+  const loadCompanies = useCallback(async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+    try {
+      const res = await fetch('/api/companies', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCompanies(data.companies || []);
+      }
+    } catch (err) {
+      console.error('[social] Erro ao carregar empresas:', err);
+    }
+  }, []);
 
   const loadAccounts = useCallback(async () => {
     const token = localStorage.getItem('auth_token');
@@ -131,11 +122,9 @@ function SocialPageContent() {
       const data = await res.json();
       const accounts = data.accounts || {};
       setAccounts(accounts);
-      // Sempre guarda no cache (mesmo se vazio, para manter sincronizado)
       localStorage.setItem('social_accounts_cache', JSON.stringify(accounts));
     } catch (err) {
       console.error('[social] Erro ao carregar contas:', err);
-      // Se houver erro, recupera do cache
       const cached = localStorage.getItem('social_accounts_cache');
       if (cached) {
         try {
@@ -153,28 +142,22 @@ function SocialPageContent() {
   useEffect(() => {
     setAppOrigin(window.location.origin);
 
-    // Carrega contas do cache no arranque
     const cached = localStorage.getItem('social_accounts_cache');
     if (cached) {
       try {
         setAccounts(JSON.parse(cached));
       } catch {}
     }
-
-    // Carrega o nome da empresa pendente do localStorage
-    const pendingCompanyName = localStorage.getItem('pending_company_name_form');
-    if (pendingCompanyName) {
-      setNewCompanyName(pendingCompanyName);
-    }
   }, []);
 
   useEffect(() => {
-    migrateAuthToken(); // migra token antigo do sessionStorage se necessário
+    migrateAuthToken();
     const token  = localStorage.getItem('auth_token');
     const expiry = parseInt(localStorage.getItem('token_expiry') || '0', 10);
     if (!token || Date.now() > expiry) { clearAuth(); router.replace('/'); return; }
     loadAccounts();
-  }, [loadAccounts, router]);
+    loadCompanies();
+  }, [loadAccounts, loadCompanies, router]);
 
   useEffect(() => {
     const connected = searchParams.get('connected');
@@ -182,9 +165,8 @@ function SocialPageContent() {
     if (connected) {
       const platform = PLATFORMS.find(p => p.id === connected);
       showToast(`${platform?.name || connected} conectado com sucesso!`, 'success');
-      // Carrega as contas atualizadas
       loadAccounts();
-      // Limpa o parâmetro do URL para não repetir o toast ao refrescar
+      loadCompanies();
       router.replace('/social', { scroll: false });
     } else if (error) {
       const detail = searchParams.get('detail');
@@ -192,22 +174,21 @@ function SocialPageContent() {
       showToast(detail ? `${base} (${detail})` : base, 'error');
       router.replace('/social', { scroll: false });
     }
-  }, [searchParams, router, loadAccounts]);
+  }, [searchParams, router, loadAccounts, loadCompanies]);
 
-  // Recarrega contas continuamente para manter sempre sincronizado
   useEffect(() => {
-    // Carrega imediatamente quando fica visível
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         loadAccounts();
+        loadCompanies();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Recarrega a cada 3 segundos para manter sempre atualizado e sincronizado
     const interval = setInterval(() => {
       if (!document.hidden) {
         loadAccounts();
+        loadCompanies();
       }
     }, 3000);
 
@@ -215,13 +196,64 @@ function SocialPageContent() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(interval);
     };
-  }, [loadAccounts]);
+  }, [loadAccounts, loadCompanies]);
+
+  async function handleCreateCompany() {
+    if (!newCompanyInput.trim()) {
+      showToast('Nome da empresa é obrigatório', 'error');
+      return;
+    }
+
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch('/api/companies', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCompanyInput.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Empresa criada com sucesso!', 'success');
+        setNewCompanyInput('');
+        await loadCompanies();
+      } else {
+        showToast(data.error || 'Erro ao criar empresa', 'error');
+      }
+    } catch (err) {
+      console.error('[social] Erro ao criar empresa:', err);
+      showToast('Erro ao criar empresa', 'error');
+    }
+  }
+
+  async function handleDeleteCompany(companyId) {
+    const token = localStorage.getItem('auth_token');
+    setDeletingCompany(companyId);
+    try {
+      const res = await fetch(`/api/companies/${companyId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Empresa apagada com sucesso', 'success');
+        await loadCompanies();
+        await loadAccounts();
+      } else {
+        showToast(data.error || 'Erro ao apagar empresa', 'error');
+      }
+    } catch (err) {
+      console.error('[social] Erro ao apagar empresa:', err);
+      showToast('Erro ao apagar empresa', 'error');
+    } finally {
+      setDeletingCompany(null);
+      setConfirmDeleteCompanyId(null);
+    }
+  }
 
   async function handleConnect(platformId, companyName = null) {
     const token = localStorage.getItem('auth_token');
     setConnecting(platformId);
     try {
-      // Se está a criar uma nova empresa, guarda o nome num cookie
       if (companyName) {
         const cookieRes = await fetch('/api/social/set-pending-company', {
           method: 'POST',
@@ -231,6 +263,7 @@ function SocialPageContent() {
         if (!cookieRes.ok) {
           const cookieData = await cookieRes.json();
           showToast(cookieData.error || 'Erro ao guardar nome da empresa', 'error');
+          setShowCompanySelector(null);
           return;
         }
       }
@@ -272,6 +305,17 @@ function SocialPageContent() {
     } catch { return iso; }
   }
 
+  // Group accounts by company
+  function getAccountsByCompany(companyId) {
+    const grouped = {};
+    for (const [platform, platformAccounts] of Object.entries(accounts)) {
+      grouped[platform] = platformAccounts.filter(acc =>
+        acc.companyId === companyId || (acc.companyName && companies.find(c => c.id === companyId)?.name === acc.companyName)
+      );
+    }
+    return grouped;
+  }
+
   return (
     <div className="dashboard-page">
       <header className="header">
@@ -306,7 +350,7 @@ function SocialPageContent() {
         <div className="social-header">
           <h1 className="social-title">Redes Sociais</h1>
           <p className="social-subtitle">
-            Conecta as tuas contas para publicar notícias diretamente nas redes sociais.
+            Cria empresas e conecta as tuas contas para publicar notícias diretamente nas redes sociais.
           </p>
         </div>
 
@@ -325,184 +369,208 @@ function SocialPageContent() {
             <div className="loader" style={{ width: 32, height: 32, borderColor: 'rgba(0,0,0,.15)', borderTopColor: 'var(--blue-600)' }} />
           </div>
         ) : (
-          <div className="social-grid">
-            {/* Card: Nova Empresa */}
-            <div className="social-company-card social-new-company-card">
-              <h3 style={{ fontSize: '.9rem', fontWeight: 600, color: '#6B7280', marginBottom: 12 }}>ADICIONAR NOVA EMPRESA</h3>
+          <>
+            {/* SECTION: Gerenciar Empresas */}
+            <div style={{ marginBottom: 40 }}>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1F2937', marginBottom: 16 }}>
+                Empresas
+              </h2>
 
-              {!showingNewCompanyForm ? (
-                <button
-                  className="btn btn-primary"
-                  style={{ width: '100%', justifyContent: 'center' }}
-                  onClick={() => setShowingNewCompanyForm(true)}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                  Nova Empresa
-                </button>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <input
-                    type="text"
-                    placeholder="Nome da empresa"
-                    value={newCompanyName}
-                    onChange={e => handleSetNewCompanyName(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && newCompanyName.trim()) {
-                        setShowingNewCompanyForm(false);
-                      }
-                    }}
-                    style={{
-                      padding: '8px 12px',
-                      border: '1.5px solid #E5E7EB',
-                      borderRadius: '6px',
-                      fontSize: '.875rem',
-                      outline: 'none',
-                    }}
-                    autoFocus
-                  />
-                  {newCompanyName.trim() && (
-                    <div className="social-platforms-grid">
-                      {PLATFORMS.map(({ id, name, color, Icon }) => (
-                        <button
-                          key={id}
-                          className="btn btn-primary"
-                          style={{
-                            background: color,
-                            borderColor: color,
-                            width: '100%',
-                            padding: '6px 8px',
-                            fontSize: '.8rem',
-                            height: 'auto',
-                            justifyContent: 'center',
-                            gap: 4,
-                          }}
-                          disabled={connecting === id}
-                          onClick={() => handleConnect(id, newCompanyName.trim())}
-                        >
-                          {connecting === id ? (
-                            <>
-                              <span className="loader" style={{ width: 10, height: 10 }} />
-                              Ligando...
-                            </>
-                          ) : (
-                            <>
-                              <Icon />
-                              {name}
-                            </>
-                          )}
-                        </button>
-                      ))}
+              <div className="social-grid">
+                {/* Create Company Card */}
+                <div className="social-company-card" style={{ background: '#F9FAFB', border: '1.5px dashed #E5E7EB' }}>
+                  <h3 style={{ fontSize: '.9rem', fontWeight: 600, color: '#6B7280', marginBottom: 12 }}>
+                    NOVA EMPRESA
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input
+                      type="text"
+                      placeholder="Nome da empresa"
+                      value={newCompanyInput}
+                      onChange={e => setNewCompanyInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleCreateCompany();
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        border: '1.5px solid #E5E7EB',
+                        borderRadius: '6px',
+                        fontSize: '.875rem',
+                        outline: 'none',
+                      }}
+                    />
+                    <button
+                      className="btn btn-primary"
+                      style={{ width: '100%', justifyContent: 'center' }}
+                      onClick={handleCreateCompany}
+                      disabled={!newCompanyInput.trim()}
+                    >
+                      Criar Empresa
+                    </button>
+                  </div>
+                </div>
+
+                {/* Company Cards */}
+                {companies.map(company => (
+                  <div key={company.id} className="social-company-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 12 }}>
+                      <div>
+                        <h3 className="social-company-name">{company.name}</h3>
+                        <p style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 4 }}>
+                          {company.accountCount || 0} contas
+                        </p>
+                      </div>
+                      <button
+                        className="btn btn-danger"
+                        style={{ padding: '4px 8px', fontSize: '.75rem', height: 'auto' }}
+                        disabled={deletingCompany === company.id}
+                        onClick={() => {
+                          if (confirmDeleteCompanyId === company.id) {
+                            handleDeleteCompany(company.id);
+                          } else {
+                            setConfirmDeleteCompanyId(company.id);
+                          }
+                        }}
+                      >
+                        {deletingCompany === company.id ? (
+                          <>
+                            <span className="loader" style={{ width: 10, height: 10 }} />
+                            Apagando...
+                          </>
+                        ) : confirmDeleteCompanyId === company.id ? (
+                          'Confirmar'
+                        ) : (
+                          'Apagar'
+                        )}
+                      </button>
                     </div>
-                  )}
-                  <button
-                    className="btn btn-ghost"
-                    style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
-                    onClick={() => {
-                      setShowingNewCompanyForm(false);
-                      handleSetNewCompanyName('');
-                    }}
-                  >
-                    Cancelar
-                  </button>
+                    {confirmDeleteCompanyId === company.id && (
+                      <p style={{ fontSize: '.75rem', color: '#DC2626', marginBottom: 8 }}>
+                        As contas ligadas ficarão sem empresa.
+                      </p>
+                    )}
+                    {confirmDeleteCompanyId === company.id && (
+                      <button
+                        className="btn btn-ghost"
+                        style={{ padding: '4px 8px', fontSize: '.75rem', height: 'auto', width: '100%' }}
+                        onClick={() => setConfirmDeleteCompanyId(null)}
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {companies.length === 0 && (
+                <div className="empty-state">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                  <p>Nenhuma empresa criada. Começa por criar uma na secção acima.</p>
                 </div>
               )}
             </div>
 
-            {groupCompaniesByName(accounts).length === 0 && !showingNewCompanyForm ? (
-              <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                </svg>
-                <p>Nenhuma empresa conectada. Clica em "Nova Empresa" para começar.</p>
-              </div>
-            ) : (
-              groupCompaniesByName(accounts).map(company => (
-                <div key={company.name} className="social-company-card">
-                  <h3 className="social-company-name">{company.name}</h3>
+            {/* SECTION: Redes Sociais por Empresa */}
+            {companies.length > 0 && (
+              <div>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1F2937', marginBottom: 16 }}>
+                  Conectar Redes Sociais
+                </h2>
 
-                  <div className="social-platforms-grid">
-                    {PLATFORMS.map(({ id, name, color, bg, Icon }) => {
-                      const platformAccounts = company.platforms[id] || [];
-                      const isConnecting = connecting === id;
-                      const hasAccounts = platformAccounts.length > 0;
+                <div className="social-grid">
+                  {companies.map(company => {
+                    const companyAccounts = getAccountsByCompany(company.id);
+                    const hasAnyAccount = Object.values(companyAccounts).some(arr => arr.length > 0);
 
-                      return (
-                        <div key={id} className="social-platform-card">
-                          <div className="social-platform-top">
-                            <div style={{ background: bg, padding: 8, borderRadius: 8, display: 'flex' }}>
-                              <Icon />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 600, color: '#1F2937', fontSize: '.9rem' }}>{name}</div>
-                              <div style={{ fontSize: '.75rem', color: hasAccounts ? '#10B981' : '#6B7280', marginTop: 2 }}>
-                                {hasAccounts ? '✓ Conectado' : '○ Desconectado'}
-                              </div>
-                            </div>
-                          </div>
+                    return (
+                      <div key={company.id} className="social-company-card">
+                        <h3 className="social-company-name" style={{ marginBottom: 12 }}>{company.name}</h3>
 
-                          {hasAccounts && (
-                            <div className="social-platform-account-list">
-                              {platformAccounts.map(account => (
-                                <div key={account.id} className="social-account-item">
-                                  <div style={{ fontWeight: 500, fontSize: '.8rem', color: '#1F2937' }}>
-                                    {account.email || account.name}
+                        <div className="social-platforms-grid">
+                          {PLATFORMS.map(({ id, name, color, bg, Icon }) => {
+                            const platformAccounts = companyAccounts[id] || [];
+                            const isConnecting = connecting === id;
+                            const hasAccounts = platformAccounts.length > 0;
+
+                            return (
+                              <div key={id} className="social-platform-card">
+                                <div className="social-platform-top">
+                                  <div style={{ background: bg, padding: 8, borderRadius: 8, display: 'flex' }}>
+                                    <Icon />
                                   </div>
-                                  {id === 'facebook' && account.pages?.length > 0 && (
-                                    <div style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 3 }}>
-                                      Página: {account.pages[0].name}
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 600, color: '#1F2937', fontSize: '.9rem' }}>{name}</div>
+                                    <div style={{ fontSize: '.75rem', color: hasAccounts ? '#10B981' : '#6B7280', marginTop: 2 }}>
+                                      {hasAccounts ? '✓ Conectado' : '○ Desconectado'}
                                     </div>
-                                  )}
-                                  <div style={{ fontSize: '.7rem', color: '#9CA3AF', marginTop: 3 }}>
-                                    {formatDate(account.connectedAt)}
                                   </div>
-                                  <button
-                                    className="btn btn-danger"
-                                    onClick={() => handleDisconnect(account.id)}
-                                    style={{ marginTop: 6, padding: '4px 8px', fontSize: '.75rem', height: 'auto' }}
-                                  >
-                                    Desconectar
-                                  </button>
                                 </div>
-                              ))}
-                            </div>
-                          )}
 
-                          {!hasAccounts && (
-                            <button
-                              className="btn btn-primary"
-                              style={{
-                                width: '100%',
-                                marginTop: 10,
-                                background: color,
-                                borderColor: color,
-                                fontSize: '.8rem',
-                                padding: '8px 12px',
-                                height: 'auto'
-                              }}
-                              disabled={isConnecting}
-                              onClick={() => handleConnect(id, company.name)}
-                            >
-                              {isConnecting ? (
-                                <>
-                                  <span className="loader" style={{ width: 11, height: 11 }} />
-                                  Ligando...
-                                </>
-                              ) : (
-                                'Conectar'
-                              )}
-                            </button>
-                          )}
+                                {hasAccounts && (
+                                  <div className="social-platform-account-list">
+                                    {platformAccounts.map(account => (
+                                      <div key={account.id} className="social-account-item">
+                                        <div style={{ fontWeight: 500, fontSize: '.8rem', color: '#1F2937' }}>
+                                          {account.email || account.name}
+                                        </div>
+                                        {id === 'facebook' && account.pages?.length > 0 && (
+                                          <div style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 3 }}>
+                                            Página: {account.pages[0].name}
+                                          </div>
+                                        )}
+                                        <div style={{ fontSize: '.7rem', color: '#9CA3AF', marginTop: 3 }}>
+                                          {formatDate(account.connectedAt)}
+                                        </div>
+                                        <button
+                                          className="btn btn-danger"
+                                          onClick={() => handleDisconnect(account.id)}
+                                          style={{ marginTop: 6, padding: '4px 8px', fontSize: '.75rem', height: 'auto' }}
+                                        >
+                                          Desconectar
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {!hasAccounts && (
+                                  <button
+                                    className="btn btn-primary"
+                                    style={{
+                                      width: '100%',
+                                      marginTop: 10,
+                                      background: color,
+                                      borderColor: color,
+                                      fontSize: '.8rem',
+                                      padding: '8px 12px',
+                                      height: 'auto'
+                                    }}
+                                    disabled={isConnecting}
+                                    onClick={() => handleConnect(id, company.name)}
+                                  >
+                                    {isConnecting ? (
+                                      <>
+                                        <span className="loader" style={{ width: 11, height: 11 }} />
+                                        Ligando...
+                                      </>
+                                    ) : (
+                                      'Conectar'
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))
+              </div>
             )}
-          </div>
+          </>
         )}
 
         <div className="social-setup-guide">
