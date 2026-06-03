@@ -235,15 +235,15 @@ function AgentArticleCard({ item, connectedAccounts, companiesData, selection, o
   const bulkStatusColor = bulkStatus === 'success' ? '#10B981' : bulkStatus === 'error' ? '#DC2626' : bulkStatus === 'publishing' ? '#7C3AED' : null;
 
   return (
-    <article className="news-card" style={bulkStatusColor ? { borderLeft: `4px solid ${bulkStatusColor}` } : {}}>
-      {/* Checkbox de seleção múltipla */}
+    <article className="news-card" style={{ ...(bulkStatusColor ? { outline: `2px solid ${bulkStatusColor}` } : {}), position: 'relative' }}>
+      {/* Checkbox de seleção múltipla — canto superior esquerdo sobre a imagem */}
       {onToggleSelect && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px', borderRight: '1px solid #F1F5F9' }}>
+        <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, background: 'white', borderRadius: 4, boxShadow: '0 1px 4px rgba(0,0,0,.2)', padding: 2 }}>
           <input
             type="checkbox"
             checked={isSelected || false}
             onChange={onToggleSelect}
-            style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#7C3AED' }}
+            style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#7C3AED', display: 'block' }}
           />
         </div>
       )}
@@ -949,20 +949,20 @@ export default function DashboardPage() {
             ))}
           </div>
           {/* Botões de seleção múltipla — só visíveis em "Para Revisão" */}
-          {filterStatus === 'pending' && news.length > 0 && (
+          {filterStatus === 'pending' && pendingArticles.length > 0 && (
             <>
               <button
                 className="btn btn-ghost"
                 style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
                 onClick={() => {
-                  if (bulkSelected.size === news.length) {
+                  if (bulkSelected.size === pendingArticles.length) {
                     setBulkSelected(new Set());
                   } else {
-                    setBulkSelected(new Set(news.map(a => a.id)));
+                    setBulkSelected(new Set(pendingArticles.map(a => a.id)));
                   }
                 }}
               >
-                {bulkSelected.size === news.length ? 'Desselecionar Tudo' : 'Selecionar Tudo'}
+                {bulkSelected.size === pendingArticles.length && pendingArticles.length > 0 ? 'Desselecionar Tudo' : 'Selecionar Tudo'}
               </button>
               {bulkSelected.size > 0 && (
                 <button
