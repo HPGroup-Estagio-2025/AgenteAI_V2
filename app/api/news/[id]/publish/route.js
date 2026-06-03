@@ -137,9 +137,11 @@ async function publishToFacebook(item, accountId = null) {
 
   if (!page?.accessToken) {
     const livePages = await fetchFacebookPagesFromToken(account);
-    page = storedPage?.id
-      ? livePages.find(livePage => livePage.id === storedPage.id) || selectFacebookPage(livePages)
-      : selectFacebookPage(livePages);
+    // Tenta encontrar a página pelo ID guardado, depois qualquer página com token
+    page = (storedPage?.id ? livePages.find(p => p.id === storedPage.id) : null)
+      || livePages.find(p => p.accessToken)
+      || selectFacebookPage(livePages);
+    console.log('[facebook] Página selecionada após fetch ao vivo:', page ? { id: page.id, name: page.name, hasToken: Boolean(page.accessToken) } : null);
   }
 
   if (!page?.accessToken) {
