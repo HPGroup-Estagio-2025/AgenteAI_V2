@@ -325,11 +325,40 @@ function scoreArticles(items, maxArticles = 5) {
   });
 
   const sorted = validatedItems.sort((a, b) => b.finalScore - a.finalScore);
-  const validated = sorted.filter(a => a.isValidated);
-  if (validated.length >= maxArticles) return validated.slice(0, maxArticles);
-  // Se não há validados suficientes, completa com os melhores restantes
-  const rest = sorted.filter(a => !a.isValidated);
-  return [...validated, ...rest].slice(0, maxArticles);
+  const allCandidates = sorted.filter(a => a.isValidated);
+
+  // Distribui de forma equilibrada pelos setores prioritários
+  const prioritySectors = ['marine', 'defense', 'space', 'aviation', 'railway', 'supplyChain', 'logistics', 'industry', 'engineering', 'automotive'];
+  const maxPerSector = Math.max(1, Math.ceil(maxArticles / prioritySectors.length) + 1);
+  const sectorCounts = {};
+  const selected = [];
+
+  // Passa 1: seleciona até maxPerSector por setor, por ordem de score
+  for (const article of allCandidates) {
+    if (selected.length >= maxArticles) break;
+    const primarySector = article.matchedSectors?.[0] || 'other';
+    const count = sectorCounts[primarySector] || 0;
+    if (count < maxPerSector) {
+      selected.push(article);
+      sectorCounts[primarySector] = count + 1;
+    }
+  }
+
+  // Passa 2: se ainda faltam artigos, preenche com os restantes por score
+  if (selected.length < maxArticles) {
+    for (const article of allCandidates) {
+      if (selected.length >= maxArticles) break;
+      if (!selected.includes(article)) selected.push(article);
+    }
+  }
+
+  // Se ainda não há validados suficientes, completa com os não validados
+  if (selected.length < maxArticles) {
+    const rest = sorted.filter(a => !a.isValidated && !selected.includes(a));
+    selected.push(...rest.slice(0, maxArticles - selected.length));
+  }
+
+  return selected.slice(0, maxArticles);
 }
 
 function articleId() {
