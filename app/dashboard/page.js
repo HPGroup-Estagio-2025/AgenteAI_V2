@@ -772,10 +772,13 @@ export default function DashboardPage() {
         <div className="header-inner">
           <div className="header-brand">
             <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
-              <rect width="40" height="40" rx="10" fill="#2563EB"/>
-              <path d="M10 28V14h4l6 9 6-9h4v14h-4V20l-6 8-6-8v8H10Z" fill="white"/>
+              <rect width="40" height="40" rx="10" fill="#7C3AED"/>
+              <circle cx="20" cy="16" r="6" fill="white" opacity="0.9"/>
+              <circle cx="20" cy="16" r="3" fill="#7C3AED"/>
+              <rect x="10" y="26" width="20" height="3" rx="1.5" fill="white" opacity="0.7"/>
+              <rect x="13" y="31" width="14" height="3" rx="1.5" fill="white" opacity="0.5"/>
             </svg>
-            <span>Dashboard de Notícias</span>
+            <span>Publixy</span>
           </div>
           <nav className="header-nav">
             <button className="header-nav-item active">Notícias</button>

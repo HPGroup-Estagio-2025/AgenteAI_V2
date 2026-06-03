@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Dashboard de Notícias',
-  description: 'Dashboard de gestão de notícias',
+  title: 'Publixy',
+  description: 'O agente que pesquisa, avalia e publica por si.',
 };
 
 export default function RootLayout({ children }) {

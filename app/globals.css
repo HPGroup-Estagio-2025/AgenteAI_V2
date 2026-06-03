@@ -1,8 +1,9 @@
 /* ── Variables ─────────────────────────────────────────────────── */
 :root {
-  --blue-600: #2563EB;
-  --blue-700: #1D4ED8;
-  --blue-50:  #EFF6FF;
+  /* Publixy brand — purple */
+  --blue-600: #7C3AED;
+  --blue-700: #6D28D9;
+  --blue-50:  #F5F3FF;
   --green-600: #16A34A;
   --green-50:  #F0FDF4;
   --green-100: #DCFCE7;
@@ -91,7 +92,7 @@ textarea {
 }
 input:focus, textarea:focus {
   border-color: var(--blue-600);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  box-shadow: 0 0 0 3px rgba(124,58,237,.15);
 }
 textarea { resize: vertical; }
 .input-wrapper { position: relative; }
@@ -133,11 +134,11 @@ textarea { resize: vertical; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #EFF6FF 0%, #E0E7FF 100%);
+  background: linear-gradient(135deg, #1E0A3C 0%, #2D1B69 50%, #1a1040 100%);
   padding: 24px;
 }
 .login-container { width: 100%; max-width: 420px; }
-.login-card { background: var(--white); border-radius: var(--radius-lg); padding: 40px; box-shadow: var(--shadow-lg); }
+.login-card { background: rgba(255,255,255,.97); border-radius: var(--radius-lg); padding: 40px; box-shadow: 0 25px 60px rgba(0,0,0,.4), 0 0 0 1px rgba(124,58,237,.15); }
 .login-header { text-align: center; margin-bottom: 32px; }
 .login-logo { margin-bottom: 16px; }
 .login-header h1 { font-size: 1.375rem; font-weight: 700; color: var(--gray-900); margin-bottom: 6px; }
@@ -148,9 +149,9 @@ textarea { resize: vertical; }
 .dashboard-page { min-height: 100vh; }
 
 /* Header */
-.header { background: var(--white); border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm); }
+.header { background: linear-gradient(90deg, #1E0A3C 0%, #2D1B69 100%); border-bottom: 1px solid rgba(124,58,237,.3); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,.3); }
 .header-inner { max-width: 1280px; margin: 0 auto; padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.header-brand { display: flex; align-items: center; gap: 10px; font-size: 1.0625rem; font-weight: 700; color: var(--gray-900); flex-shrink: 0; }
+.header-brand { display: flex; align-items: center; gap: 10px; font-size: 1.0625rem; font-weight: 700; color: var(--white); flex-shrink: 0; }
 .header-actions { display: flex; align-items: center; gap: 12px; }
 .refresh-info { display: flex; align-items: center; gap: 6px; font-size: .75rem; color: var(--gray-400); }
 .user-badge { display: flex; align-items: center; gap: 6px; font-size: .875rem; font-weight: 500; color: var(--gray-600); padding: 6px 12px; background: var(--gray-100); border-radius: 20px; }

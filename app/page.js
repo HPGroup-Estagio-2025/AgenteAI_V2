@@ -65,13 +65,16 @@ export default function LoginPage() {
         <div className="login-card">
           <div className="login-header">
             <div className="login-logo">
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                <rect width="40" height="40" rx="10" fill="#2563EB" />
-                <path d="M10 28V14h4l6 9 6-9h4v14h-4V20l-6 8-6-8v8H10Z" fill="white" />
+              <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                <rect width="56" height="56" rx="14" fill="#7C3AED"/>
+                <circle cx="28" cy="22" r="8" fill="white" opacity="0.9"/>
+                <circle cx="28" cy="22" r="4" fill="#7C3AED"/>
+                <rect x="14" y="36" width="28" height="4" rx="2" fill="white" opacity="0.7"/>
+                <rect x="18" y="43" width="20" height="4" rx="2" fill="white" opacity="0.5"/>
               </svg>
             </div>
-            <h1>Dashboard de Notícias</h1>
-            <p>Acede com as tuas credenciais de administrador</p>
+            <h1 style={{ fontSize: '1.75rem', background: 'linear-gradient(135deg, #7C3AED, #A855F7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Publixy</h1>
+            <p>O agente que pesquisa, avalia e publica por si</p>
           </div>
 
           <form onSubmit={handleSubmit} noValidate>
