@@ -96,6 +96,42 @@ function buildFacebookMessage(item, readMoreUrl) {
     .filter(Boolean).join('\n\n').slice(0, 60000);
 }
 
+function generateHashtags(item) {
+  const text = `${item.title || ''} ${item.description || ''} ${item.content || ''}`.toLowerCase();
+  const tags = [];
+
+  // Setor
+  const sectorTags = {
+    'maritimo':       ['#Maritime', '#Naval', '#Shipping', '#MaritimeIndustry', '#PortOperations'],
+    'defesa-militar': ['#Defense', '#Military', '#NavalDefense', '#DefenceIndustry', '#ArmedForces'],
+    'aeroespacial':   ['#Aerospace', '#Aviation', '#Space', '#AerospaceIndustry', '#Aircraft'],
+    'ferroviario':    ['#Railway', '#RailTransport', '#Rail', '#RollingStock', '#TrainIndustry'],
+  }[item.category] || ['#Industry', '#Engineering', '#Technology'];
+  tags.push(...sectorTags.slice(0, 3));
+
+  // Keywords do título
+  if (text.includes('navy') || text.includes('naval')) tags.push('#Navy');
+  if (text.includes('ship') || text.includes('vessel')) tags.push('#Shipbuilding');
+  if (text.includes('propuls')) tags.push('#Propulsion');
+  if (text.includes('engine') || text.includes('motor')) tags.push('#MarineEngines');
+  if (text.includes('port') || text.includes('porto')) tags.push('#PortInfrastructure');
+  if (text.includes('supply chain') || text.includes('logistics')) tags.push('#SupplyChain');
+  if (text.includes('technology') || text.includes('tech')) tags.push('#Technology');
+  if (text.includes('contract') || text.includes('deal')) tags.push('#BusinessDevelopment');
+  if (text.includes('invest') || text.includes('acquisition')) tags.push('#Investment');
+  if (text.includes('sustainab') || text.includes('green')) tags.push('#Sustainability');
+  if (text.includes('digital') || text.includes('ai') || text.includes('automat')) tags.push('#Innovation');
+  if (text.includes('europe') || text.includes('nato')) tags.push('#Europe');
+  if (text.includes('space') || text.includes('satellite')) tags.push('#SpaceTech');
+  if (text.includes('drone') || text.includes('uav') || text.includes('unmanned')) tags.push('#UnmannedSystems');
+
+  // Tags fixas da empresa
+  tags.push('#PartYard', '#PartYardMarine', '#MovingTheSeaWithUs');
+
+  // Remove duplicados e limita a 12
+  return [...new Set(tags)].slice(0, 12).join(' ');
+}
+
 function buildWordPressContent(item, company) {
   const title = item.title || '';
   const description = item.description || item.summary || item.excerpt || item.content || '';
@@ -106,89 +142,87 @@ function buildWordPressContent(item, company) {
   const companyName = company?.name || '';
   const companyUrl = company?.website_url || '';
   const sectorLabel = sector ? sector.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Industry';
+  const hashtags = generateHashtags(item);
 
-  // Contexto adicional baseado no setor — expande o conteúdo real
-  const sectorAdditions = {
-    'maritimo': [
-      `The maritime sector, which accounts for over 80% of global trade by volume, continues to evolve at a rapid pace. Port authorities, shipowners, and logistics providers are under increasing pressure to modernise infrastructure, adopt cleaner technologies, and respond to shifting trade routes driven by geopolitical events.`,
-      `For companies like ${companyName || 'industry operators'} operating across the maritime supply chain, staying ahead of these changes is not optional — it is a business necessity. From spare parts procurement to engine maintenance, every link in the chain must adapt to maintain efficiency and reliability.`,
-    ],
-    'defesa-militar': [
-      `Defence spending globally reached record levels in recent years, with NATO members and allied nations investing heavily in new capabilities, interoperability, and readiness. The evolving security landscape demands not only advanced hardware but also resilient supply chains capable of delivering critical components under pressure.`,
-      `For suppliers and service providers in the defence ecosystem, this environment creates both challenges and opportunities. Long-term contracts, stringent compliance requirements, and the need for rapid response make it essential to work with trusted, experienced partners who understand the complexity of the sector.`,
-    ],
-    'aeroespacial': [
-      `The aerospace and aviation industry is navigating a period of significant transformation. Commercial aviation continues its post-pandemic recovery while the space economy expands at an unprecedented rate, with new launch providers, satellite constellations, and in-orbit services reshaping the competitive landscape.`,
-      `Across both sub-sectors, the demand for precision components, advanced materials, and reliable maintenance services remains robust. Companies that can deliver on quality, traceability, and lead time will find themselves well-positioned to capture a growing share of this dynamic market.`,
-    ],
-    'ferroviario': [
-      `Rail transport is experiencing a global renaissance, driven by decarbonisation targets, urban congestion challenges, and the proven efficiency of rail freight over long distances. Major infrastructure programmes across Europe, Asia, and North America are creating sustained demand for rolling stock, signalling systems, and maintenance services.`,
-      `The shift towards high-speed rail and electrified networks also brings new requirements for specialised components and engineering expertise. Industry players that invest early in understanding these evolving specifications will be best placed to win contracts in this growing segment.`,
-    ],
-  }[sector] || [
-    `The broader industrial sector is undergoing a period of structural change, driven by digitalisation, sustainability mandates, and the reconfiguration of global supply chains following recent disruptions. Companies across manufacturing, engineering, and logistics are being asked to do more with less while maintaining the quality and reliability their customers demand.`,
-    `In this environment, access to accurate, timely industry intelligence is a key competitive advantage. Organisations that monitor market developments closely — and act on them swiftly — are better positioned to identify risks early and seize emerging opportunities before competitors.`,
-  ];
+  // Subtítulos e contexto expandido por setor
+  const sectorContent = {
+    'maritimo': {
+      sub1: 'A Changing Maritime Landscape',
+      p1: `The global maritime industry is undergoing significant transformation. Port authorities, shipowners, and logistics operators face mounting pressure to modernise infrastructure, embrace greener technologies, and adapt to shifting trade routes shaped by geopolitical developments and environmental regulations. This context makes every major development in the sector particularly noteworthy.`,
+      sub2: 'What This Means for the Supply Chain',
+      p2: `For companies operating across the maritime supply chain — from spare parts procurement and engine repair to logistics and port services — staying ahead of industry developments is essential. The ability to anticipate change, source the right components, and maintain operational continuity defines competitive advantage in this demanding sector. At ${companyName || 'PartYard'}, we monitor these trends closely to better serve our clients across the globe.`,
+    },
+    'defesa-militar': {
+      sub1: 'The Evolving Defence Landscape',
+      p1: `Global defence spending continues to rise as nations invest in new capabilities, readiness, and strategic partnerships. The demand for advanced systems, resilient supply chains, and trusted suppliers has never been higher. Every significant procurement decision or technological milestone in this sector carries broad implications for industry players and allied nations alike.`,
+      sub2: 'Implications for Industry and Suppliers',
+      p2: `For suppliers and service providers operating within the defence ecosystem, this environment presents both opportunities and responsibilities. Meeting the exacting standards of defence programmes requires deep technical knowledge, strict compliance, and a commitment to delivery under pressure. At ${companyName || 'PartYard'}, we understand these demands and work to support our clients with the parts and expertise they need.`,
+    },
+    'aeroespacial': {
+      sub1: 'Aerospace in Transformation',
+      p1: `The aerospace and aviation sectors are evolving at a rapid pace. Commercial aviation continues its recovery trajectory, while the space economy expands with new launch providers, satellite networks, and in-orbit services. These shifts create sustained demand for precision components, advanced materials, and reliable engineering support across the value chain.`,
+      sub2: 'Opportunities Across the Value Chain',
+      p2: `For businesses operating in or adjacent to the aerospace sector, keeping pace with these changes is critical. Whether it is sourcing specialist parts, maintaining complex systems, or adapting logistics to new operational realities, agility and expertise are key. ${companyName || 'PartYard'} is positioned to support clients navigating this dynamic environment.`,
+    },
+    'ferroviario': {
+      sub1: 'A New Era for Rail',
+      p1: `Rail transport is experiencing a global revival, underpinned by decarbonisation goals, urbanisation, and the proven efficiency of rail freight. Major infrastructure projects across Europe, Asia, and North America are generating sustained demand for rolling stock, signalling systems, and maintenance expertise — creating significant opportunities for well-positioned suppliers and service providers.`,
+      sub2: 'Supply Chain and Maintenance Considerations',
+      p2: `The shift towards electrified and high-speed rail networks introduces new technical requirements for components and maintenance. Organisations that invest early in understanding these specifications and building robust supply chains will be best placed to win and deliver on major contracts. ${companyName || 'PartYard'} follows these developments closely to ensure our clients are always a step ahead.`,
+    },
+  }[sector] || {
+    sub1: 'Broader Industry Context',
+    p1: `The industrial and engineering sectors continue to navigate a period of structural change — driven by digitalisation, sustainability imperatives, and supply chain reconfiguration. Companies across manufacturing, logistics, and technical services are adapting to new demands while maintaining the quality and reliability their customers depend on.`,
+    sub2: 'Staying Ahead of the Curve',
+    p2: `In this environment, access to timely and accurate industry intelligence is a genuine competitive advantage. Organisations that monitor market developments closely, and act decisively, are better positioned to manage risk and capitalise on emerging opportunities. At ${companyName || 'PartYard'}, we are committed to keeping our clients informed and supported.`,
+  };
 
   return `<!-- wp:image {"align":"wide","sizeSlug":"large"} -->
 ${imageUrl ? `<figure class="wp-block-image alignwide size-large"><img src="${imageUrl}" alt="${title}" /></figure>` : ''}
 <!-- /wp:image -->
 
 <!-- wp:paragraph -->
-<p><strong>${description || title}</strong></p>
+<p>${description || title}${sourceUrl ? ` <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">Read the full story here.</a>` : ''}</p>
 <!-- /wp:paragraph -->
 
-<!-- wp:heading {"level":2} -->
-<h2>What Happened</h2>
+<!-- wp:paragraph -->
+<p>${description.length > 100 ? `${description} According to ${sourceUrl ? `<a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">the original report</a>` : 'industry sources'}${publishedAt ? `, published on ${publishedAt}` : ''}, this development is expected to have meaningful implications across the ${sectorLabel.toLowerCase()} sector.` : `This development, reported ${publishedAt ? `on ${publishedAt}` : 'recently'}${sourceUrl ? ` by <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">industry sources</a>` : ''}, reflects the ongoing changes shaping the ${sectorLabel.toLowerCase()} landscape.`}</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3>${sectorContent.sub1}</h3>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>${description || title} ${sourceUrl ? `This was reported by <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">the original source</a>${publishedAt ? ` on ${publishedAt}` : ''}.` : ''}</p>
+<p>${sectorContent.p1}</p>
 <!-- /wp:paragraph -->
 
-<!-- wp:heading {"level":2} -->
-<h2>Industry Context</h2>
+<!-- wp:heading {"level":3} -->
+<h3>${sectorContent.sub2}</h3>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>${sectorAdditions[0]}</p>
-<!-- /wp:paragraph -->
-
-<!-- wp:heading {"level":2} -->
-<h2>Why It Matters</h2>
-<!-- /wp:heading -->
-
-<!-- wp:paragraph -->
-<p>${sectorAdditions[1]}</p>
-<!-- /wp:paragraph -->
-
-<!-- wp:heading {"level":2} -->
-<h2>Looking Ahead</h2>
-<!-- /wp:heading -->
-
-<!-- wp:paragraph -->
-<p>As this story develops, industry professionals and stakeholders will be monitoring the situation closely. The implications may extend beyond the immediate headline — affecting procurement decisions, operational planning, and strategic partnerships across the ${sectorLabel.toLowerCase()} value chain.</p>
+<p>${sectorContent.p2}</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
-<p>At ${companyName || 'our company'}, we believe that staying informed is the first step to staying competitive. Follow our blog for the latest news and analysis from across the ${sectorLabel.toLowerCase()} sector${companyUrl ? `, or visit <a href="${companyUrl}" target="_blank" rel="noopener noreferrer">our website</a> to learn more about our services` : ''}.
-</p>
+<p>As developments in this area continue to unfold, we will keep monitoring the situation and sharing relevant updates. For businesses that depend on the ${sectorLabel.toLowerCase()} sector, this is a moment to assess current strategies and ensure the right partnerships are in place to respond effectively to what comes next.</p>
 <!-- /wp:paragraph -->
 
-<!-- wp:separator {"className":"is-style-wide"} -->
-<hr class="wp-block-separator has-alpha-channel-opacity is-style-wide"/>
-<!-- /wp:separator -->
-
-<!-- wp:paragraph {"align":"center","style":{"typography":{"fontWeight":"700","fontSize":"1.2rem"}}} -->
-<p class="has-text-align-center"><strong>Moving The Sea With Us!</strong></p>
+<!-- wp:paragraph -->
+<p><strong>Moving The Sea With Us!</strong></p>
 <!-- /wp:paragraph -->
 
-<!-- wp:paragraph {"align":"center"} -->
-<p class="has-text-align-center">Contact us today: <a href="tel:+351265544370">+351 265 544 370</a> or go to <a href="${companyUrl}/contacts" target="_blank" rel="noopener noreferrer">Contacts Page</a><br/>Email: <a href="mailto:sales@partyard.eu">sales@partyard.eu</a></p>
+<!-- wp:paragraph -->
+<p>Contact us today: <a href="tel:+351265544370">+351 265 544 370</a> or go to <a href="${companyUrl}/contacts" target="_blank" rel="noopener noreferrer">Contacts Page</a><br/>Email: <a href="mailto:sales@partyard.eu">sales@partyard.eu</a></p>
 <!-- /wp:paragraph -->
 
-<!-- wp:separator {"className":"is-style-wide"} -->
-<hr class="wp-block-separator has-alpha-channel-opacity is-style-wide"/>
+<!-- wp:paragraph -->
+<p>${hashtags}</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:separator -->
+<hr class="wp-block-separator"/>
 <!-- /wp:separator -->
 
 <!-- wp:paragraph {"className":"article-source"} -->
