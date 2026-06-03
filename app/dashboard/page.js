@@ -56,16 +56,30 @@ function buildCompanies(connectedAccounts, companiesData = []) {
   const metaCompanies = new Map();
   const getMetaKey = acc => acc.companyId || acc.companyName || 'unassigned-meta';
 
+  // Helper: resolve o nome real da empresa a partir de companiesData
+  function resolveCompanyName(acc) {
+    if (acc.companyId) {
+      const dbCompany = companiesData.find(c => c.id === acc.companyId);
+      if (dbCompany?.name) return dbCompany.name;
+    }
+    return acc.companyName || null;
+  }
+
   function upsertMetaAccount(acc, platform) {
     const key = getMetaKey(acc);
     const current = metaCompanies.get(key) || {
       id:         `meta-${key}`,
       companyId:  acc.companyId || null,
-      name:       acc.companyName || 'Conta Meta',
+      name:       resolveCompanyName(acc) || 'Conta Meta',
       picture:    acc.picture,
       platforms:  [],
       accountIds: {},
     };
+    // Atualiza o nome se ainda não foi resolvido (caso companiesData carregue depois)
+    if (current.name === 'Conta Meta') {
+      const resolved = resolveCompanyName(acc);
+      if (resolved) current.name = resolved;
+    }
     if (!current.platforms.includes(platform)) current.platforms.push(platform);
     current.accountIds[platform] = acc.id;
     if (!current.picture && acc.picture) current.picture = acc.picture;
@@ -81,6 +95,7 @@ function buildCompanies(connectedAccounts, companiesData = []) {
   for (const company of companies) {
     if (company.companyId) {
       const dbCompany = companiesData.find(c => c.id === company.companyId);
+      if (dbCompany?.name) company.name = dbCompany.name; // garante nome atualizado
       if (dbCompany?.wordpress_url && dbCompany?.wordpress_username && dbCompany?.wordpress_app_password) {
         if (!company.platforms.includes('wordpress')) company.platforms.push('wordpress');
       }
@@ -89,10 +104,11 @@ function buildCompanies(connectedAccounts, companiesData = []) {
 
   // LinkedIn: cada conta é uma entrada independente
   for (const acc of liAccs) {
+    const dbCompany = acc.companyId ? companiesData.find(c => c.id === acc.companyId) : null;
     companies.push({
       id:         `linkedin-${acc.id}`,
       companyId:  acc.companyId || null,
-      name:       acc.companyName || acc.name,
+      name:       dbCompany?.name || acc.companyName || acc.name,
       picture:    acc.picture,
       platforms:  ['linkedin'],
       accountIds: { linkedin: acc.id },
