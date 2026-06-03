@@ -9,7 +9,7 @@ const CONFIGS = {
 },
   instagram: {
     authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
-    scope: 'pages_show_list,pages_read_engagement,instagram_basic,instagram_content_publish',
+    scope: 'pages_show_list,pages_read_engagement,pages_manage_pages,instagram_basic,instagram_content_publish',
     clientIdEnv: 'FACEBOOK_APP_ID',
   },
   linkedin: {
