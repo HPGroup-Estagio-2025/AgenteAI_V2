@@ -405,6 +405,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         id: articleId(),
         title: article.title.slice(0, 300),
         content: article.postDescription,
+        description: (article.description || article.content || '').slice(0, 500),
         url: article.url || null,
         source: article.source || 'RSS',
         category,

@@ -70,16 +70,22 @@ function selectFacebookPage(pages) {
 }
 
 function buildSocialSummary(item) {
-  const raw = item.description || item.summary || item.excerpt || item.content || '';
-  // Limpa texto gerado pelo agente (remove "Key sectors: ..." e "Source: ...")
-  const clean = raw
-    .replace(/Key sectors:[^.]*\./gi, '')
+  // Usa descrição real do RSS se disponível; senão cai para content e limpa o texto gerado
+  const raw = item.description || item.summary || item.excerpt || '';
+  if (raw.trim().length > 20) {
+    const clean = raw.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    return clean.length > 280 ? clean.slice(0, 277) + '...' : clean;
+  }
+  // Fallback: limpa o postDescription gerado pelo agente
+  const generated = item.content || '';
+  const clean = generated
+    .replace(/Key sectors:[^\n]*/gi, '')
     .replace(/Source:[^\n]*/gi, '')
     .replace(/This article highlights[^.]*\./gi, '')
     .replace(/Sensitive terms[^.]*\./gi, '')
+    .replace((item.title || ''), '')
     .replace(/\s{2,}/g, ' ')
     .trim();
-  // Usa até 280 caracteres para Instagram/Facebook
   return clean.length > 280 ? clean.slice(0, 277) + '...' : clean;
 }
 
