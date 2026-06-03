@@ -106,22 +106,51 @@ function buildWordPressContent(item, company) {
   const companyName = company?.name || '';
   const companyUrl = company?.website_url || '';
 
-  const intro = description.length > 200 ? description : `${description} This development represents a significant evolution in the ${sector || 'industry'} sector, with potential impact on the operations and strategies of key market players.`;
+  const sectorLabel = sector ? sector.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Industry';
 
-  return `<!-- wp:image {"align":"wide"} -->
-${imageUrl ? `<figure class="wp-block-image alignwide"><img src="${imageUrl}" alt="${title}" /></figure>` : ''}
+  // Parágrafo de abertura — reescreve a notícia de forma mais elaborada
+  const opening = description.length > 50
+    ? description
+    : `${title}. This development marks a significant milestone in the global ${sectorLabel.toLowerCase()} landscape.`;
+
+  // Expansão contextual baseada no setor
+  const sectorContext = {
+    'maritimo': 'The maritime and naval industry continues to play a pivotal role in global trade and defence, with an estimated 90% of the world\'s goods transported by sea. Developments in this sector have far-reaching consequences for supply chains, port operations, and naval capabilities across the globe.',
+    'defesa-militar': 'The defence and military sector remains at the forefront of strategic global developments, with nations continuously investing in advanced capabilities, new technologies, and stronger alliances to address evolving security challenges.',
+    'aeroespacial': 'The aerospace and aviation industry is undergoing rapid transformation, driven by technological innovation, increased demand for connectivity, and a growing commercial space economy that is reshaping how we think about air travel and satellite infrastructure.',
+    'ferroviario': 'Rail and railway infrastructure continues to expand globally, driven by sustainability goals, urbanisation pressures, and the need for efficient freight and passenger transport solutions that reduce carbon emissions and ease road congestion.',
+  }[sector] || `The ${sectorLabel.toLowerCase()} sector is experiencing dynamic shifts driven by technological innovation, evolving market demands, and the increasing need for resilient, sustainable operational frameworks across the global supply chain.`;
+
+  return `<!-- wp:image {"align":"wide","sizeSlug":"large"} -->
+${imageUrl ? `<figure class="wp-block-image alignwide size-large"><img src="${imageUrl}" alt="${title}" /></figure>` : ''}
 <!-- /wp:image -->
 
-<!-- wp:paragraph {"className":"article-intro"} -->
-<p class="article-intro"><strong>${intro}</strong></p>
+<!-- wp:paragraph {"className":"article-intro","style":{"typography":{"fontSize":"1.1rem"}}} -->
+<p class="article-intro"><strong>${opening}</strong></p>
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":2} -->
-<h2>Context and Relevance</h2>
+<h2>Overview</h2>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>${description}</p>
+<p>${opening}</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>${sectorContext}</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Key Details</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>According to reports${sourceUrl ? ` from <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">the original source</a>` : ''}, ${opening.charAt(0).toLowerCase() + opening.slice(1)} The situation underscores the importance of staying informed and proactive in an industry where change can happen rapidly and without warning.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Industry analysts note that this type of development typically signals broader trends at play — whether in terms of policy shifts, technological breakthroughs, or major investment decisions. For companies operating in the ${sectorLabel.toLowerCase()} space, understanding these signals early can be the difference between capitalising on new opportunities and being caught off guard.</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":2} -->
@@ -129,11 +158,11 @@ ${imageUrl ? `<figure class="wp-block-image alignwide"><img src="${imageUrl}" al
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>This news has direct implications for companies operating in the ${sector || 'industry and technology'} sector. Organisations that closely monitor these trends will be better positioned to adapt their operational strategies and take advantage of new opportunities emerging in the global market.</p>
+<p>The implications of this development extend across the ${sectorLabel.toLowerCase()} sector and into adjacent markets. Organisations that closely monitor trends in this space will be better positioned to adapt their strategies, optimise operations, and respond to the evolving competitive landscape. From procurement and logistics to technology and engineering, the ripple effects of this news may be felt across multiple layers of the industry.</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
-<p>The constant evolution of this sector requires active monitoring of key trends and developments. Companies like ${companyName || 'leading market players'} stay attentive to these movements to ensure a swift and effective response to market changes.</p>
+<p>Companies like ${companyName || 'leading market players'} remain vigilant in tracking such developments. With deep expertise in the sector, ${companyName || 'industry leaders'} understand that agility and informed decision-making are critical to maintaining a competitive edge in today's fast-moving global market.</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":2} -->
@@ -141,23 +170,27 @@ ${imageUrl ? `<figure class="wp-block-image alignwide"><img src="${imageUrl}" al
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>Developments in this area continue to accelerate. Industry experts anticipate that the implications of this news will be felt over the coming months, with the potential to transform established practices and open new frontiers for innovation and growth.</p>
+<p>As the situation continues to evolve, stakeholders across the ${sectorLabel.toLowerCase()} industry will be watching closely. Experts anticipate that the coming weeks and months could bring further announcements, strategic realignments, or technological advancements that build upon this development.</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
-<p>We recommend that companies assess the potential impact on their operations and consider strategic adjustments in line with these emerging trends.</p>
+<p>For businesses and professionals in the sector, this is a moment to review current strategies, assess supply chain resilience, and explore how emerging trends may create new opportunities or require adjustments to existing plans. Staying connected to reliable industry news and expert analysis will be essential in navigating what lies ahead.</p>
 <!-- /wp:paragraph -->
 
-<!-- wp:separator -->
-<hr class="wp-block-separator"/>
+<!-- wp:separator {"className":"is-style-wide"} -->
+<hr class="wp-block-separator has-alpha-channel-opacity is-style-wide"/>
 <!-- /wp:separator -->
 
-<!-- wp:paragraph -->
-<p><strong>Moving The Sea With Us!</strong><br/>Contact us today: <a href="tel:+351265544370">+351 265 544 370</a> or go to <a href="${companyUrl}/contacts" target="_blank" rel="noopener noreferrer">Contacts Page</a><br/>Email: <a href="mailto:sales@partyard.eu">sales@partyard.eu</a></p>
+<!-- wp:paragraph {"align":"center","style":{"typography":{"fontWeight":"700","fontSize":"1.2rem"}}} -->
+<p class="has-text-align-center"><strong>Moving The Sea With Us!</strong></p>
 <!-- /wp:paragraph -->
 
-<!-- wp:separator -->
-<hr class="wp-block-separator"/>
+<!-- wp:paragraph {"align":"center"} -->
+<p class="has-text-align-center">Contact us today: <a href="tel:+351265544370">+351 265 544 370</a> or go to <a href="${companyUrl}/contacts" target="_blank" rel="noopener noreferrer">Contacts Page</a><br/>Email: <a href="mailto:sales@partyard.eu">sales@partyard.eu</a></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:separator {"className":"is-style-wide"} -->
+<hr class="wp-block-separator has-alpha-channel-opacity is-style-wide"/>
 <!-- /wp:separator -->
 
 <!-- wp:paragraph {"className":"article-source"} -->
