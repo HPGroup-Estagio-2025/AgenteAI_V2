@@ -966,36 +966,21 @@ export default function DashboardPage() {
               </button>
             ))}
           </div>
-          {/* Botões de seleção múltipla — só visíveis em "Para Revisão" */}
+          {/* Selecionar Tudo — só visível em "Para Revisão" */}
           {filterStatus === 'pending' && pendingArticles.length > 0 && (
-            <>
-              <button
-                className="btn btn-ghost"
-                style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
-                onClick={() => {
-                  if (bulkSelected.size === pendingArticles.length) {
-                    setBulkSelected(new Set());
-                  } else {
-                    setBulkSelected(new Set(pendingArticles.map(a => a.id)));
-                  }
-                }}
-              >
-                {bulkSelected.size === pendingArticles.length && pendingArticles.length > 0 ? 'Desselecionar Tudo' : 'Selecionar Tudo'}
-              </button>
-              {bulkSelected.size > 0 && (
-                <button
-                  className="btn btn-success"
-                  style={{ fontSize: '.875rem' }}
-                  onClick={handleBulkPublish}
-                  disabled={bulkPublishing}
-                >
-                  {bulkPublishing
-                    ? <><span className="loader" style={{ width: 14, height: 14 }} /> A publicar...</>
-                    : `Publicar Selecionadas (${bulkSelected.size})`
-                  }
-                </button>
-              )}
-            </>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
+              onClick={() => {
+                if (bulkSelected.size === pendingArticles.length) {
+                  setBulkSelected(new Set());
+                } else {
+                  setBulkSelected(new Set(pendingArticles.map(a => a.id)));
+                }
+              }}
+            >
+              {bulkSelected.size === pendingArticles.length && pendingArticles.length > 0 ? 'Desselecionar Tudo' : 'Selecionar Tudo'}
+            </button>
           )}
           <button type="button" className="btn btn-primary" onClick={runAgentManually} disabled={agentRunning}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1088,6 +1073,87 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {/* ── Carrinho de publicação ─────────────────────────────── */}
+      {filterStatus === 'pending' && (
+        <div style={{
+          position: 'fixed', right: bulkSelected.size > 0 ? 0 : '-340px',
+          top: 64, bottom: 0, width: 320,
+          background: '#fff', boxShadow: '-4px 0 20px rgba(0,0,0,.12)',
+          borderLeft: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column',
+          transition: 'right .3s cubic-bezier(.4,0,.2,1)', zIndex: 200,
+        }}>
+          {/* Header do carrinho */}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #E5E7EB', background: 'linear-gradient(90deg,#1E0A3C,#2D1B69)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+              <span style={{ fontWeight: 700, fontSize: '1rem' }}>Para Publicar</span>
+            </div>
+            <span style={{ background: '#7C3AED', borderRadius: 12, padding: '2px 10px', fontWeight: 700, fontSize: '.85rem' }}>
+              {bulkSelected.size}
+            </span>
+          </div>
+
+          {/* Lista de artigos selecionados */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {pendingArticles.filter(a => bulkSelected.has(a.id)).map(a => (
+              <div key={a.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: '#F9FAFB', borderRadius: 8, padding: 10, border: '1px solid #E5E7EB' }}>
+                {a.imageUrl && (
+                  <img
+                    src={a.imageUrl}
+                    alt=""
+                    onError={e => { e.target.style.display = 'none'; }}
+                    style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
+                  />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '.78rem', fontWeight: 600, color: '#1F2937', lineHeight: 1.3, margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {a.title}
+                  </p>
+                  <p style={{ fontSize: '.7rem', color: '#9CA3AF', margin: '4px 0 0' }}>
+                    {(articleSelections[a.id]?.platforms || []).join(', ') || 'Nenhuma plataforma'}
+                  </p>
+                  {bulkProgress[a.id] && (
+                    <span style={{ fontSize: '.7rem', fontWeight: 600, color: bulkProgress[a.id] === 'success' ? '#10B981' : bulkProgress[a.id] === 'error' ? '#DC2626' : '#7C3AED' }}>
+                      {bulkProgress[a.id] === 'success' ? '✓ Publicado' : bulkProgress[a.id] === 'error' ? '✗ Erro' : '⟳ A publicar...'}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setBulkSelected(prev => { const n = new Set(prev); n.delete(a.id); return n; })}
+                  style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: 2, flexShrink: 0 }}
+                  title="Remover"
+                >✕</button>
+              </div>
+            ))}
+          </div>
+
+          {/* Botão publicar */}
+          <div style={{ padding: '16px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button
+              className="btn btn-success"
+              style={{ width: '100%', justifyContent: 'center', fontSize: '.95rem', padding: '12px' }}
+              onClick={handleBulkPublish}
+              disabled={bulkPublishing || bulkSelected.size === 0}
+            >
+              {bulkPublishing
+                ? <><span className="loader" style={{ width: 16, height: 16 }} /> A publicar...</>
+                : `Publicar ${bulkSelected.size} notícia${bulkSelected.size !== 1 ? 's' : ''}`
+              }
+            </button>
+            <button
+              className="btn btn-ghost"
+              style={{ width: '100%', justifyContent: 'center', fontSize: '.8rem' }}
+              onClick={() => setBulkSelected(new Set())}
+              disabled={bulkPublishing}
+            >
+              Limpar seleção
+            </button>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className={`toast toast-${toast.type}`} role="alert" aria-live="polite">
