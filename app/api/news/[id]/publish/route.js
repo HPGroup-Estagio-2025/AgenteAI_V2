@@ -230,7 +230,7 @@ async function publishToInstagram(item, accountId = null) {
   if (!item.imageUrl) {
     throw Object.assign(new Error('Instagram requer uma imagem na noticia'), { code: 'instagram_no_image' });
   }
-  const caption = buildFacebookMessage(item, null);
+  const caption = buildFacebookMessage(item, item._wpUrl || null);
   console.log('[instagram] A publicar com conta:', {
     id: account.id,
     name: account.name,
@@ -283,7 +283,7 @@ async function publishToInstagram(item, accountId = null) {
   return { platform: 'instagram', postId: publishData.id };
 }
 
-async function publishToFacebook(item, accountId = null, companyUrl = null) {
+async function publishToFacebook(item, accountId = null, companyUrl = null, wordpressUrl = null) {
   const account = accountId ? getAccountById(accountId) : getAccount('facebook');
   if (!account) throw Object.assign(new Error('Facebook nao conectado'), { code: 'facebook_not_connected' });
 
@@ -313,8 +313,32 @@ async function publishToFacebook(item, accountId = null, companyUrl = null) {
       { code: 'facebook_page_missing' }
     );
   }
-  const linkUrl = companyUrl || item.url || null;
-  const body = new URLSearchParams({ access_token: page.accessToken, message: buildFacebookMessage(item, companyUrl) });
+  const linkUrl = wordpressUrl || companyUrl || item.url || null;
+  const message = buildFacebookMessage(item, linkUrl);
+
+  // Se tem imagem, publica como foto com caption (aparece a imagem no post)
+  if (item.imageUrl) {
+    const photoBody = new URLSearchParams({
+      access_token: page.accessToken,
+      url: item.imageUrl,
+      caption: message,
+    });
+    const photoRes = await fetch(`https://graph.facebook.com/v19.0/${page.id}/photos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: photoBody.toString(),
+    });
+    const photoData = await photoRes.json().catch(() => ({}));
+    if (!photoRes.ok) {
+      throw Object.assign(new Error(photoData.error?.message || 'Falha ao publicar foto no Facebook'), {
+        code: 'facebook_publish_failed', details: photoData,
+      });
+    }
+    return { platform: 'facebook', pageId: page.id, pageName: page.name, postId: photoData.post_id || photoData.id };
+  }
+
+  // Sem imagem — publica como post de texto com link
+  const body = new URLSearchParams({ access_token: page.accessToken, message });
   if (linkUrl) body.set('link', linkUrl);
   const res = await fetch(`https://graph.facebook.com/v19.0/${page.id}/feed`, {
     method: 'POST',
@@ -441,6 +465,24 @@ export async function POST(request, { params }) {
       }
     });
 
+    const socialResults = [];
+
+    // Publica no WordPress primeiro para obter o URL do post
+    let wordpressPostUrl = null;
+    if (socialPlatforms.includes('wordpress')) {
+      if (!company) {
+        return NextResponse.json({ error: 'Não foi possível determinar a empresa para publicar no WordPress' }, { status: 409 });
+      }
+      console.log('[publish] Publicando no WordPress para empresa:', company.name);
+      const wpResult = await publishToWordPress(item, company);
+      wordpressPostUrl = wpResult.postUrl || null;
+      socialResults.push(wpResult);
+      console.log('[publish] WordPress URL:', wordpressPostUrl);
+    }
+
+    // Usa URL do WordPress como link no Facebook e Instagram (se disponível)
+    const socialLinkUrl = wordpressPostUrl || companyUrl;
+
     const publishTasks = [];
 
     if (socialPlatforms.includes('facebook')) {
@@ -449,8 +491,8 @@ export async function POST(request, { params }) {
         console.error('[publish] Facebook: nenhuma conta selecionada (accountId=%s) ou na cache', fbAccountId);
         return NextResponse.json({ error: 'Facebook ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
-      console.log('[publish] Publicando no Facebook com accountId=%s', fbAccountId || 'default');
-      publishTasks.push(publishToFacebook(item, fbAccountId, companyUrl));
+      console.log('[publish] Publicando no Facebook com accountId=%s, link=%s', fbAccountId || 'default', socialLinkUrl);
+      publishTasks.push(publishToFacebook(item, fbAccountId, companyUrl, wordpressPostUrl));
     }
 
     if (socialPlatforms.includes('instagram')) {
@@ -460,18 +502,12 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: 'Instagram ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
       console.log('[publish] Publicando no Instagram com accountId=%s', igAccountId || 'default');
-      publishTasks.push(publishToInstagram(item, igAccountId));
+      // Atualiza caption do Instagram com link do WordPress se disponível
+      publishTasks.push(publishToInstagram({ ...item, _wpUrl: wordpressPostUrl }, igAccountId));
     }
 
-    if (socialPlatforms.includes('wordpress')) {
-      if (!company) {
-        return NextResponse.json({ error: 'Não foi possível determinar a empresa para publicar no WordPress' }, { status: 409 });
-      }
-      console.log('[publish] Publicando no WordPress para empresa:', company.name);
-      publishTasks.push(publishToWordPress(item, company));
-    }
-
-    const socialResults = await Promise.all(publishTasks);
+    const remainingResults = await Promise.all(publishTasks);
+    socialResults.push(...remainingResults);
 
     const updated = await updateNews(id, {
       status: 'published',
