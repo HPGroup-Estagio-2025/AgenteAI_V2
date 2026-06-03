@@ -115,6 +115,24 @@ function buildCompanies(connectedAccounts, companiesData = []) {
     });
   }
 
+  // Adiciona empresas do Supabase que ainda não estão representadas por nenhuma conta social
+  const representedCompanyIds = new Set(companies.map(c => c.companyId).filter(Boolean));
+  for (const dbCompany of companiesData) {
+    if (representedCompanyIds.has(dbCompany.id)) continue;
+    const platforms = [];
+    if (dbCompany.wordpress_url && dbCompany.wordpress_username && dbCompany.wordpress_app_password) {
+      platforms.push('wordpress');
+    }
+    companies.push({
+      id:         `db-${dbCompany.id}`,
+      companyId:  dbCompany.id,
+      name:       dbCompany.name,
+      picture:    null,
+      platforms,
+      accountIds: {},
+    });
+  }
+
   return companies;
 }
 
