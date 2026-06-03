@@ -771,13 +771,7 @@ export default function DashboardPage() {
       <header className="header">
         <div className="header-inner">
           <div className="header-brand">
-            <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
-              <rect width="40" height="40" rx="10" fill="#7C3AED"/>
-              <circle cx="20" cy="16" r="6" fill="white" opacity="0.9"/>
-              <circle cx="20" cy="16" r="3" fill="#7C3AED"/>
-              <rect x="10" y="26" width="20" height="3" rx="1.5" fill="white" opacity="0.7"/>
-              <rect x="13" y="31" width="14" height="3" rx="1.5" fill="white" opacity="0.5"/>
-            </svg>
+            <img src="/robot-logo.svg" width="36" height="36" alt="Publixy" style={{borderRadius:8}} />
             <span>Publixy</span>
           </div>
           <nav className="header-nav">

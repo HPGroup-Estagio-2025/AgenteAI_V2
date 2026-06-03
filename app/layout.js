@@ -9,6 +9,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt">
       <head>
+        <link rel="icon" type="image/svg+xml" href="/robot-logo.svg" />
         <link rel="stylesheet" href="/css/style.css" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
