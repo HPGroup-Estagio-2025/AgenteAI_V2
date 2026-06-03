@@ -105,76 +105,74 @@ function buildWordPressContent(item, company) {
   const publishedAt = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
   const companyName = company?.name || '';
   const companyUrl = company?.website_url || '';
-
   const sectorLabel = sector ? sector.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Industry';
 
-  // Parágrafo de abertura — reescreve a notícia de forma mais elaborada
-  const opening = description.length > 50
-    ? description
-    : `${title}. This development marks a significant milestone in the global ${sectorLabel.toLowerCase()} landscape.`;
-
-  // Expansão contextual baseada no setor
-  const sectorContext = {
-    'maritimo': 'The maritime and naval industry continues to play a pivotal role in global trade and defence, with an estimated 90% of the world\'s goods transported by sea. Developments in this sector have far-reaching consequences for supply chains, port operations, and naval capabilities across the globe.',
-    'defesa-militar': 'The defence and military sector remains at the forefront of strategic global developments, with nations continuously investing in advanced capabilities, new technologies, and stronger alliances to address evolving security challenges.',
-    'aeroespacial': 'The aerospace and aviation industry is undergoing rapid transformation, driven by technological innovation, increased demand for connectivity, and a growing commercial space economy that is reshaping how we think about air travel and satellite infrastructure.',
-    'ferroviario': 'Rail and railway infrastructure continues to expand globally, driven by sustainability goals, urbanisation pressures, and the need for efficient freight and passenger transport solutions that reduce carbon emissions and ease road congestion.',
-  }[sector] || `The ${sectorLabel.toLowerCase()} sector is experiencing dynamic shifts driven by technological innovation, evolving market demands, and the increasing need for resilient, sustainable operational frameworks across the global supply chain.`;
+  // Contexto adicional baseado no setor — expande o conteúdo real
+  const sectorAdditions = {
+    'maritimo': [
+      `The maritime sector, which accounts for over 80% of global trade by volume, continues to evolve at a rapid pace. Port authorities, shipowners, and logistics providers are under increasing pressure to modernise infrastructure, adopt cleaner technologies, and respond to shifting trade routes driven by geopolitical events.`,
+      `For companies like ${companyName || 'industry operators'} operating across the maritime supply chain, staying ahead of these changes is not optional — it is a business necessity. From spare parts procurement to engine maintenance, every link in the chain must adapt to maintain efficiency and reliability.`,
+    ],
+    'defesa-militar': [
+      `Defence spending globally reached record levels in recent years, with NATO members and allied nations investing heavily in new capabilities, interoperability, and readiness. The evolving security landscape demands not only advanced hardware but also resilient supply chains capable of delivering critical components under pressure.`,
+      `For suppliers and service providers in the defence ecosystem, this environment creates both challenges and opportunities. Long-term contracts, stringent compliance requirements, and the need for rapid response make it essential to work with trusted, experienced partners who understand the complexity of the sector.`,
+    ],
+    'aeroespacial': [
+      `The aerospace and aviation industry is navigating a period of significant transformation. Commercial aviation continues its post-pandemic recovery while the space economy expands at an unprecedented rate, with new launch providers, satellite constellations, and in-orbit services reshaping the competitive landscape.`,
+      `Across both sub-sectors, the demand for precision components, advanced materials, and reliable maintenance services remains robust. Companies that can deliver on quality, traceability, and lead time will find themselves well-positioned to capture a growing share of this dynamic market.`,
+    ],
+    'ferroviario': [
+      `Rail transport is experiencing a global renaissance, driven by decarbonisation targets, urban congestion challenges, and the proven efficiency of rail freight over long distances. Major infrastructure programmes across Europe, Asia, and North America are creating sustained demand for rolling stock, signalling systems, and maintenance services.`,
+      `The shift towards high-speed rail and electrified networks also brings new requirements for specialised components and engineering expertise. Industry players that invest early in understanding these evolving specifications will be best placed to win contracts in this growing segment.`,
+    ],
+  }[sector] || [
+    `The broader industrial sector is undergoing a period of structural change, driven by digitalisation, sustainability mandates, and the reconfiguration of global supply chains following recent disruptions. Companies across manufacturing, engineering, and logistics are being asked to do more with less while maintaining the quality and reliability their customers demand.`,
+    `In this environment, access to accurate, timely industry intelligence is a key competitive advantage. Organisations that monitor market developments closely — and act on them swiftly — are better positioned to identify risks early and seize emerging opportunities before competitors.`,
+  ];
 
   return `<!-- wp:image {"align":"wide","sizeSlug":"large"} -->
 ${imageUrl ? `<figure class="wp-block-image alignwide size-large"><img src="${imageUrl}" alt="${title}" /></figure>` : ''}
 <!-- /wp:image -->
 
-<!-- wp:paragraph {"className":"article-intro","style":{"typography":{"fontSize":"1.1rem"}}} -->
-<p class="article-intro"><strong>${opening}</strong></p>
+<!-- wp:paragraph -->
+<p><strong>${description || title}</strong></p>
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":2} -->
-<h2>Overview</h2>
+<h2>What Happened</h2>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>${opening}</p>
-<!-- /wp:paragraph -->
-
-<!-- wp:paragraph -->
-<p>${sectorContext}</p>
+<p>${description || title} ${sourceUrl ? `This was reported by <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">the original source</a>${publishedAt ? ` on ${publishedAt}` : ''}.` : ''}</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":2} -->
-<h2>Key Details</h2>
+<h2>Industry Context</h2>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>According to reports${sourceUrl ? ` from <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">the original source</a>` : ''}, ${opening.charAt(0).toLowerCase() + opening.slice(1)} The situation underscores the importance of staying informed and proactive in an industry where change can happen rapidly and without warning.</p>
-<!-- /wp:paragraph -->
-
-<!-- wp:paragraph -->
-<p>Industry analysts note that this type of development typically signals broader trends at play — whether in terms of policy shifts, technological breakthroughs, or major investment decisions. For companies operating in the ${sectorLabel.toLowerCase()} space, understanding these signals early can be the difference between capitalising on new opportunities and being caught off guard.</p>
+<p>${sectorAdditions[0]}</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":2} -->
-<h2>Industry Impact</h2>
+<h2>Why It Matters</h2>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>The implications of this development extend across the ${sectorLabel.toLowerCase()} sector and into adjacent markets. Organisations that closely monitor trends in this space will be better positioned to adapt their strategies, optimise operations, and respond to the evolving competitive landscape. From procurement and logistics to technology and engineering, the ripple effects of this news may be felt across multiple layers of the industry.</p>
-<!-- /wp:paragraph -->
-
-<!-- wp:paragraph -->
-<p>Companies like ${companyName || 'leading market players'} remain vigilant in tracking such developments. With deep expertise in the sector, ${companyName || 'industry leaders'} understand that agility and informed decision-making are critical to maintaining a competitive edge in today's fast-moving global market.</p>
+<p>${sectorAdditions[1]}</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":2} -->
-<h2>What to Expect Next</h2>
+<h2>Looking Ahead</h2>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>As the situation continues to evolve, stakeholders across the ${sectorLabel.toLowerCase()} industry will be watching closely. Experts anticipate that the coming weeks and months could bring further announcements, strategic realignments, or technological advancements that build upon this development.</p>
+<p>As this story develops, industry professionals and stakeholders will be monitoring the situation closely. The implications may extend beyond the immediate headline — affecting procurement decisions, operational planning, and strategic partnerships across the ${sectorLabel.toLowerCase()} value chain.</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
-<p>For businesses and professionals in the sector, this is a moment to review current strategies, assess supply chain resilience, and explore how emerging trends may create new opportunities or require adjustments to existing plans. Staying connected to reliable industry news and expert analysis will be essential in navigating what lies ahead.</p>
+<p>At ${companyName || 'our company'}, we believe that staying informed is the first step to staying competitive. Follow our blog for the latest news and analysis from across the ${sectorLabel.toLowerCase()} sector${companyUrl ? `, or visit <a href="${companyUrl}" target="_blank" rel="noopener noreferrer">our website</a> to learn more about our services` : ''}.
+</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:separator {"className":"is-style-wide"} -->
@@ -369,30 +367,34 @@ async function publishToFacebook(item, accountId = null, companyUrl = null, word
   const linkUrl = wordpressUrl || item.url || null;
   const message = buildFacebookMessage(item, linkUrl);
 
-  // Se tem imagem, publica como foto com caption (aparece a imagem no post)
+  // Se tem imagem, tenta publicar como foto (tenta URL original, depois proxy)
   if (item.imageUrl) {
-    // Usa proxy wsrv.nl para garantir que a imagem é acessível pelo Facebook
-    const fbImageUrl = `https://wsrv.nl/?url=${encodeURIComponent(item.imageUrl)}&w=1200&h=630&fit=cover&a=attention&output=jpg`;
-    const photoBody = new URLSearchParams({
-      access_token: page.accessToken,
-      url: fbImageUrl,
-      caption: message,
-    });
-    const photoRes = await fetch(`https://graph.facebook.com/v19.0/${page.id}/photos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: photoBody.toString(),
-    });
-    const photoData = await photoRes.json().catch(() => ({}));
-    if (!photoRes.ok) {
-      throw Object.assign(new Error(photoData.error?.message || 'Falha ao publicar foto no Facebook'), {
-        code: 'facebook_publish_failed', details: photoData,
+    const imageUrls = [
+      item.imageUrl,
+      `https://wsrv.nl/?url=${encodeURIComponent(item.imageUrl)}&w=1200&h=630&fit=cover&a=attention&output=jpg`,
+    ];
+    for (const imgUrl of imageUrls) {
+      const photoBody = new URLSearchParams({
+        access_token: page.accessToken,
+        url: imgUrl,
+        caption: message,
       });
+      const photoRes = await fetch(`https://graph.facebook.com/v19.0/${page.id}/photos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: photoBody.toString(),
+      });
+      const photoData = await photoRes.json().catch(() => ({}));
+      if (photoRes.ok) {
+        return { platform: 'facebook', pageId: page.id, pageName: page.name, postId: photoData.post_id || photoData.id };
+      }
+      console.warn('[facebook] Imagem falhou, a tentar próxima:', photoData.error?.message);
     }
-    return { platform: 'facebook', pageId: page.id, pageName: page.name, postId: photoData.post_id || photoData.id };
+    // Se ambas as URLs falharam, cai para post com link
+    console.warn('[facebook] Todas as imagens falharam, publicando como link');
   }
 
-  // Sem imagem — publica como post de texto com link
+  // Sem imagem (ou imagem falhou) — publica como post com link (WordPress preview)
   const body = new URLSearchParams({ access_token: page.accessToken, message });
   if (linkUrl) body.set('link', linkUrl);
   const res = await fetch(`https://graph.facebook.com/v19.0/${page.id}/feed`, {
