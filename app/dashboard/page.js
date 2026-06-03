@@ -40,7 +40,7 @@ const SOCIAL_PLATFORMS = [
   { id: 'facebook',  label: 'Facebook' },
   { id: 'instagram', label: 'Instagram' },
   { id: 'linkedin',  label: 'LinkedIn' },
-  { id: 'wordpress', label: 'WordPress' },
+  { id: 'wordpress', label: 'Website' },
 ];
 
 // Constrói lista de empresas a partir das contas ligadas.

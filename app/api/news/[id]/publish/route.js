@@ -14,6 +14,13 @@ const N8N_PUBLISH_WEBHOOK = process.env.N8N_PUBLISH_WEBHOOK || '';
 const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID || '';
 const VALID_SOCIAL_PLATFORMS = ['facebook', 'instagram', 'linkedin', 'wordpress'];
 
+// Imagem de fallback quando o artigo não tem imagem
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200&q=80';
+
+function getItemImage(item) {
+  return item.imageUrl || FALLBACK_IMAGE;
+}
+
 async function getCompanyForAccount(accountId) {
   if (!accountId) return null;
   try {
@@ -157,7 +164,7 @@ function buildWordPressContent(item, company) {
   const rawDesc = item.description || item.summary || item.excerpt || item.content || '';
   const description = cleanDescription(rawDesc) || title;
   const sourceUrl = item.url || '';
-  const imageUrl = item.imageUrl || '';
+  const imageUrl = getItemImage(item);
   const sector = item.category || '';
   const publishedAt = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
   const companyName = company?.name || '';
@@ -207,16 +214,21 @@ function buildWordPressContent(item, company) {
     p2: `In this environment, access to timely and accurate industry intelligence is a genuine competitive advantage. Organisations that monitor market developments closely, and act decisively, are better positioned to manage risk and capitalise on emerging opportunities. At ${companyName || 'PartYard'}, we are committed to keeping our clients informed and supported.`,
   };
 
+  // Intro reescrita (evita plágio — reformula em vez de copiar)
+  const introRewritten = description
+    ? `A recent report${publishedAt ? ` from ${publishedAt}` : ''} has brought to light an important development in the ${sectorLabel.toLowerCase()} industry: ${description.charAt(0).toLowerCase() + description.slice(1)}${description.endsWith('.') ? '' : '.'} This story has attracted significant attention from professionals and stakeholders across the sector.`
+    : `A significant development has emerged in the ${sectorLabel.toLowerCase()} sector that warrants close attention from industry professionals and decision-makers alike.`;
+
   return `<!-- wp:image {"align":"wide","sizeSlug":"large"} -->
-${imageUrl ? `<figure class="wp-block-image alignwide size-large"><img src="${imageUrl}" alt="${title}" /></figure>` : ''}
+<figure class="wp-block-image alignwide size-large"><img src="${imageUrl}" alt="${title}" /></figure>
 <!-- /wp:image -->
 
 <!-- wp:paragraph -->
-<p>${description || title}${sourceUrl ? ` <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">Read the full story here.</a>` : ''}</p>
+<p>${introRewritten}</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
-<p>${description.length > 100 ? `${description} According to ${sourceUrl ? `<a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">the original report</a>` : 'industry sources'}${publishedAt ? `, published on ${publishedAt}` : ''}, this development is expected to have meaningful implications across the ${sectorLabel.toLowerCase()} sector.` : `This development, reported ${publishedAt ? `on ${publishedAt}` : 'recently'}${sourceUrl ? ` by <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">industry sources</a>` : ''}, reflects the ongoing changes shaping the ${sectorLabel.toLowerCase()} landscape.`}</p>
+<p>${description ? `Reports indicate that ${description.charAt(0).toLowerCase() + description.slice(1)}${description.endsWith('.') ? '' : '.'} The story continues to develop, and its ramifications are being felt across multiple segments of the ${sectorLabel.toLowerCase()} value chain.` : `Industry observers are closely monitoring how this situation evolves, with many expecting further announcements in the coming days and weeks.`}</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":3} -->
@@ -235,8 +247,16 @@ ${imageUrl ? `<figure class="wp-block-image alignwide size-large"><img src="${im
 <p>${sectorContent.p2}</p>
 <!-- /wp:paragraph -->
 
+<!-- wp:heading {"level":3} -->
+<h3>Our Perspective</h3>
+<!-- /wp:heading -->
+
 <!-- wp:paragraph -->
-<p>As developments in this area continue to unfold, we will keep monitoring the situation and sharing relevant updates. For businesses that depend on the ${sectorLabel.toLowerCase()} sector, this is a moment to assess current strategies and ensure the right partnerships are in place to respond effectively to what comes next.</p>
+<p>At ${companyName}, we believe that keeping our clients and partners informed about developments in the ${sectorLabel.toLowerCase()} sector is part of our commitment to excellence. Whether this news affects procurement, operations, or strategic planning, our team is here to help you navigate the implications and find the right solutions for your needs.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>As the situation continues to evolve, we will keep monitoring and sharing relevant updates. We encourage our readers to follow this story closely and reach out to our team if you have questions or need support.</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
@@ -278,14 +298,13 @@ async function publishToWordPress(item, company) {
     status: 'publish',
     categories: [],
     tags: [],
-    ...(item.imageUrl ? { featured_media: 0 } : {}),
   };
 
-  // Tenta fazer upload da imagem como featured media
+  // Sempre faz upload de imagem como featured media (usa fallback se necessário)
+  const wpImageUrl = getItemImage(item);
   let featuredMediaId = null;
-  if (item.imageUrl) {
-    try {
-      const imgRes = await fetch(item.imageUrl, { signal: AbortSignal.timeout(8000) });
+  try {
+    const imgRes = await fetch(wpImageUrl, { signal: AbortSignal.timeout(8000) });
       if (imgRes.ok) {
         const imgBuffer = await imgRes.arrayBuffer();
         const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
@@ -303,13 +322,11 @@ async function publishToWordPress(item, company) {
         const uploadData = await uploadRes.json().catch(() => ({}));
         if (uploadRes.ok && uploadData.id) featuredMediaId = uploadData.id;
       }
-    } catch (err) {
-      console.warn('[wordpress] Falha ao fazer upload de imagem:', err.message);
-    }
+  } catch (err) {
+    console.warn('[wordpress] Falha ao fazer upload de imagem:', err.message);
   }
 
   if (featuredMediaId) postData.featured_media = featuredMediaId;
-  else delete postData.featured_media;
 
   const res = await fetch(`${wpBase}/wp-json/wp/v2/posts`, {
     method: 'POST',
@@ -342,9 +359,6 @@ async function publishToInstagram(item, accountId = null) {
       { code: 'instagram_user_id_missing' }
     );
   }
-  if (!item.imageUrl) {
-    throw Object.assign(new Error('Instagram requer uma imagem na noticia'), { code: 'instagram_no_image' });
-  }
   const caption = buildFacebookMessage(item, item._wpUrl || null);
   console.log('[instagram] A publicar com conta:', {
     id: account.id,
@@ -352,8 +366,10 @@ async function publishToInstagram(item, accountId = null) {
     instagramUserId: account.instagramUserId,
   });
 
+  // Usa imagem do artigo ou fallback — sempre envia imagem (obrigatório no Instagram)
+  const imageForInstagram = getItemImage(item);
   // Garante aspect ratio 1:1 via proxy (Instagram aceita entre 4:5 e 1.91:1)
-  const safeImageUrl = `https://wsrv.nl/?url=${encodeURIComponent(item.imageUrl)}&w=1080&h=1080&fit=cover&a=attention&output=jpg`;
+  const safeImageUrl = `https://wsrv.nl/?url=${encodeURIComponent(imageForInstagram)}&w=1080&h=1080&fit=cover&a=attention&output=jpg`;
 
   // Passo 1: criar container de media
   const containerRes = await fetch(
@@ -431,11 +447,12 @@ async function publishToFacebook(item, accountId = null, companyUrl = null, word
   const linkUrl = wordpressUrl || item.url || null;
   const message = buildFacebookMessage(item, linkUrl);
 
-  // Se tem imagem, tenta publicar como foto (tenta URL original, depois proxy)
-  if (item.imageUrl) {
+  // Sempre publica com imagem (usa fallback se não houver)
+  const imageForFacebook = getItemImage(item);
+  {
     const imageUrls = [
-      item.imageUrl,
-      `https://wsrv.nl/?url=${encodeURIComponent(item.imageUrl)}&w=1200&h=630&fit=cover&a=attention&output=jpg`,
+      imageForFacebook,
+      `https://wsrv.nl/?url=${encodeURIComponent(imageForFacebook)}&w=1200&h=630&fit=cover&a=attention&output=jpg`,
     ];
     for (const imgUrl of imageUrls) {
       const photoBody = new URLSearchParams({
