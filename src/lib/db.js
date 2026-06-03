@@ -380,15 +380,15 @@ export async function findNewsByUrl(url) {
 export async function updateNews(id, updates) {
   if (USE_SUPABASE) {
     const mapped = toSupabaseUpdates(updates);
-    const { data, error } = await supabase.from(NEWS_TABLE).update(mapped).eq('id', id).select().single();
-    if (!error) return toDashboardNews(data);
+    const { data, error } = await supabase.from(NEWS_TABLE).update(mapped).eq('id', id).select();
+    if (!error) return data?.[0] ? toDashboardNews(data[0]) : null;
 
     if (!isMissingTableError(error)) {
       // Tenta update mínimo (só status + updated_at) se o mapeamento completo falhar
       console.warn('[db] updateNews completo falhou, a tentar update mínimo:', error.message);
       const minUpdate = { status: mapped.status, updated_at: mapped.updated_at || new Date().toISOString() };
-      const fallback = await supabase.from(NEWS_TABLE).update(minUpdate).eq('id', id).select().single();
-      if (!fallback.error) return toDashboardNews(fallback.data);
+      const fallback = await supabase.from(NEWS_TABLE).update(minUpdate).eq('id', id).select();
+      if (!fallback.error) return fallback.data?.[0] ? toDashboardNews(fallback.data[0]) : null;
       if (!isMissingTableError(fallback.error)) throw fallback.error;
     }
   }
