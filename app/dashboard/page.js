@@ -473,6 +473,7 @@ export default function DashboardPage() {
   const [bulkSelected, setBulkSelected] = useState(new Set());
   const [bulkPublishing, setBulkPublishing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({});
+  const [filterSector, setFilterSector] = useState('');
 
   const loadingRef = useRef(false);
   const toastTimer = useRef(null);
@@ -893,9 +894,19 @@ export default function DashboardPage() {
     }
   }
 
+  // Artigos filtrados por setor (só para pendentes)
+  const sectorFilteredPending = filterSector
+    ? pendingArticles.filter(a => (a.category || '').toLowerCase() === filterSector)
+    : pendingArticles;
+
+  // Contagens por setor para os badges
+  const sectorCounts = Object.fromEntries(
+    Object.keys(SECTOR_MAP).map(s => [s, pendingArticles.filter(a => (a.category || '').toLowerCase() === s).length])
+  );
+
   // Artigos a mostrar
   const displayedNews = filterStatus === 'pending'
-    ? pendingArticles.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    ? sectorFilteredPending.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
     : news;
 
   return (
@@ -972,14 +983,18 @@ export default function DashboardPage() {
               className="btn btn-ghost"
               style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
               onClick={() => {
-                if (bulkSelected.size === pendingArticles.length) {
-                  setBulkSelected(new Set());
-                } else {
-                  setBulkSelected(new Set(pendingArticles.map(a => a.id)));
-                }
+                const visibleIds = sectorFilteredPending.map(a => a.id);
+                const allSelected = visibleIds.every(id => bulkSelected.has(id));
+                setBulkSelected(prev => {
+                  const next = new Set(prev);
+                  if (allSelected) visibleIds.forEach(id => next.delete(id));
+                  else visibleIds.forEach(id => next.add(id));
+                  return next;
+                });
               }}
             >
-              {bulkSelected.size === pendingArticles.length && pendingArticles.length > 0 ? 'Desselecionar Tudo' : 'Selecionar Tudo'}
+              {sectorFilteredPending.length > 0 && sectorFilteredPending.every(a => bulkSelected.has(a.id))
+                ? 'Desselecionar Tudo' : `Selecionar ${filterSector ? 'Setor' : 'Tudo'}`}
             </button>
           )}
           <button type="button" className="btn btn-primary" onClick={runAgentManually} disabled={agentRunning}>
@@ -1001,6 +1016,33 @@ export default function DashboardPage() {
             Última execução: <strong>{lastAgentRun.run_id}</strong>
             {' · '}{lastAgentRun.status}
             {typeof lastAgentRun.selected_count === 'number' && ` · ${lastAgentRun.selected_count} artigo(s) selecionado(s)`}
+          </div>
+        )}
+
+        {/* Barra de filtro por setor — só em "Para Revisão" */}
+        {filterStatus === 'pending' && pendingArticles.length > 0 && (
+          <div className="sector-bar" style={{ marginBottom: 16 }}>
+            <button
+              className={`sector-tab${filterSector === '' ? ' active' : ''}`}
+              data-sector=""
+              onClick={() => { setFilterSector(''); setPage(1); }}
+            >
+              Todos
+              <span className="sector-count">{pendingArticles.length}</span>
+            </button>
+            {Object.entries(SECTOR_MAP).map(([key, { label }]) =>
+              sectorCounts[key] > 0 ? (
+                <button
+                  key={key}
+                  className={`sector-tab${filterSector === key ? ' active' : ''}`}
+                  data-sector={key}
+                  onClick={() => { setFilterSector(key); setPage(1); }}
+                >
+                  {label}
+                  <span className="sector-count">{sectorCounts[key]}</span>
+                </button>
+              ) : null
+            )}
           </div>
         )}
 
