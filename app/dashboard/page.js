@@ -360,7 +360,7 @@ function SavedArticleCard({ item, connectedAccounts, companiesData, onPublish })
           </a>
         )}
         {item.status === 'on_hold' && onPublish && (
-          <button className="btn btn-success" onClick={() => onPublish(item, selectedPlatforms, selectedAccounts)}>
+          <button className="btn btn-success" onClick={() => onPublish(item, selectedPlatforms, selectedAccounts, selectedCompany?.companyId || null)}>
             Publicar
           </button>
         )}
@@ -684,6 +684,7 @@ export default function DashboardPage() {
           article: item,
           socialPlatforms: sel.platforms,
           selectedAccounts: sel.accounts,
+          companyId: sel.companyId || null,
         }),
       });
       if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
@@ -705,7 +706,7 @@ export default function DashboardPage() {
   }
 
   // ── Publicar artigo guardado (on_hold → published) ───────────────
-  async function handlePublishSaved(item, platforms, accounts) {
+  async function handlePublishSaved(item, platforms, accounts, companyId = null) {
     if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
     if (!platforms || platforms.length === 0) {
       showToast('Seleciona pelo menos uma rede social para publicar.', 'error');
@@ -716,7 +717,7 @@ export default function DashboardPage() {
       const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/publish`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ article: item, socialPlatforms: platforms, selectedAccounts: accounts }),
+        body: JSON.stringify({ article: item, socialPlatforms: platforms, selectedAccounts: accounts, companyId }),
       });
       if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
       const data = await res.json();

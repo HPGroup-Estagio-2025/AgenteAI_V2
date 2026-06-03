@@ -403,9 +403,17 @@ export async function POST(request, { params }) {
     // o servidor tem a versão mais atualizada (com páginas e tokens)
     await refreshAccountsFromSupabase();
 
-    // Busca empresa associada à conta selecionada (para URL e WordPress)
-    const primaryAccountId = selectedAccounts.facebook || selectedAccounts.instagram || selectedAccounts.wordpress || null;
-    const company = await getCompanyForAccount(primaryAccountId);
+    // Busca empresa — usa companyId do body se disponível, senão tenta via conta selecionada
+    const bodyCompanyId = body.companyId || null;
+    let company = null;
+    if (bodyCompanyId) {
+      const { data } = await supabase.from('companies').select('*').eq('id', bodyCompanyId).single();
+      company = data || null;
+    }
+    if (!company) {
+      const primaryAccountId = selectedAccounts.facebook || selectedAccounts.instagram || null;
+      company = await getCompanyForAccount(primaryAccountId);
+    }
     const companyUrl = company?.website_url || null;
 
     console.log('[publish] Processando publicação:', {
