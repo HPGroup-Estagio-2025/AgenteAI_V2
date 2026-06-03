@@ -360,7 +360,7 @@ function SavedArticleCard({ item, connectedAccounts, companiesData, onPublish })
           </a>
         )}
         {item.status === 'on_hold' && onPublish && (
-          <button className="btn btn-success" onClick={() => onPublish(item, selectedPlatforms, selectedAccounts, selectedCompany?.companyId || null)}>
+          <button className="btn btn-success" onClick={() => onPublish(item, selectedPlatforms, selectedAccounts, selectedCompany?.companyId || null /* UUID real */ )}>
             Publicar
           </button>
         )}
@@ -676,6 +676,10 @@ export default function DashboardPage() {
       showToast('Seleciona pelo menos uma rede social para publicar.', 'error');
       return;
     }
+    // Resolve o UUID real da empresa (sel.companyId é o ID interno do frontend)
+    const companies = buildCompanies(connectedAccounts, companiesData);
+    const selectedCompany = companies.find(c => c.id === sel.companyId) || companies[0];
+    const realCompanyId = selectedCompany?.companyId || null;
     try {
       const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/publish`, {
         method: 'POST',
@@ -684,7 +688,7 @@ export default function DashboardPage() {
           article: item,
           socialPlatforms: sel.platforms,
           selectedAccounts: sel.accounts,
-          companyId: sel.companyId || null,
+          companyId: realCompanyId,
         }),
       });
       if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }

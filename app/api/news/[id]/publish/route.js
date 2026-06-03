@@ -405,10 +405,12 @@ export async function POST(request, { params }) {
 
     // Busca empresa — usa companyId do body se disponível, senão tenta via conta selecionada
     const bodyCompanyId = body.companyId || null;
+    console.log('[publish] companyId recebido:', bodyCompanyId);
     let company = null;
     if (bodyCompanyId) {
       const { data } = await supabase.from('companies').select('*').eq('id', bodyCompanyId).single();
       company = data || null;
+      console.log('[publish] Empresa encontrada:', company?.name || 'não encontrada');
     }
     if (!company) {
       const primaryAccountId = selectedAccounts.facebook || selectedAccounts.instagram || null;
