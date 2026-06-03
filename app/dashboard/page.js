@@ -250,7 +250,7 @@ function AgentArticleCard({ item, connectedAccounts, companiesData, selection, o
       {/* Imagem — sempre visível (placeholder se não houver URL) */}
       <div className="news-card-image">
         {item.imageUrl
-          ? <img src={item.imageUrl} alt={item.title} loading="lazy" />
+          ? <img src={`https://wsrv.nl/?url=${encodeURIComponent(item.imageUrl)}&w=300&h=200&fit=cover&output=jpg`} alt={item.title} loading="lazy" />
           : <ImagePlaceholder />
         }
       </div>
@@ -349,7 +349,7 @@ function SavedArticleCard({ item, connectedAccounts, companiesData, onPublish })
     <article className="news-card">
       <div className="news-card-image">
         {item.imageUrl
-          ? <img src={item.imageUrl} alt={item.title} loading="lazy" />
+          ? <img src={`https://wsrv.nl/?url=${encodeURIComponent(item.imageUrl)}&w=300&h=200&fit=cover&output=jpg`} alt={item.title} loading="lazy" />
           : <ImagePlaceholder />
         }
       </div>
