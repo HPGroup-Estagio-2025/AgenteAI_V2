@@ -237,6 +237,9 @@ async function publishToInstagram(item, accountId = null) {
     instagramUserId: account.instagramUserId,
   });
 
+  // Garante aspect ratio 1:1 via proxy (Instagram aceita entre 4:5 e 1.91:1)
+  const safeImageUrl = `https://wsrv.nl/?url=${encodeURIComponent(item.imageUrl)}&w=1080&h=1080&fit=cover&a=attention&output=jpg`;
+
   // Passo 1: criar container de media
   const containerRes = await fetch(
     `https://graph.facebook.com/v19.0/${account.instagramUserId}/media`,
@@ -244,7 +247,7 @@ async function publishToInstagram(item, accountId = null) {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        image_url: item.imageUrl,
+        image_url: safeImageUrl,
         caption,
         access_token: account.accessToken,
       }).toString(),
