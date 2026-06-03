@@ -136,14 +136,16 @@ function dashboardCategory(matchedSectors = []) {
 }
 
 function generatePostDescription(article) {
-  const title = article.title || 'Untitled article';
-  const sectorsText = Array.isArray(article.matchedSectors) ? article.matchedSectors.join(', ') : 'General industry';
-  const source = article.source || 'Unknown source';
-  const riskText = Array.isArray(article.matchedRiskTerms) && article.matchedRiskTerms.length > 0
-    ? `Sensitive terms detected: ${article.matchedRiskTerms.join(', ')}.`
-    : '';
-
-  return `${title}\n\nKey sectors: ${sectorsText}\n\nSource: ${source}\n\nThis article highlights relevant developments that may impact strategic operations, supply chains, infrastructure, technology, or market positioning.\n\n${riskText}`.trim();
+  // Usa a descrição real do RSS — limpa HTML e trunca
+  const raw = article.description || article.content || '';
+  const clean = raw
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return clean.slice(0, 500) || article.title || '';
 }
 
 function parseRss(xml, feedUrl) {
