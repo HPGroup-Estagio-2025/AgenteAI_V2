@@ -227,13 +227,26 @@ function ImagePlaceholder() {
 }
 
 // ── Card para artigos do agente ─────────────────────────────────────
-function AgentArticleCard({ item, connectedAccounts, companiesData, selection, onTogglePlatform, onSetCompany, onPublish, onSave }) {
+function AgentArticleCard({ item, connectedAccounts, companiesData, selection, onTogglePlatform, onSetCompany, onPublish, onSave, isSelected, onToggleSelect, bulkStatus }) {
   const companies = buildCompanies(connectedAccounts, companiesData);
   const selectedId = selection?.companyId || companies[0]?.id;
   const selectedCompany = companies.find(c => c.id === selectedId) || companies[0];
 
+  const bulkStatusColor = bulkStatus === 'success' ? '#10B981' : bulkStatus === 'error' ? '#DC2626' : bulkStatus === 'publishing' ? '#7C3AED' : null;
+
   return (
-    <article className="news-card">
+    <article className="news-card" style={bulkStatusColor ? { borderLeft: `4px solid ${bulkStatusColor}` } : {}}>
+      {/* Checkbox de seleção múltipla */}
+      {onToggleSelect && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px', borderRight: '1px solid #F1F5F9' }}>
+          <input
+            type="checkbox"
+            checked={isSelected || false}
+            onChange={onToggleSelect}
+            style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#7C3AED' }}
+          />
+        </div>
+      )}
       {/* Imagem — sempre visível (placeholder se não houver URL) */}
       <div className="news-card-image">
         {item.imageUrl
@@ -439,6 +452,9 @@ export default function DashboardPage() {
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [companiesData, setCompaniesData] = useState([]);
   const [showNoSocialModal, setShowNoSocialModal] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState(new Set());
+  const [bulkPublishing, setBulkPublishing] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({});
 
   const loadingRef = useRef(false);
   const toastTimer = useRef(null);
@@ -704,6 +720,67 @@ export default function DashboardPage() {
     return Object.values(connectedAccounts).some(arr => Array.isArray(arr) && arr.length > 0);
   }
 
+  // ── Publicar múltiplos artigos em sequência ───────────────────────
+  async function handleBulkPublish() {
+    if (bulkPublishing || bulkSelected.size === 0) return;
+    if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
+    setBulkPublishing(true);
+    setBulkProgress({});
+    const articlesToPublish = pendingArticles.filter(a => bulkSelected.has(a.id));
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const item of articlesToPublish) {
+      setBulkProgress(prev => ({ ...prev, [item.id]: 'publishing' }));
+      const token = localStorage.getItem('auth_token');
+      const sel = articleSelections[item.id] || { platforms: [], accounts: {} };
+      const companies = buildCompanies(connectedAccounts, companiesData);
+      const selectedCompany = companies.find(c => c.id === sel.companyId) || companies[0];
+      const realCompanyId = selectedCompany?.companyId || null;
+
+      if (!sel.platforms || sel.platforms.length === 0) {
+        setBulkProgress(prev => ({ ...prev, [item.id]: 'error' }));
+        errorCount++;
+        continue;
+      }
+
+      try {
+        const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/publish`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            article: item,
+            socialPlatforms: sel.platforms,
+            selectedAccounts: sel.accounts,
+            companyId: realCompanyId,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          setBulkProgress(prev => ({ ...prev, [item.id]: 'success' }));
+          removePending(item.id);
+          successCount++;
+        } else if (data.alreadyPublished) {
+          setBulkProgress(prev => ({ ...prev, [item.id]: 'success' }));
+          removePending(item.id);
+          successCount++;
+        } else {
+          setBulkProgress(prev => ({ ...prev, [item.id]: 'error' }));
+          errorCount++;
+        }
+      } catch {
+        setBulkProgress(prev => ({ ...prev, [item.id]: 'error' }));
+        errorCount++;
+      }
+    }
+
+    setBulkPublishing(false);
+    setBulkSelected(new Set());
+    if (successCount > 0) showToast(`${successCount} notícia(s) publicada(s) com sucesso!`, 'success');
+    if (errorCount > 0) showToast(`${errorCount} notícia(s) falharam. Verifica as configurações.`, 'error');
+    fetchNews({ force: true });
+  }
+
   // ── Publicar artigo ───────────────────────────────────────────────
   async function handlePublish(item) {
     if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
@@ -871,6 +948,37 @@ export default function DashboardPage() {
               </button>
             ))}
           </div>
+          {/* Botões de seleção múltipla — só visíveis em "Para Revisão" */}
+          {filterStatus === 'pending' && news.length > 0 && (
+            <>
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
+                onClick={() => {
+                  if (bulkSelected.size === news.length) {
+                    setBulkSelected(new Set());
+                  } else {
+                    setBulkSelected(new Set(news.map(a => a.id)));
+                  }
+                }}
+              >
+                {bulkSelected.size === news.length ? 'Desselecionar Tudo' : 'Selecionar Tudo'}
+              </button>
+              {bulkSelected.size > 0 && (
+                <button
+                  className="btn btn-success"
+                  style={{ fontSize: '.875rem' }}
+                  onClick={handleBulkPublish}
+                  disabled={bulkPublishing}
+                >
+                  {bulkPublishing
+                    ? <><span className="loader" style={{ width: 14, height: 14 }} /> A publicar...</>
+                    : `Publicar Selecionadas (${bulkSelected.size})`
+                  }
+                </button>
+              )}
+            </>
+          )}
           <button type="button" className="btn btn-primary" onClick={runAgentManually} disabled={agentRunning}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 3l14 9-14 9V3z"/>
@@ -925,6 +1033,13 @@ export default function DashboardPage() {
                 onSetCompany={cid => setArticleCompany(item.id, cid)}
                 onPublish={handlePublish}
                 onSave={handleSave}
+                isSelected={bulkSelected.has(item.id)}
+                onToggleSelect={() => setBulkSelected(prev => {
+                  const next = new Set(prev);
+                  next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+                  return next;
+                })}
+                bulkStatus={bulkProgress[item.id]}
               />
             ))
           ) : (
