@@ -617,10 +617,21 @@ export default function DashboardPage() {
       if (!res.ok) { showToast(data.error || 'Erro ao executar agente', 'error'); return; }
       setLastAgentRun(data);
       if (Array.isArray(data.articles) && data.articles.length > 0) {
-        savePending(data.articles);
-        setPendingArticles(data.articles);
-        setCounts(prev => ({ ...prev, pending: data.articles.length }));
-        showToast(`${data.articles.length} notícia(s) carregadas para revisão`, 'success');
+        const existing = loadPending();
+        const existingUrls = new Set(existing.map(a => a.url).filter(Boolean));
+        const existingTitles = new Set(existing.map(a => a.title?.toLowerCase().trim()).filter(Boolean));
+        const newArticles = data.articles.filter(a =>
+          !(a.url && existingUrls.has(a.url)) &&
+          !(a.title && existingTitles.has(a.title?.toLowerCase().trim()))
+        );
+        const merged = [...existing, ...newArticles];
+        savePending(merged);
+        setPendingArticles(merged);
+        setCounts(prev => ({ ...prev, pending: merged.length }));
+        const msg = newArticles.length > 0
+          ? `${newArticles.length} nova(s) notícia(s) carregadas para revisão`
+          : 'Agente concluído: sem notícias novas (duplicados ignorados)';
+        showToast(msg, newArticles.length > 0 ? 'success' : 'info');
         setFilterStatus('pending');
         setPage(1);
       } else {
