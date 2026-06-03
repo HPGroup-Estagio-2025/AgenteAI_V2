@@ -125,16 +125,37 @@ function generateHashtags(item) {
   if (text.includes('space') || text.includes('satellite')) tags.push('#SpaceTech');
   if (text.includes('drone') || text.includes('uav') || text.includes('unmanned')) tags.push('#UnmannedSystems');
 
-  // Tags fixas da empresa
-  tags.push('#PartYard', '#PartYardMarine', '#MovingTheSeaWithUs');
+  // Tags fixas da empresa (ajustadas por empresa se necessário — passado via item._companyName)
+  const isDefense = (item._companyName || '').toLowerCase().includes('defense') || (item._companyName || '').toLowerCase().includes('defesa');
+  if (isDefense) {
+    tags.push('#PartYard', '#PartYardDefense', '#BeStrongTogether');
+  } else {
+    tags.push('#PartYard', '#PartYardMarine', '#MovingTheSeaWithUs');
+  }
 
   // Remove duplicados e limita a 12
   return [...new Set(tags)].slice(0, 12).join(' ');
 }
 
+function cleanDescription(raw) {
+  return (raw || '')
+    .replace(/Key sectors:[^\n]*/gi, '')
+    .replace(/Source:[^\n]*/gi, '')
+    .replace(/This article highlights[^.]*\./gi, '')
+    .replace(/Sensitive terms[^.]*\./gi, '')
+    .replace(/Read the full story here\.?/gi, '')
+    .replace(/According to the original report[^.]*\./gi, '')
+    .replace(/this development is expected[^.]*\./gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function buildWordPressContent(item, company) {
   const title = item.title || '';
-  const description = item.description || item.summary || item.excerpt || item.content || '';
+  // Limpa a descrição de boilerplate gerado pelo agente
+  const rawDesc = item.description || item.summary || item.excerpt || item.content || '';
+  const description = cleanDescription(rawDesc) || title;
   const sourceUrl = item.url || '';
   const imageUrl = item.imageUrl || '';
   const sector = item.category || '';
@@ -142,7 +163,16 @@ function buildWordPressContent(item, company) {
   const companyName = company?.name || '';
   const companyUrl = company?.website_url || '';
   const sectorLabel = sector ? sector.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Industry';
-  const hashtags = generateHashtags(item);
+  const isDefense = companyName.toLowerCase().includes('defense') || companyName.toLowerCase().includes('defesa');
+  const hashtags = generateHashtags({ ...item, _companyName: companyName });
+
+  // CTA baseado na empresa
+  const ctaLine = isDefense
+    ? `<strong>Be Strong Together!</strong>`
+    : `<strong>Moving The Sea With Us!</strong>`;
+  const contactLine = isDefense
+    ? `Call Us Today: <a href="tel:+351265544370">+351 265544370</a><br/>Email: <a href="mailto:sales@partyardmilitary.com">sales@partyardmilitary.com</a>`
+    : `Contact us today: <a href="tel:+351265544370">+351 265 544 370</a> or go to <a href="${companyUrl}/contacts" target="_blank" rel="noopener noreferrer">Contacts Page</a><br/>Email: <a href="mailto:sales@partyard.eu">sales@partyard.eu</a>`;
 
   // Subtítulos e contexto expandido por setor
   const sectorContent = {
@@ -210,11 +240,11 @@ ${imageUrl ? `<figure class="wp-block-image alignwide size-large"><img src="${im
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
-<p><strong>Moving The Sea With Us!</strong></p>
+<p>${ctaLine}</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
-<p>Contact us today: <a href="tel:+351265544370">+351 265 544 370</a> or go to <a href="${companyUrl}/contacts" target="_blank" rel="noopener noreferrer">Contacts Page</a><br/>Email: <a href="mailto:sales@partyard.eu">sales@partyard.eu</a></p>
+<p>${contactLine}</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
