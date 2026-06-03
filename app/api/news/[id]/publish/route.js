@@ -371,9 +371,11 @@ async function publishToFacebook(item, accountId = null, companyUrl = null, word
 
   // Se tem imagem, publica como foto com caption (aparece a imagem no post)
   if (item.imageUrl) {
+    // Usa proxy wsrv.nl para garantir que a imagem é acessível pelo Facebook
+    const fbImageUrl = `https://wsrv.nl/?url=${encodeURIComponent(item.imageUrl)}&w=1200&h=630&fit=cover&a=attention&output=jpg`;
     const photoBody = new URLSearchParams({
       access_token: page.accessToken,
-      url: item.imageUrl,
+      url: fbImageUrl,
       caption: message,
     });
     const photoRes = await fetch(`https://graph.facebook.com/v19.0/${page.id}/photos`, {
