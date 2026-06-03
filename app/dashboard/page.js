@@ -40,11 +40,13 @@ const SOCIAL_PLATFORMS = [
   { id: 'facebook',  label: 'Facebook' },
   { id: 'instagram', label: 'Instagram' },
   { id: 'linkedin',  label: 'LinkedIn' },
+  { id: 'wordpress', label: 'WordPress' },
 ];
 
 // Constrói lista de empresas a partir das contas ligadas.
 // Meta (Facebook + Instagram) partilham a mesma entrada; LinkedIn é separado.
-function buildCompanies(connectedAccounts) {
+// companiesData: lista de empresas do Supabase (com campos wordpress_*)
+function buildCompanies(connectedAccounts, companiesData = []) {
   console.log('[buildCompanies] Contas recebidas:', connectedAccounts);
   const fbAccs = connectedAccounts.facebook  || [];
   const igAccs = connectedAccounts.instagram || [];
@@ -58,6 +60,7 @@ function buildCompanies(connectedAccounts) {
     const key = getMetaKey(acc);
     const current = metaCompanies.get(key) || {
       id:         `meta-${key}`,
+      companyId:  acc.companyId || null,
       name:       acc.companyName || 'Conta Meta',
       picture:    acc.picture,
       platforms:  [],
@@ -74,10 +77,21 @@ function buildCompanies(connectedAccounts) {
 
   const companies = [...metaCompanies.values()];
 
+  // Adiciona WordPress se a empresa tiver WordPress configurado
+  for (const company of companies) {
+    if (company.companyId) {
+      const dbCompany = companiesData.find(c => c.id === company.companyId);
+      if (dbCompany?.wordpress_url && dbCompany?.wordpress_username && dbCompany?.wordpress_app_password) {
+        if (!company.platforms.includes('wordpress')) company.platforms.push('wordpress');
+      }
+    }
+  }
+
   // LinkedIn: cada conta é uma entrada independente
   for (const acc of liAccs) {
     companies.push({
       id:         `linkedin-${acc.id}`,
+      companyId:  acc.companyId || null,
       name:       acc.companyName || acc.name,
       picture:    acc.picture,
       platforms:  ['linkedin'],
@@ -179,8 +193,8 @@ function ImagePlaceholder() {
 }
 
 // ── Card para artigos do agente ─────────────────────────────────────
-function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform, onSetCompany, onPublish, onSave }) {
-  const companies = buildCompanies(connectedAccounts);
+function AgentArticleCard({ item, connectedAccounts, companiesData, selection, onTogglePlatform, onSetCompany, onPublish, onSave }) {
+  const companies = buildCompanies(connectedAccounts, companiesData);
   const selectedId = selection?.companyId || companies[0]?.id;
   const selectedCompany = companies.find(c => c.id === selectedId) || companies[0];
 
@@ -262,8 +276,8 @@ function AgentArticleCard({ item, connectedAccounts, selection, onTogglePlatform
 }
 
 // ── Card para artigos já guardados na BD ───────────────────────────
-function SavedArticleCard({ item, connectedAccounts, onPublish }) {
-  const companies = buildCompanies(connectedAccounts || {});
+function SavedArticleCard({ item, connectedAccounts, companiesData, onPublish }) {
+  const companies = buildCompanies(connectedAccounts || {}, companiesData);
   const [selectedCompanyId, setSelectedCompanyId] = useState(companies[0]?.id || null);
   const [selectedPlatforms, setSelectedPlatforms] = useState(companies[0]?.platforms ? [...companies[0].platforms] : []);
   const [selectedAccounts, setSelectedAccounts] = useState(companies[0]?.accountIds || {});
@@ -389,6 +403,7 @@ export default function DashboardPage() {
 
   // Contas sociais conectadas
   const [connectedAccounts, setConnectedAccounts] = useState({});
+  const [companiesData, setCompaniesData] = useState([]);
   const [showNoSocialModal, setShowNoSocialModal] = useState(false);
 
   const loadingRef = useRef(false);
@@ -426,6 +441,10 @@ export default function DashboardPage() {
           console.error('[dashboard] Erro ao carregar contas:', err);
           setConnectedAccounts({});
         });
+      fetch('/api/companies', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => setCompaniesData(data.companies || []))
+        .catch(() => setCompaniesData([]));
     };
 
     // Carrega imediatamente
@@ -440,7 +459,7 @@ export default function DashboardPage() {
   // Inicializa seleção por empresa para novos artigos
   useEffect(() => {
     if (pendingArticles.length === 0) return;
-    const companies = buildCompanies(connectedAccounts);
+    const companies = buildCompanies(connectedAccounts, companiesData);
     const firstCompany = companies[0];
     setArticleSelections(prev => {
       const updated = { ...prev };
@@ -580,7 +599,7 @@ export default function DashboardPage() {
 
   // Muda a empresa selecionada: atualiza companyId, platforms e accounts
   function setArticleCompany(articleId, companyId) {
-    const companies = buildCompanies(connectedAccounts);
+    const companies = buildCompanies(connectedAccounts, companiesData);
     const company = companies.find(c => c.id === companyId);
     if (!company) return;
     setArticleSelections(prev => ({
@@ -861,6 +880,7 @@ export default function DashboardPage() {
                 key={item.id}
                 item={item}
                 connectedAccounts={connectedAccounts}
+                companiesData={companiesData}
                 selection={articleSelections[item.id]}
                 onTogglePlatform={pid => toggleArticlePlatform(item.id, pid)}
                 onSetCompany={cid => setArticleCompany(item.id, cid)}
@@ -874,6 +894,7 @@ export default function DashboardPage() {
                 key={item.id}
                 item={item}
                 connectedAccounts={connectedAccounts}
+                companiesData={companiesData}
                 onPublish={filterStatus === 'on_hold' ? handlePublishSaved : null}
               />
             ))

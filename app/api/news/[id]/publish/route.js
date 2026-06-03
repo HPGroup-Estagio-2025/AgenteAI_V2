@@ -2,10 +2,21 @@ import { NextResponse } from 'next/server';
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
 import { findNews, findNewsByUrl, insertNews, updateNews } from '@/src/lib/db';
 import { getAccount, getAccountById, waitForAccounts, refreshAccountsFromSupabase } from '@/src/lib/social';
+import { supabase } from '@/src/lib/supabase';
 
 const N8N_PUBLISH_WEBHOOK = process.env.N8N_PUBLISH_WEBHOOK || '';
 const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID || '';
-const VALID_SOCIAL_PLATFORMS = ['facebook', 'instagram', 'linkedin'];
+const VALID_SOCIAL_PLATFORMS = ['facebook', 'instagram', 'linkedin', 'wordpress'];
+
+async function getCompanyForAccount(accountId) {
+  if (!accountId) return null;
+  try {
+    const { data: account } = await supabase.from('social_accounts').select('company_id').eq('id', accountId).single();
+    if (!account?.company_id) return null;
+    const { data: company } = await supabase.from('companies').select('*').eq('id', account.company_id).single();
+    return company || null;
+  } catch { return null; }
+}
 
 async function notifyN8n(url, body) {
   if (!url) return;
@@ -52,10 +63,149 @@ function selectFacebookPage(pages) {
   return availablePages[0] || null;
 }
 
-function buildFacebookMessage(item) {
+function buildFacebookMessage(item, companyUrl) {
   const description = item.description || item.summary || item.excerpt || item.content || '';
-  return [item.title, description, item.url ? `🔗 Ler notícia completa:\n${item.url}` : '']
+  const linkUrl = companyUrl || item.url || '';
+  return [item.title, description, linkUrl ? `🔗 Saber mais:\n${linkUrl}` : '']
     .filter(Boolean).join('\n\n').slice(0, 60000);
+}
+
+function buildWordPressContent(item, company) {
+  const title = item.title || '';
+  const description = item.description || item.summary || item.excerpt || item.content || '';
+  const sourceUrl = item.url || '';
+  const imageUrl = item.imageUrl || '';
+  const sector = item.category || '';
+  const publishedAt = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('pt-PT', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+  const companyName = company?.name || '';
+  const companyUrl = company?.website_url || '';
+
+  const intro = description.length > 200 ? description : `${description} Este desenvolvimento representa uma evolução relevante no setor ${sector ? `de ${sector}` : 'industrial'}, com potencial impacto nas operações e estratégias das principais empresas do mercado.`;
+
+  return `<!-- wp:image {"align":"wide"} -->
+${imageUrl ? `<figure class="wp-block-image alignwide"><img src="${imageUrl}" alt="${title}" /></figure>` : ''}
+<!-- /wp:image -->
+
+<!-- wp:paragraph {"className":"article-intro"} -->
+<p class="article-intro"><strong>${intro}</strong></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Contexto e Relevância</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>${description}</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Impacto no Setor</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Esta notícia tem implicações diretas para empresas que operam nos setores de ${sector || 'indústria e tecnologia'}. As organizações que acompanham de perto estas tendências estarão melhor posicionadas para adaptar as suas estratégias operacionais e tirar partido das novas oportunidades que surgem no mercado global.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>A evolução constante deste setor exige uma monitorização ativa das principais tendências e desenvolvimentos. Empresas como ${companyName || 'os principais players do mercado'} mantêm-se atentas a estes movimentos para garantir uma resposta rápida e eficaz às mudanças do mercado.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>O Que Esperar a Seguir</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Os desenvolvimentos nesta área continuam a acelerar. Especialistas do setor preveem que as implicações desta notícia se farão sentir nos próximos meses, com potencial para transformar práticas estabelecidas e abrir novas frentes de inovação e crescimento.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Recomendamos que as empresas avaliem o impacto potencial nas suas operações e considerem ajustes estratégicos em conformidade com estas tendências emergentes.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:separator -->
+<hr class="wp-block-separator"/>
+<!-- /wp:separator -->
+
+<!-- wp:paragraph {"className":"article-source"} -->
+<p class="article-source"><em>Fonte original: <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">${sourceUrl}</a>${publishedAt ? ` — Publicado em ${publishedAt}` : ''}</em></p>
+<!-- /wp:paragraph -->
+
+${companyUrl ? `<!-- wp:paragraph -->
+<p>Para saber mais sobre como a <a href="${companyUrl}">${companyName}</a> acompanha estas tendências, visite o nosso website.</p>
+<!-- /wp:paragraph -->` : ''}`;
+}
+
+async function publishToWordPress(item, company) {
+  if (!company?.wordpress_url || !company?.wordpress_username || !company?.wordpress_app_password) {
+    throw Object.assign(
+      new Error('WordPress não configurado para esta empresa — adiciona URL, utilizador e password em Redes Sociais'),
+      { code: 'wordpress_not_configured' }
+    );
+  }
+
+  const wpBase = company.wordpress_url.replace(/\/$/, '');
+  const credentials = Buffer.from(`${company.wordpress_username}:${company.wordpress_app_password}`).toString('base64');
+  const content = buildWordPressContent(item, company);
+
+  const postData = {
+    title: item.title,
+    content,
+    status: 'publish',
+    categories: [],
+    tags: [],
+    ...(item.imageUrl ? { featured_media: 0 } : {}),
+  };
+
+  // Tenta fazer upload da imagem como featured media
+  let featuredMediaId = null;
+  if (item.imageUrl) {
+    try {
+      const imgRes = await fetch(item.imageUrl, { signal: AbortSignal.timeout(8000) });
+      if (imgRes.ok) {
+        const imgBuffer = await imgRes.arrayBuffer();
+        const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+        const ext = contentType.includes('png') ? 'png' : contentType.includes('gif') ? 'gif' : 'jpg';
+        const uploadRes = await fetch(`${wpBase}/wp-json/wp/v2/media`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            'Content-Disposition': `attachment; filename="news-${Date.now()}.${ext}"`,
+            'Content-Type': contentType,
+          },
+          body: imgBuffer,
+          signal: AbortSignal.timeout(15000),
+        });
+        const uploadData = await uploadRes.json().catch(() => ({}));
+        if (uploadRes.ok && uploadData.id) featuredMediaId = uploadData.id;
+      }
+    } catch (err) {
+      console.warn('[wordpress] Falha ao fazer upload de imagem:', err.message);
+    }
+  }
+
+  if (featuredMediaId) postData.featured_media = featuredMediaId;
+  else delete postData.featured_media;
+
+  const res = await fetch(`${wpBase}/wp-json/wp/v2/posts`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(postData),
+    signal: AbortSignal.timeout(20000),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw Object.assign(
+      new Error(data.message || 'Falha ao publicar no WordPress'),
+      { code: 'wordpress_publish_failed', details: data }
+    );
+  }
+
+  console.log('[wordpress] Artigo publicado:', data.link);
+  return { platform: 'wordpress', postId: String(data.id), postUrl: data.link };
 }
 
 async function publishToInstagram(item, accountId = null) {
@@ -70,7 +220,7 @@ async function publishToInstagram(item, accountId = null) {
   if (!item.imageUrl) {
     throw Object.assign(new Error('Instagram requer uma imagem na noticia'), { code: 'instagram_no_image' });
   }
-  const caption = buildFacebookMessage(item);
+  const caption = buildFacebookMessage(item, null);
   console.log('[instagram] A publicar com conta:', {
     id: account.id,
     name: account.name,
@@ -120,7 +270,7 @@ async function publishToInstagram(item, accountId = null) {
   return { platform: 'instagram', postId: publishData.id };
 }
 
-async function publishToFacebook(item, accountId = null) {
+async function publishToFacebook(item, accountId = null, companyUrl = null) {
   const account = accountId ? getAccountById(accountId) : getAccount('facebook');
   if (!account) throw Object.assign(new Error('Facebook nao conectado'), { code: 'facebook_not_connected' });
 
@@ -150,8 +300,9 @@ async function publishToFacebook(item, accountId = null) {
       { code: 'facebook_page_missing' }
     );
   }
-  const body = new URLSearchParams({ access_token: page.accessToken, message: buildFacebookMessage(item) });
-  if (item.url) body.set('link', item.url);
+  const linkUrl = companyUrl || item.url || null;
+  const body = new URLSearchParams({ access_token: page.accessToken, message: buildFacebookMessage(item, companyUrl) });
+  if (linkUrl) body.set('link', linkUrl);
   const res = await fetch(`https://graph.facebook.com/v19.0/${page.id}/feed`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -252,9 +403,15 @@ export async function POST(request, { params }) {
     // o servidor tem a versão mais atualizada (com páginas e tokens)
     await refreshAccountsFromSupabase();
 
+    // Busca empresa associada à conta selecionada (para URL e WordPress)
+    const primaryAccountId = selectedAccounts.facebook || selectedAccounts.instagram || selectedAccounts.wordpress || null;
+    const company = await getCompanyForAccount(primaryAccountId);
+    const companyUrl = company?.website_url || null;
+
     console.log('[publish] Processando publicação:', {
       platforms: socialPlatforms,
       selectedAccounts,
+      companyUrl,
       cacheCounts: {
         facebook: getAccount('facebook') ? 1 : 0,
         instagram: getAccount('instagram') ? 1 : 0,
@@ -270,7 +427,7 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: 'Facebook ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
       console.log('[publish] Publicando no Facebook com accountId=%s', fbAccountId || 'default');
-      publishTasks.push(publishToFacebook(item, fbAccountId));
+      publishTasks.push(publishToFacebook(item, fbAccountId, companyUrl));
     }
 
     if (socialPlatforms.includes('instagram')) {
@@ -281,6 +438,14 @@ export async function POST(request, { params }) {
       }
       console.log('[publish] Publicando no Instagram com accountId=%s', igAccountId || 'default');
       publishTasks.push(publishToInstagram(item, igAccountId));
+    }
+
+    if (socialPlatforms.includes('wordpress')) {
+      if (!company) {
+        return NextResponse.json({ error: 'Não foi possível determinar a empresa para publicar no WordPress' }, { status: 409 });
+      }
+      console.log('[publish] Publicando no WordPress para empresa:', company.name);
+      publishTasks.push(publishToWordPress(item, company));
     }
 
     const socialResults = await Promise.all(publishTasks);
@@ -326,6 +491,13 @@ export async function POST(request, { params }) {
     if (err.code === 'instagram_publish_failed') {
       console.error('[instagram] Erro ao publicar:', err.details || err.message);
       return NextResponse.json({ error: `Erro ao publicar no Instagram: ${err.message}` }, { status: 502 });
+    }
+    if (err.code === 'wordpress_not_configured') {
+      return NextResponse.json({ error: err.message }, { status: 409 });
+    }
+    if (err.code === 'wordpress_publish_failed') {
+      console.error('[wordpress] Erro ao publicar:', err.details || err.message);
+      return NextResponse.json({ error: `Erro ao publicar no WordPress: ${err.message}` }, { status: 502 });
     }
     console.error('[db] Erro ao publicar:', err.message, err.details || '');
     return NextResponse.json({ error: `Erro ao publicar notícia: ${err.message}` }, { status: 500 });

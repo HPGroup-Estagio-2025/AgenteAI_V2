@@ -89,6 +89,9 @@ function SocialPageContent() {
   const [newCompanyInput, setNewCompanyInput] = useState('');
   const [confirmDeleteCompanyId, setConfirmDeleteCompanyId] = useState(null);
   const [showCompanySelector, setShowCompanySelector] = useState(null);
+  const [editingCompanySettings, setEditingCompanySettings] = useState(null);
+  const [companySettingsForm, setCompanySettingsForm] = useState({});
+  const [savingSettings, setSavingSettings] = useState(false);
 
   function showToast(message, type = 'info') {
     setToast({ message, type });
@@ -231,6 +234,40 @@ function SocialPageContent() {
     } finally {
       setDeletingCompany(null);
       setConfirmDeleteCompanyId(null);
+    }
+  }
+
+  function openCompanySettings(company) {
+    setEditingCompanySettings(company.id);
+    setCompanySettingsForm({
+      website_url: company.website_url || '',
+      wordpress_url: company.wordpress_url || '',
+      wordpress_username: company.wordpress_username || '',
+      wordpress_app_password: company.wordpress_app_password || '',
+    });
+  }
+
+  async function handleSaveCompanySettings(companyId) {
+    const token = localStorage.getItem('auth_token');
+    setSavingSettings(true);
+    try {
+      const res = await fetch(`/api/companies/${companyId}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(companySettingsForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Configurações guardadas com sucesso!', 'success');
+        setEditingCompanySettings(null);
+        await loadCompanies();
+      } else {
+        showToast(data.error || 'Erro ao guardar configurações', 'error');
+      }
+    } catch {
+      showToast('Erro ao guardar configurações', 'error');
+    } finally {
+      setSavingSettings(false);
     }
   }
 
@@ -535,6 +572,72 @@ function SocialPageContent() {
                       {PLATFORMS.map(platform => (
                         <SocialPlatformCard key={platform.id} platform={platform} company={company} />
                       ))}
+                    </div>
+
+                    {/* Settings panel */}
+                    <div style={{ marginTop: 16, borderTop: '1px solid #E5E7EB', paddingTop: 12 }}>
+                      <button
+                        className="btn btn-ghost"
+                        style={{ fontSize: '.8rem', padding: '6px 10px', height: 'auto', width: '100%', justifyContent: 'space-between' }}
+                        onClick={() => editingCompanySettings === company.id ? setEditingCompanySettings(null) : openCompanySettings(company)}
+                      >
+                        <span>⚙️ Configurações (Website & WordPress)</span>
+                        <span>{editingCompanySettings === company.id ? '▲' : '▼'}</span>
+                      </button>
+
+                      {editingCompanySettings === company.id && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+                          <div>
+                            <label style={{ fontSize: '.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>
+                              URL do Website (usado nas publicações)
+                            </label>
+                            <input
+                              type="url"
+                              placeholder="https://www.exemplo.com"
+                              value={companySettingsForm.website_url}
+                              onChange={e => setCompanySettingsForm(f => ({ ...f, website_url: e.target.value }))}
+                              style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #E5E7EB', borderRadius: 6, fontSize: '.8rem' }}
+                            />
+                          </div>
+                          <div style={{ borderTop: '1px dashed #E5E7EB', paddingTop: 10 }}>
+                            <div style={{ fontSize: '.75rem', fontWeight: 700, color: '#6B7280', marginBottom: 8 }}>WORDPRESS</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              <input
+                                type="url"
+                                placeholder="URL do WordPress (ex: https://blog.exemplo.com)"
+                                value={companySettingsForm.wordpress_url}
+                                onChange={e => setCompanySettingsForm(f => ({ ...f, wordpress_url: e.target.value }))}
+                                style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #E5E7EB', borderRadius: 6, fontSize: '.8rem' }}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Utilizador WordPress"
+                                value={companySettingsForm.wordpress_username}
+                                onChange={e => setCompanySettingsForm(f => ({ ...f, wordpress_username: e.target.value }))}
+                                style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #E5E7EB', borderRadius: 6, fontSize: '.8rem' }}
+                              />
+                              <input
+                                type="password"
+                                placeholder="Application Password (gerada em WordPress → Utilizadores)"
+                                value={companySettingsForm.wordpress_app_password}
+                                onChange={e => setCompanySettingsForm(f => ({ ...f, wordpress_app_password: e.target.value }))}
+                                style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #E5E7EB', borderRadius: 6, fontSize: '.8rem' }}
+                              />
+                              <p style={{ fontSize: '.7rem', color: '#9CA3AF', margin: 0 }}>
+                                Cria a Application Password em: WordPress → Utilizadores → O teu perfil → Application Passwords
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            className="btn btn-primary"
+                            style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}
+                            disabled={savingSettings}
+                            onClick={() => handleSaveCompanySettings(company.id)}
+                          >
+                            {savingSettings ? <><span className="loader" style={{ width: 11, height: 11 }} /> A guardar...</> : 'Guardar Configurações'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                   );

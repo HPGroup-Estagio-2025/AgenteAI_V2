@@ -1,6 +1,28 @@
 import { NextResponse } from 'next/server';
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
-import { deleteCompany } from '@/src/lib/companies';
+import { deleteCompany, updateCompanySettings } from '@/src/lib/companies';
+
+export async function PATCH(request, { params }) {
+  const token = getTokenFromRequest(request);
+  if (!token) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  let user;
+  try { user = verifyToken(token); } catch {
+    return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const body = await request.json().catch(() => ({}));
+
+  try {
+    const updated = await updateCompanySettings(id, body);
+    return NextResponse.json(updated);
+  } catch (err) {
+    if (err.code === 'not_found') return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
+    if (err.code === 'invalid_fields') return NextResponse.json({ error: err.message }, { status: 400 });
+    console.error('[companies] PATCH error:', err.message);
+    return NextResponse.json({ error: 'Erro ao atualizar empresa' }, { status: 500 });
+  }
+}
 
 export async function DELETE(request, { params }) {
   const token = getTokenFromRequest(request);

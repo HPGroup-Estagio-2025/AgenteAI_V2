@@ -48,6 +48,10 @@ export async function createCompany(name, createdBy) {
           created_by: createdBy || null,
           created_at: new Date().toISOString(),
           active: true,
+          website_url: null,
+          wordpress_url: null,
+          wordpress_username: null,
+          wordpress_app_password: null,
         }
       ])
       .select();
@@ -285,6 +289,43 @@ export async function updateCompanyName(companyId, newName) {
     console.error('[companies] Erro ao atualizar empresa:', err.message);
     throw err;
   }
+}
+
+/**
+ * Update company settings (website_url, wordpress credentials)
+ */
+export async function updateCompanySettings(companyId, settings) {
+  if (!USE_SUPABASE) {
+    const err = new Error('Supabase não configurado');
+    err.code = 'supabase_not_configured';
+    throw err;
+  }
+
+  const allowed = ['website_url', 'wordpress_url', 'wordpress_username', 'wordpress_app_password'];
+  const updates = {};
+  for (const key of allowed) {
+    if (key in settings) updates[key] = settings[key] || null;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    const err = new Error('Nenhum campo válido para atualizar');
+    err.code = 'invalid_fields';
+    throw err;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from(COMPANIES_TABLE)
+    .update(updates)
+    .eq('id', companyId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[companies] Erro ao atualizar configurações:', error.message);
+    throw error;
+  }
+
+  return data;
 }
 
 /**

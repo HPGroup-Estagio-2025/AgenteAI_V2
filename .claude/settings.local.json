@@ -82,7 +82,8 @@
       "WebFetch(domain:soiposervices.com)",
       "WebFetch(domain:creatorflow.so)",
       "WebFetch(domain:instantdm.com)",
-      "WebFetch(domain:blog.postly.ai)"
+      "WebFetch(domain:blog.postly.ai)",
+      "Bash(git stash *)"
     ]
   }
 }
