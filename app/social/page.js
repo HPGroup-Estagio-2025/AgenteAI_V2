@@ -516,7 +516,8 @@ function SocialPageContent() {
                 {/* Company Cards */}
                 {companies.map(company => {
                   const companyAccounts = getAccountsByCompany(company.id);
-                  const visibleAccountCount = Object.values(companyAccounts).reduce((sum, platformAccounts) => sum + platformAccounts.length, 0);
+                  const hasWordpress = Boolean(company.wordpress_url && company.wordpress_username && company.wordpress_app_password);
+                  const visibleAccountCount = Object.values(companyAccounts).reduce((sum, platformAccounts) => sum + platformAccounts.length, 0) + (hasWordpress ? 1 : 0);
 
                   return (
                   <div key={company.id} className="social-company-card">
@@ -569,6 +570,32 @@ function SocialPageContent() {
                       {PLATFORMS.map(platform => (
                         <SocialPlatformCard key={platform.id} platform={platform} company={company} />
                       ))}
+                      {/* WordPress card */}
+                      <div className="social-platform-card">
+                        <div className="social-platform-top">
+                          <div style={{ background: '#EEF2FF', padding: 8, borderRadius: 8, display: 'flex' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#3858E9">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-5l-2 2.5-1.5-1L12 7l4.5 6-1.5 1-2-2.5v5h-2z"/>
+                            </svg>
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, color: '#1F2937', fontSize: '.9rem' }}>WordPress</div>
+                            <div style={{ fontSize: '.75rem', color: hasWordpress ? '#10B981' : '#6B7280', marginTop: 2 }}>
+                              {hasWordpress ? '✓ Configurado' : '○ Não configurado'}
+                            </div>
+                          </div>
+                        </div>
+                        {hasWordpress && (
+                          <div style={{ fontSize: '.75rem', color: '#6B7280', marginTop: 8 }}>
+                            {company.wordpress_url}
+                          </div>
+                        )}
+                        {!hasWordpress && (
+                          <p style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 8 }}>
+                            Configura em ⚙️ Configurações abaixo
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Settings panel */}

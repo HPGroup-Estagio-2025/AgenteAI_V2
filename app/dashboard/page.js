@@ -480,17 +480,20 @@ export default function DashboardPage() {
     setArticleSelections(prev => {
       const updated = { ...prev };
       for (const article of pendingArticles) {
-        if (!updated[article.id]) {
-          updated[article.id] = {
-            companyId: firstCompany?.id || null,
-            platforms: firstCompany ? [...firstCompany.platforms] : [],
-            accounts:  firstCompany ? { ...firstCompany.accountIds } : {},
-          };
-        }
+        // Re-avalia plataformas mesmo para artigos já existentes (ex: WordPress adicionado)
+        const existing = updated[article.id];
+        const company = existing?.companyId
+          ? companies.find(c => c.id === existing.companyId) || firstCompany
+          : firstCompany;
+        updated[article.id] = {
+          companyId: existing?.companyId || company?.id || null,
+          platforms: company ? [...company.platforms] : [],
+          accounts:  company ? { ...company.accountIds } : {},
+        };
       }
       return updated;
     });
-  }, [pendingArticles, connectedAccounts]);
+  }, [pendingArticles, connectedAccounts, companiesData]);
 
   // ── Fetch da BD (publicadas / em espera) ─────────────────────────
   const fetchNews = useCallback(async ({ force = false, notify = false } = {}) => {
