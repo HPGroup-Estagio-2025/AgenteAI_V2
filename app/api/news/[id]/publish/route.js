@@ -82,11 +82,11 @@ function buildWordPressContent(item, company) {
   const sourceUrl = item.url || '';
   const imageUrl = item.imageUrl || '';
   const sector = item.category || '';
-  const publishedAt = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('pt-PT', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+  const publishedAt = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
   const companyName = company?.name || '';
   const companyUrl = company?.website_url || '';
 
-  const intro = description.length > 200 ? description : `${description} Este desenvolvimento representa uma evolução relevante no setor ${sector ? `de ${sector}` : 'industrial'}, com potencial impacto nas operações e estratégias das principais empresas do mercado.`;
+  const intro = description.length > 200 ? description : `${description} This development represents a significant evolution in the ${sector || 'industry'} sector, with potential impact on the operations and strategies of key market players.`;
 
   return `<!-- wp:image {"align":"wide"} -->
 ${imageUrl ? `<figure class="wp-block-image alignwide"><img src="${imageUrl}" alt="${title}" /></figure>` : ''}
@@ -97,7 +97,7 @@ ${imageUrl ? `<figure class="wp-block-image alignwide"><img src="${imageUrl}" al
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":2} -->
-<h2>Contexto e Relevância</h2>
+<h2>Context and Relevance</h2>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
@@ -105,27 +105,35 @@ ${imageUrl ? `<figure class="wp-block-image alignwide"><img src="${imageUrl}" al
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":2} -->
-<h2>Impacto no Setor</h2>
+<h2>Industry Impact</h2>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>Esta notícia tem implicações diretas para empresas que operam nos setores de ${sector || 'indústria e tecnologia'}. As organizações que acompanham de perto estas tendências estarão melhor posicionadas para adaptar as suas estratégias operacionais e tirar partido das novas oportunidades que surgem no mercado global.</p>
+<p>This news has direct implications for companies operating in the ${sector || 'industry and technology'} sector. Organisations that closely monitor these trends will be better positioned to adapt their operational strategies and take advantage of new opportunities emerging in the global market.</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
-<p>A evolução constante deste setor exige uma monitorização ativa das principais tendências e desenvolvimentos. Empresas como ${companyName || 'os principais players do mercado'} mantêm-se atentas a estes movimentos para garantir uma resposta rápida e eficaz às mudanças do mercado.</p>
+<p>The constant evolution of this sector requires active monitoring of key trends and developments. Companies like ${companyName || 'leading market players'} stay attentive to these movements to ensure a swift and effective response to market changes.</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":2} -->
-<h2>O Que Esperar a Seguir</h2>
+<h2>What to Expect Next</h2>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
-<p>Os desenvolvimentos nesta área continuam a acelerar. Especialistas do setor preveem que as implicações desta notícia se farão sentir nos próximos meses, com potencial para transformar práticas estabelecidas e abrir novas frentes de inovação e crescimento.</p>
+<p>Developments in this area continue to accelerate. Industry experts anticipate that the implications of this news will be felt over the coming months, with the potential to transform established practices and open new frontiers for innovation and growth.</p>
 <!-- /wp:paragraph -->
 
 <!-- wp:paragraph -->
-<p>Recomendamos que as empresas avaliem o impacto potencial nas suas operações e considerem ajustes estratégicos em conformidade com estas tendências emergentes.</p>
+<p>We recommend that companies assess the potential impact on their operations and consider strategic adjustments in line with these emerging trends.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:separator -->
+<hr class="wp-block-separator"/>
+<!-- /wp:separator -->
+
+<!-- wp:paragraph -->
+<p><strong>Moving The Sea With Us!</strong><br/>Contact us today: <a href="tel:+351265544370">+351 265 544 370</a> or go to <a href="${companyUrl}/contacts" target="_blank" rel="noopener noreferrer">Contacts Page</a><br/>Email: <a href="mailto:sales@partyard.eu">sales@partyard.eu</a></p>
 <!-- /wp:paragraph -->
 
 <!-- wp:separator -->
@@ -133,12 +141,8 @@ ${imageUrl ? `<figure class="wp-block-image alignwide"><img src="${imageUrl}" al
 <!-- /wp:separator -->
 
 <!-- wp:paragraph {"className":"article-source"} -->
-<p class="article-source"><em>Fonte original: <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">${sourceUrl}</a>${publishedAt ? ` — Publicado em ${publishedAt}` : ''}</em></p>
-<!-- /wp:paragraph -->
-
-${companyUrl ? `<!-- wp:paragraph -->
-<p>Para saber mais sobre como a <a href="${companyUrl}">${companyName}</a> acompanha estas tendências, visite o nosso website.</p>
-<!-- /wp:paragraph -->` : ''}`;
+<p class="article-source"><em>Original source: <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">${sourceUrl}</a>${publishedAt ? ` — Published on ${publishedAt}` : ''}</em></p>
+<!-- /wp:paragraph -->`;
 }
 
 async function publishToWordPress(item, company) {
