@@ -1098,36 +1098,62 @@ export default function DashboardPage() {
 
           {/* Lista de artigos selecionados */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {pendingArticles.filter(a => bulkSelected.has(a.id)).map(a => (
-              <div key={a.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: '#F9FAFB', borderRadius: 8, padding: 10, border: '1px solid #E5E7EB' }}>
-                {a.imageUrl && (
-                  <img
-                    src={a.imageUrl}
-                    alt=""
-                    onError={e => { e.target.style.display = 'none'; }}
-                    style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
-                  />
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '.78rem', fontWeight: 600, color: '#1F2937', lineHeight: 1.3, margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            {pendingArticles.filter(a => bulkSelected.has(a.id)).map(a => {
+              const sel = articleSelections[a.id] || {};
+              const companies = buildCompanies(connectedAccounts, companiesData);
+              const company = companies.find(c => c.id === sel.companyId) || companies[0];
+              const platforms = sel.platforms || [];
+              const platformIcons = { facebook: '📘', instagram: '📸', linkedin: '💼', wordpress: '🌐' };
+              const statusColor = bulkProgress[a.id] === 'success' ? '#10B981' : bulkProgress[a.id] === 'error' ? '#DC2626' : bulkProgress[a.id] === 'publishing' ? '#7C3AED' : null;
+              return (
+              <div key={a.id} style={{ background: '#F9FAFB', borderRadius: 8, border: `1px solid ${statusColor || '#E5E7EB'}`, overflow: 'hidden' }}>
+                {/* Topo: imagem + título + fechar */}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 10px 8px' }}>
+                  {a.imageUrl && (
+                    <img
+                      src={a.imageUrl}
+                      alt=""
+                      onError={e => { e.target.style.display = 'none'; }}
+                      style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
+                    />
+                  )}
+                  <p style={{ flex: 1, fontSize: '.78rem', fontWeight: 600, color: '#1F2937', lineHeight: 1.3, margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                     {a.title}
                   </p>
-                  <p style={{ fontSize: '.7rem', color: '#9CA3AF', margin: '4px 0 0' }}>
-                    {(articleSelections[a.id]?.platforms || []).join(', ') || 'Nenhuma plataforma'}
-                  </p>
-                  {bulkProgress[a.id] && (
-                    <span style={{ fontSize: '.7rem', fontWeight: 600, color: bulkProgress[a.id] === 'success' ? '#10B981' : bulkProgress[a.id] === 'error' ? '#DC2626' : '#7C3AED' }}>
-                      {bulkProgress[a.id] === 'success' ? '✓ Publicado' : bulkProgress[a.id] === 'error' ? '✗ Erro' : '⟳ A publicar...'}
-                    </span>
-                  )}
+                  <button
+                    onClick={() => setBulkSelected(prev => { const n = new Set(prev); n.delete(a.id); return n; })}
+                    style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: 2, flexShrink: 0 }}
+                    title="Remover"
+                  >✕</button>
                 </div>
-                <button
-                  onClick={() => setBulkSelected(prev => { const n = new Set(prev); n.delete(a.id); return n; })}
-                  style={{ background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: 2, flexShrink: 0 }}
-                  title="Remover"
-                >✕</button>
+                {/* Rodapé: empresa + plataformas */}
+                <div style={{ borderTop: '1px solid #E5E7EB', padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {company?.picture && <img src={company.picture} alt="" style={{ width: 16, height: 16, borderRadius: '50%' }} />}
+                    <span style={{ fontSize: '.72rem', fontWeight: 600, color: '#374151' }}>{company?.name || '—'}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {platforms.length === 0
+                      ? <span style={{ fontSize: '.7rem', color: '#EF4444', fontWeight: 500 }}>Sem plataforma</span>
+                      : platforms.map(pid => (
+                          <span key={pid} style={{ fontSize: '.75rem', background: '#F3F4F6', borderRadius: 4, padding: '2px 6px', color: '#374151' }} title={pid}>
+                            {platformIcons[pid] || pid}
+                          </span>
+                        ))
+                    }
+                  </div>
+                </div>
+                {/* Estado da publicação */}
+                {bulkProgress[a.id] && (
+                  <div style={{ padding: '4px 10px', background: statusColor + '15', borderTop: `1px solid ${statusColor}30` }}>
+                    <span style={{ fontSize: '.7rem', fontWeight: 700, color: statusColor }}>
+                      {bulkProgress[a.id] === 'success' ? '✓ Publicado com sucesso' : bulkProgress[a.id] === 'error' ? '✗ Erro ao publicar' : '⟳ A publicar...'}
+                    </span>
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Botão publicar */}
