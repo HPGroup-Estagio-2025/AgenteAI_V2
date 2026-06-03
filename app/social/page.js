@@ -457,15 +457,6 @@ function SocialPageContent() {
           </p>
         </div>
 
-        <div className="social-note">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>
-          </svg>
-          <span>
-            Configura as credenciais OAuth no ficheiro <code>.env.local</code> antes de conectar.
-            Consulta também <code>CREDENCIAIS_REDES_SOCIAIS.md</code> para ver as variáveis necessárias.
-          </span>
-        </div>
 
         {loading ? (
           <div className="empty-state">
@@ -779,38 +770,6 @@ function SocialPageContent() {
           </>
         )}
 
-        <div className="social-setup-guide">
-          <h2 className="setup-guide-title">Como configurar</h2>
-          <div className="setup-steps">
-            <div className="setup-step">
-              <div className="setup-step-num">1</div>
-              <div>
-                <strong>Facebook & Instagram</strong>
-                <p>Cria uma App em <a href="https://developers.facebook.com" target="_blank" rel="noopener">developers.facebook.com</a>. Adiciona o produto <em>Facebook Login</em>. Copia o <strong>App ID</strong> e <strong>App Secret</strong> para <code>FACEBOOK_APP_ID</code> e <code>FACEBOOK_APP_SECRET</code> no <code>.env.local</code>. O Instagram Business usa estas mesmas credenciais via Meta/Facebook.</p>
-              </div>
-            </div>
-            <div className="setup-step">
-              <div className="setup-step-num">2</div>
-              <div>
-                <strong>LinkedIn</strong>
-                <p>Cria uma App em <a href="https://www.linkedin.com/developers" target="_blank" rel="noopener">linkedin.com/developers</a>. Adiciona o produto <em>Sign In with LinkedIn</em>. Copia o <strong>Client ID</strong> e <strong>Client Secret</strong> para <code>LINKEDIN_CLIENT_ID</code> e <code>LINKEDIN_CLIENT_SECRET</code>.</p>
-              </div>
-            </div>
-            <div className="setup-step">
-              <div className="setup-step-num">3</div>
-              <div>
-                <strong>URL de Callback</strong>
-                <p>Nas definições OAuth de cada plataforma, adiciona como <em>Redirect URI</em>:</p>
-                <div className="setup-code">
-                  <code>{appOrigin}/api/social/callback/facebook</code><br/>
-                  <code>{appOrigin}/api/social/callback/instagram</code><br/>
-                  <code>{appOrigin}/api/social/callback/linkedin</code>
-                </div>
-                <p style={{marginTop:6}}>Define também <code>NEXT_PUBLIC_APP_URL={appOrigin}</code> no <code>.env.local</code>.</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </main>
 
       {toast && (
