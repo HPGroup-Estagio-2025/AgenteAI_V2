@@ -69,10 +69,24 @@ function selectFacebookPage(pages) {
   return availablePages[0] || null;
 }
 
-function buildFacebookMessage(item, companyUrl) {
-  const description = item.description || item.summary || item.excerpt || item.content || '';
-  const linkUrl = companyUrl || item.url || '';
-  return [item.title, description, linkUrl ? `🔗 Saber mais:\n${linkUrl}` : '']
+function buildSocialSummary(item) {
+  const raw = item.description || item.summary || item.excerpt || item.content || '';
+  // Limpa texto gerado pelo agente (remove "Key sectors: ..." e "Source: ...")
+  const clean = raw
+    .replace(/Key sectors:[^.]*\./gi, '')
+    .replace(/Source:[^\n]*/gi, '')
+    .replace(/This article highlights[^.]*\./gi, '')
+    .replace(/Sensitive terms[^.]*\./gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  // Usa até 280 caracteres para Instagram/Facebook
+  return clean.length > 280 ? clean.slice(0, 277) + '...' : clean;
+}
+
+function buildFacebookMessage(item, readMoreUrl) {
+  const summary = buildSocialSummary(item);
+  const linkUrl = readMoreUrl || item.url || '';
+  return [item.title, summary, linkUrl ? `🔗 Read more:\n${linkUrl}` : '']
     .filter(Boolean).join('\n\n').slice(0, 60000);
 }
 
@@ -313,7 +327,7 @@ async function publishToFacebook(item, accountId = null, companyUrl = null, word
       { code: 'facebook_page_missing' }
     );
   }
-  const linkUrl = wordpressUrl || companyUrl || item.url || null;
+  const linkUrl = wordpressUrl || item.url || null;
   const message = buildFacebookMessage(item, linkUrl);
 
   // Se tem imagem, publica como foto com caption (aparece a imagem no post)
@@ -480,8 +494,8 @@ export async function POST(request, { params }) {
       console.log('[publish] WordPress URL:', wordpressPostUrl);
     }
 
-    // Usa URL do WordPress como link no Facebook e Instagram (se disponível)
-    const socialLinkUrl = wordpressPostUrl || companyUrl;
+    // Link para redes sociais: WordPress se publicado, senão URL da notícia original
+    const socialLinkUrl = wordpressPostUrl || item.url || null;
 
     const publishTasks = [];
 
@@ -492,7 +506,7 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: 'Facebook ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
       console.log('[publish] Publicando no Facebook com accountId=%s, link=%s', fbAccountId || 'default', socialLinkUrl);
-      publishTasks.push(publishToFacebook(item, fbAccountId, companyUrl, wordpressPostUrl));
+      publishTasks.push(publishToFacebook(item, fbAccountId, companyUrl, socialLinkUrl));
     }
 
     if (socialPlatforms.includes('instagram')) {
@@ -503,7 +517,7 @@ export async function POST(request, { params }) {
       }
       console.log('[publish] Publicando no Instagram com accountId=%s', igAccountId || 'default');
       // Atualiza caption do Instagram com link do WordPress se disponível
-      publishTasks.push(publishToInstagram({ ...item, _wpUrl: wordpressPostUrl }, igAccountId));
+      publishTasks.push(publishToInstagram({ ...item, _wpUrl: socialLinkUrl }, igAccountId));
     }
 
     const remainingResults = await Promise.all(publishTasks);
