@@ -3,6 +3,12 @@ import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
 import { findNews, findNewsByUrl, insertNews, updateNews } from '@/src/lib/db';
 import { getAccount, getAccountById, waitForAccounts, refreshAccountsFromSupabase } from '@/src/lib/social';
 import { supabase } from '@/src/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
 
 const N8N_PUBLISH_WEBHOOK = process.env.N8N_PUBLISH_WEBHOOK || '';
 const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID || '';
@@ -11,9 +17,9 @@ const VALID_SOCIAL_PLATFORMS = ['facebook', 'instagram', 'linkedin', 'wordpress'
 async function getCompanyForAccount(accountId) {
   if (!accountId) return null;
   try {
-    const { data: account } = await supabase.from('social_accounts').select('company_id').eq('id', accountId).single();
+    const { data: account } = await supabaseAdmin.from('social_accounts').select('company_id').eq('id', accountId).single();
     if (!account?.company_id) return null;
-    const { data: company } = await supabase.from('companies').select('*').eq('id', account.company_id).single();
+    const { data: company } = await supabaseAdmin.from('companies').select('*').eq('id', account.company_id).single();
     return company || null;
   } catch { return null; }
 }
@@ -408,7 +414,7 @@ export async function POST(request, { params }) {
     console.log('[publish] companyId recebido:', bodyCompanyId);
     let company = null;
     if (bodyCompanyId) {
-      const { data } = await supabase.from('companies').select('*').eq('id', bodyCompanyId).single();
+      const { data } = await supabaseAdmin.from('companies').select('*').eq('id', bodyCompanyId).single();
       company = data || null;
       console.log('[publish] Empresa encontrada:', company?.name || 'não encontrada');
     }
