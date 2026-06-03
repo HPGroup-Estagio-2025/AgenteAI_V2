@@ -5,23 +5,37 @@ import { notifyClients } from './events';
 const AGENT_RUNS_TABLE = process.env.SUPABASE_AGENT_RUNS_TABLE || 'agent_runs';
 
 const RSS_FEEDS = [
-  // Fontes especializadas
-  'https://www.defensenews.com/arc/outboundfeeds/rss/',
-  'https://www.railway-technology.com/feed/',
-  'https://spacenews.com/feed/',
+  // Fontes especializadas — Marítimo / Naval
   'https://www.naval-technology.com/feed/',
+  'https://www.maritime-executive.com/rss',
+  'https://splash247.com/feed/',
+  'https://www.tradewindsnews.com/rss',
+  'https://gcaptain.com/feed/',
+  // Fontes especializadas — Defesa / Militar
+  'https://www.defensenews.com/arc/outboundfeeds/rss/',
+  'https://www.janes.com/feeds/news',
+  'https://breakingdefense.com/feed/',
+  // Fontes especializadas — Aeroespacial / Aviação
+  'https://spacenews.com/feed/',
+  'https://www.aviationweek.com/rss.xml',
+  'https://simpleflying.com/feed/',
+  // Fontes especializadas — Ferroviário
+  'https://www.railway-technology.com/feed/',
+  'https://www.railjournal.com/feed/',
+  // Fontes especializadas — Indústria / Supply Chain
+  'https://www.supplychaindive.com/feeds/news/',
+  'https://www.industryweek.com/rss',
   // Google News — Marítimo / Naval
-  'https://news.google.com/rss/search?q=maritime+naval+shipping+port&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=maritimo+naval+marinha+porto&hl=pt-PT&gl=PT&ceid=PT:pt',
+  'https://news.google.com/rss/search?q=maritime+shipping+port+vessel+2025&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=naval+shipbuilding+marine+engine&hl=en-US&gl=US&ceid=US:en',
   // Google News — Defesa / Militar
-  'https://news.google.com/rss/search?q=defense+military+army+navy+air+force&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=defesa+militar+forcas+armadas&hl=pt-PT&gl=PT&ceid=PT:pt',
-  // Google News — Aeroespacial / Aviação
-  'https://news.google.com/rss/search?q=aerospace+aviation+aircraft+space+satellite&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=aeroespacial+aviacao+espaco+satelite&hl=pt-PT&gl=PT&ceid=PT:pt',
+  'https://news.google.com/rss/search?q=defense+military+navy+procurement+2025&hl=en-US&gl=US&ceid=US:en',
+  // Google News — Aeroespacial
+  'https://news.google.com/rss/search?q=aerospace+aviation+aircraft+space+launch+2025&hl=en-US&gl=US&ceid=US:en',
   // Google News — Ferroviário
-  'https://news.google.com/rss/search?q=railway+train+rail+transport+rolling+stock&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=ferroviario+comboio+caminho+ferro&hl=pt-PT&gl=PT&ceid=PT:pt',
+  'https://news.google.com/rss/search?q=railway+rail+train+rolling+stock+2025&hl=en-US&gl=US&ceid=US:en',
+  // Google News — Supply Chain / Logistics
+  'https://news.google.com/rss/search?q=supply+chain+logistics+shipping+freight+2025&hl=en-US&gl=US&ceid=US:en',
 ];
 
 // Imagens de fallback estáveis por categoria (usadas quando o artigo não tem imagem)
@@ -354,8 +368,32 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
 
   try {
     const rawArticles = await fetchAllRss();
-    const selectedArticles = scoreArticles(rawArticles, 5);
-    // Enriquece imagens apenas nos 5 artigos finais (evita timeout)
+
+    // Busca URLs já vistas no Supabase (publicadas ou rejeitadas) para evitar repetições
+    let seenUrls = new Set();
+    try {
+      const { data: existingNews } = await supabase
+        .from('news')
+        .select('url')
+        .not('url', 'is', null)
+        .in('status', ['published', 'rejected'])
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (existingNews) existingNews.forEach(n => n.url && seenUrls.add(n.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase()));
+    } catch { /* ignora erros — continua sem filtro */ }
+
+    const filteredArticles = seenUrls.size > 0
+      ? rawArticles.filter(a => {
+          if (!a.url) return true;
+          const norm = a.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
+          return !seenUrls.has(norm);
+        })
+      : rawArticles;
+
+    console.log(`[agent] ${rawArticles.length} artigos brutos, ${filteredArticles.length} após filtrar já vistos`);
+
+    const selectedArticles = scoreArticles(filteredArticles, 8);
+    // Enriquece imagens apenas nos artigos finais (evita timeout)
     const enrichedArticles = await enrichWithImages(selectedArticles);
 
     // Os artigos NÃO são guardados no Supabase aqui.
