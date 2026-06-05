@@ -788,11 +788,17 @@ export async function POST(request, { params }) {
 
     if (socialPlatforms.includes('linkedin')) {
       const liAccountId = selectedAccounts.linkedin || null;
-      if (!liAccountId && !getAccount('linkedin')) {
-        return NextResponse.json({ error: 'LinkedIn ainda não está conectado em Redes Sociais' }, { status: 409 });
+      const liAccount = liAccountId ? getAccountById(liAccountId) : getAccount('linkedin');
+      console.log('[publish] LinkedIn accountId=%s found=%s', liAccountId, Boolean(liAccount));
+      if (!liAccount) {
+        // Tenta recarregar contas do Supabase e tentar de novo
+        await refreshAccountsFromSupabase();
+        const liAccountRetry = liAccountId ? getAccountById(liAccountId) : getAccount('linkedin');
+        console.log('[publish] LinkedIn retry found=%s', Boolean(liAccountRetry));
+        if (!liAccountRetry) {
+          return NextResponse.json({ error: 'LinkedIn ainda não está conectado em Redes Sociais' }, { status: 409 });
+        }
       }
-      console.log('[publish] Publicando no LinkedIn com accountId=%s', liAccountId || 'default');
-      // Usa WordPress URL se disponível, senão URL original do artigo
       const linkedInUrl = socialLinkUrl || item.url || null;
       publishTasks.push(publishToLinkedIn(item, liAccountId, linkedInUrl, company));
     }
