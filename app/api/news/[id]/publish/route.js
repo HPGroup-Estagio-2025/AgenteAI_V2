@@ -415,46 +415,54 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
     hashtags,
   ].filter(Boolean).join('\n\n').trim();
 
-  const postBody = {
-    author: authorUrn,
-    lifecycleState: 'PUBLISHED',
-    specificContent: {
-      'com.linkedin.ugc.ShareContent': {
-        shareCommentary: { text: postText },
-        shareMediaCategory: linkUrl ? 'ARTICLE' : 'NONE',
-        ...(linkUrl ? {
-          media: [{
-            status: 'READY',
-            description: { text: summary },
-            originalUrl: linkUrl,
-            title: { text: item.title },
-          }],
-        } : {}),
+  async function tryPost(urn) {
+    const body = {
+      author: urn,
+      lifecycleState: 'PUBLISHED',
+      specificContent: {
+        'com.linkedin.ugc.ShareContent': {
+          shareCommentary: { text: postText },
+          shareMediaCategory: linkUrl ? 'ARTICLE' : 'NONE',
+          ...(linkUrl ? {
+            media: [{ status: 'READY', description: { text: summary }, originalUrl: linkUrl, title: { text: item.title } }],
+          } : {}),
+        },
       },
-    },
-    visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
-  };
+      visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
+    };
+    const r = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json().catch(() => ({}));
+    return { ok: r.ok, data: d };
+  }
 
-  const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'X-Restli-Protocol-Version': '2.0.0',
-    },
-    body: JSON.stringify(postBody),
-  });
+  // Tenta como organização primeiro
+  let result = await tryPost(authorUrn);
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
+  // Se falhou como organização, tenta como membro pessoal
+  if (!result.ok && authorUrn.includes('organization')) {
+    console.warn('[linkedin] Falhou como organização, a tentar como membro pessoal:', result.data?.message);
+    const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', { headers: { Authorization: `Bearer ${token}` } });
+    const profile = await profileRes.json().catch(() => ({}));
+    if (profile.sub) {
+      const memberUrn = `urn:li:person:${profile.sub}`;
+      result = await tryPost(memberUrn);
+      if (result.ok) console.log('[linkedin] ✓ Publicado como membro pessoal (fallback)');
+    }
+  }
+
+  if (!result.ok) {
     throw Object.assign(
-      new Error(data.message || data.serviceErrorCode || 'Falha ao publicar no LinkedIn'),
-      { code: 'linkedin_publish_failed', details: data }
+      new Error(result.data?.message || result.data?.serviceErrorCode || 'Falha ao publicar no LinkedIn'),
+      { code: 'linkedin_publish_failed', details: result.data }
     );
   }
 
-  console.log('[linkedin] ✓ Publicado com sucesso:', data.id);
-  return { platform: 'linkedin', postId: data.id, authorUrn };
+  console.log('[linkedin] ✓ Publicado com sucesso:', result.data.id);
+  return { platform: 'linkedin', postId: result.data.id, authorUrn };
 }
 
 async function publishToInstagram(item, accountId = null) {
