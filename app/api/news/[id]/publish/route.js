@@ -350,6 +350,95 @@ async function publishToWordPress(item, company) {
   return { platform: 'wordpress', postId: String(data.id), postUrl: data.link };
 }
 
+async function publishToLinkedIn(item, accountId = null, linkUrl = null) {
+  const account = accountId ? getAccountById(accountId) : getAccount('linkedin');
+  if (!account) throw Object.assign(new Error('LinkedIn não conectado'), { code: 'linkedin_not_connected' });
+
+  const token = account.accessToken;
+
+  // Tenta obter o ID da organização que o utilizador administra
+  let authorUrn;
+  try {
+    const orgRes = await fetch(
+      'https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organization~(id,localizedName)))',
+      { headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' } }
+    );
+    const orgData = await orgRes.json().catch(() => ({}));
+    const org = orgData?.elements?.[0]?.['organization~'];
+    if (org?.id) {
+      authorUrn = `urn:li:organization:${org.id}`;
+      console.log('[linkedin] A publicar como organização:', org.localizedName, authorUrn);
+    }
+  } catch (e) {
+    console.warn('[linkedin] Não foi possível obter organização, publica como membro:', e.message);
+  }
+
+  // Fallback: publica como membro pessoal
+  if (!authorUrn) {
+    const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const profile = await profileRes.json().catch(() => ({}));
+    const memberId = profile.sub;
+    if (!memberId) throw Object.assign(new Error('Não foi possível obter ID do membro LinkedIn'), { code: 'linkedin_publish_failed' });
+    authorUrn = `urn:li:person:${memberId}`;
+    console.log('[linkedin] A publicar como membro:', profile.name, authorUrn);
+  }
+
+  const summary = buildSocialSummary(item);
+  const hashtags = `#Maritime #Naval #Industry #PartYard`;
+  const postText = [
+    item.title,
+    '',
+    summary,
+    '',
+    linkUrl ? `🔗 ${linkUrl}` : '',
+    '',
+    hashtags,
+  ].filter(l => l !== undefined).join('\n').trim();
+
+  const postBody = {
+    author: authorUrn,
+    lifecycleState: 'PUBLISHED',
+    specificContent: {
+      'com.linkedin.ugc.ShareContent': {
+        shareCommentary: { text: postText },
+        shareMediaCategory: linkUrl ? 'ARTICLE' : 'NONE',
+        ...(linkUrl ? {
+          media: [{
+            status: 'READY',
+            description: { text: summary },
+            originalUrl: linkUrl,
+            title: { text: item.title },
+          }],
+        } : {}),
+      },
+    },
+    visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
+  };
+
+  const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'X-Restli-Protocol-Version': '2.0.0',
+    },
+    body: JSON.stringify(postBody),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw Object.assign(
+      new Error(data.message || data.serviceErrorCode || 'Falha ao publicar no LinkedIn'),
+      { code: 'linkedin_publish_failed', details: data }
+    );
+  }
+
+  console.log('[linkedin] ✓ Publicado com sucesso:', data.id);
+  return { platform: 'linkedin', postId: data.id, authorUrn };
+}
+
 async function publishToInstagram(item, accountId = null) {
   const account = accountId ? getAccountById(accountId) : getAccount('instagram');
   if (!account) throw Object.assign(new Error('Instagram nao conectado'), { code: 'instagram_not_connected' });
@@ -640,8 +729,16 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: 'Instagram ainda nao esta conectado em Redes Sociais' }, { status: 409 });
       }
       console.log('[publish] Publicando no Instagram com accountId=%s', igAccountId || 'default');
-      // Atualiza caption do Instagram com link do WordPress se disponível
       publishTasks.push(publishToInstagram({ ...item, _wpUrl: socialLinkUrl }, igAccountId));
+    }
+
+    if (socialPlatforms.includes('linkedin')) {
+      const liAccountId = selectedAccounts.linkedin || null;
+      if (!liAccountId && !getAccount('linkedin')) {
+        return NextResponse.json({ error: 'LinkedIn ainda não está conectado em Redes Sociais' }, { status: 409 });
+      }
+      console.log('[publish] Publicando no LinkedIn com accountId=%s', liAccountId || 'default');
+      publishTasks.push(publishToLinkedIn(item, liAccountId, socialLinkUrl));
     }
 
     const remainingResults = await Promise.all(publishTasks);
@@ -688,6 +785,13 @@ export async function POST(request, { params }) {
     if (err.code === 'instagram_publish_failed') {
       console.error('[instagram] Erro ao publicar:', err.details || err.message);
       return NextResponse.json({ error: `Erro ao publicar no Instagram: ${err.message}` }, { status: 502 });
+    }
+    if (err.code === 'linkedin_not_connected') {
+      return NextResponse.json({ error: 'LinkedIn não está conectado em Redes Sociais.' }, { status: 409 });
+    }
+    if (err.code === 'linkedin_publish_failed') {
+      console.error('[linkedin] Erro ao publicar:', err.details || err.message);
+      return NextResponse.json({ error: `Erro ao publicar no LinkedIn: ${err.message}` }, { status: 502 });
     }
     if (err.code === 'wordpress_not_configured') {
       return NextResponse.json({ error: err.message }, { status: 409 });
