@@ -77,30 +77,43 @@ function selectFacebookPage(pages) {
 }
 
 function buildSocialSummary(item) {
-  // Usa descrição real do RSS se disponível; senão cai para content e limpa o texto gerado
-  const raw = item.description || item.summary || item.excerpt || '';
-  if (raw.trim().length > 20) {
-    const clean = raw.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
-    return clean.length > 280 ? clean.slice(0, 277) + '...' : clean;
+  const title = (item.title || '').toLowerCase().trim();
+
+  function cleanText(raw) {
+    return (raw || '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/Key sectors:[^\n]*/gi, '')
+      .replace(/Source:[^\n]*/gi, '')
+      .replace(/This article highlights[^.]*\./gi, '')
+      .replace(/Sensitive terms[^.]*\./gi, '')
+      .replace(/Read the full story here\.?/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
   }
-  // Fallback: limpa o postDescription gerado pelo agente
-  const generated = item.content || '';
-  const clean = generated
-    .replace(/Key sectors:[^\n]*/gi, '')
-    .replace(/Source:[^\n]*/gi, '')
-    .replace(/This article highlights[^.]*\./gi, '')
-    .replace(/Sensitive terms[^.]*\./gi, '')
-    .replace((item.title || ''), '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-  return clean.length > 280 ? clean.slice(0, 277) + '...' : clean;
+
+  // Tenta cada fonte por ordem, descartando textos que são apenas o título
+  for (const raw of [item.description, item.summary, item.excerpt, item.content]) {
+    const clean = cleanText(raw);
+    if (clean.length > 30 && !clean.toLowerCase().startsWith(title.slice(0, 40))) {
+      // Extrai as primeiras 2 frases
+      const sentences = clean.match(/[^.!?]+[.!?]+/g) || [];
+      const result = sentences.slice(0, 2).join(' ').trim() || clean.slice(0, 240);
+      return result.length > 240 ? result.slice(0, 237) + '...' : result;
+    }
+  }
+  return '';
 }
 
 function buildFacebookMessage(item, readMoreUrl) {
   const summary = buildSocialSummary(item);
   const linkUrl = readMoreUrl || item.url || '';
-  return [item.title, summary, linkUrl ? `🔗 Read more:\n${linkUrl}` : '']
-    .filter(Boolean).join('\n\n').slice(0, 60000);
+  const hashtags = generateHashtags(item);
+  // Não repete o título — Facebook já mostra o título via Open Graph do link
+  return [
+    summary,
+    linkUrl ? `🔗 ${linkUrl}` : '',
+    hashtags,
+  ].filter(Boolean).join('\n\n').slice(0, 60000);
 }
 
 function generateHashtags(item) {
@@ -386,16 +399,13 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null) {
   }
 
   const summary = buildSocialSummary(item);
-  const hashtags = `#Maritime #Naval #Industry #PartYard`;
+  const hashtags = generateHashtags(item);
+  // Não repete o título — LinkedIn mostra-o via preview do link
   const postText = [
-    item.title,
-    '',
     summary,
-    '',
     linkUrl ? `🔗 ${linkUrl}` : '',
-    '',
     hashtags,
-  ].filter(l => l !== undefined).join('\n').trim();
+  ].filter(Boolean).join('\n\n').trim();
 
   const postBody = {
     author: authorUrn,
