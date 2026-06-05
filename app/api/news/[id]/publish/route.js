@@ -434,39 +434,7 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
     hashtags,
   ].filter(Boolean).join('\n\n').trim();
 
-  async function tryPostNewApi(urn) {
-    // Nova API LinkedIn Posts (substitui ugcPosts deprecated)
-    const body = {
-      author: urn,
-      commentary: postText,
-      visibility: 'PUBLIC',
-      distribution: {
-        feedDistribution: 'MAIN_FEED',
-        targetEntities: [],
-        thirdPartyDistributionChannels: [],
-      },
-      lifecycleState: 'PUBLISHED',
-      isReshareDisabledByAuthor: false,
-    };
-    const r = await fetch('https://api.linkedin.com/rest/posts', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'LinkedIn-Version': '202401',
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-      body: JSON.stringify(body),
-    });
-    const text = await r.text();
-    const d = text ? JSON.parse(text).catch?.(() => ({})) || {} : {};
-    const postId = r.headers.get('x-restli-id') || d.id || null;
-    console.log('[linkedin] /rest/posts response:', r.status, text.slice(0, 200));
-    return { ok: r.ok || r.status === 201, data: d, postId };
-  }
-
-  async function tryPostLegacy(urn) {
-    // API legada ugcPosts como fallback
+  async function tryPost(urn) {
     const body = {
       author: urn,
       lifecycleState: 'PUBLISHED',
@@ -480,46 +448,41 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
     };
     const r = await fetch('https://api.linkedin.com/v2/ugcPosts', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
       body: JSON.stringify(body),
     });
-    const d = await r.json().catch(() => ({}));
-    console.log('[linkedin] /v2/ugcPosts response:', r.status, JSON.stringify(d).slice(0, 200));
+    let d = {};
+    try { d = await r.json(); } catch {}
+    console.log('[linkedin] ugcPosts status:', r.status, 'author:', urn, 'error:', d?.message || d?.serviceErrorCode || 'none');
     return { ok: r.ok, data: d, postId: d.id };
   }
 
-  console.log('[linkedin] authorUrn:', authorUrn, '| linkUrl:', linkUrl);
+  console.log('[linkedin] authorUrn:', authorUrn);
 
-  // Tenta nova API primeiro como organização
-  let result = await tryPostNewApi(authorUrn);
+  let result = await tryPost(authorUrn);
 
-  // Se nova API falhou, tenta API legacy
-  if (!result.ok) {
-    console.warn('[linkedin] Nova API falhou, a tentar ugcPosts:', result.data);
-    result = await tryPostLegacy(authorUrn);
-  }
-
-  // Se ainda falhou como organização, tenta como membro pessoal com nova API
+  // Só cai para membro pessoal se organização falhar
   if (!result.ok && authorUrn.includes('organization')) {
-    console.warn('[linkedin] Org falhou, a tentar como membro pessoal');
+    console.warn('[linkedin] Org post falhou:', result.data?.message, '— a tentar membro pessoal');
     const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', { headers: { Authorization: `Bearer ${token}` } });
     const profile = await profileRes.json().catch(() => ({}));
     if (profile.sub) {
-      const memberUrn = `urn:li:person:${profile.sub}`;
-      result = await tryPostNewApi(memberUrn);
-      if (!result.ok) result = await tryPostLegacy(memberUrn);
-      if (result.ok) console.log('[linkedin] ✓ Publicado como membro (fallback)');
+      result = await tryPost(`urn:li:person:${profile.sub}`);
     }
   }
 
   if (!result.ok) {
     throw Object.assign(
-      new Error(result.data?.message || 'Falha ao publicar no LinkedIn'),
+      new Error(result.data?.message || result.data?.serviceErrorCode || 'Falha ao publicar no LinkedIn'),
       { code: 'linkedin_publish_failed', details: result.data }
     );
   }
 
-  console.log('[linkedin] ✓ Publicado com sucesso, postId:', result.postId);
+  console.log('[linkedin] ✓ Publicado, postId:', result.postId, 'author:', authorUrn);
   return { platform: 'linkedin', postId: result.postId, authorUrn };
 }
 
