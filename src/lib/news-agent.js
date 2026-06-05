@@ -520,9 +520,52 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
 
     console.log(`[agent] ${rawArticles.length} artigos brutos, ${filteredArticles.length} após filtrar publicados`);
 
-    // Busca mais artigos por execução (15 em vez de 8)
-    const MAX_ARTICLES = 25;
-    const selectedArticles = scoreArticles(filteredArticles, MAX_ARTICLES);
+    // Termos de correspondência por setor (expandidos)
+    const SECTOR_TERMS = {
+      'maritimo':       ['marine', 'maritime', 'naval', 'shipping', 'vessel', 'port', 'ship', 'offshore', 'fleet', 'tanker', 'cargo ship', 'freighter', 'tugboat', 'harbor', 'dock'],
+      'defesa-militar': ['defense', 'defence', 'military', 'army', 'navy', 'air force', 'weapon', 'missile', 'warship', 'combat', 'pentagon', 'nato', 'troops', 'warfare'],
+      'aeroespacial':   ['aerospace', 'aviation', 'aircraft', 'airline', 'space', 'satellite', 'rocket', 'launch', 'orbit', 'drone', 'uav', 'airport', 'flight', 'astronaut'],
+      'ferroviario':    ['railway', 'railroad', 'rail ', 'train', 'rolling stock', 'metro', 'locomotive', 'tram', 'high-speed rail', 'transit'],
+      'tecnologia':     ['technology', 'tech', 'software', 'hardware', 'ai ', 'artificial intelligence', 'digital', 'cyber', 'innovation', 'startup', 'silicon', 'semiconductor', 'cloud', 'data', 'robotics'],
+    };
+
+    // Busca os feeds de cada setor e garante 5 artigos por setor
+    const ARTICLES_PER_SECTOR = 5;
+    const sectorArticles = [];
+    const usedUrls = new Set();
+
+    for (const [sectorKey, feeds] of Object.entries(SECTOR_FEEDS)) {
+      const terms = SECTOR_TERMS[sectorKey] || [];
+
+      // Filtra artigos desta categoria a partir dos artigos já buscados
+      const sectorRaw = filteredArticles.filter(a => {
+        const feedUrl = (a.rawProvider || '').toLowerCase();
+        const text = `${a.title} ${a.description} ${a.content}`.toLowerCase();
+        // Prioriza artigos das fontes dedicadas ao setor
+        const fromSectorFeed = feeds.some(f => a.url && a.url.includes(new URL(f).hostname.replace('www.','')));
+        const matchesTerms = terms.some(t => text.includes(t));
+        return fromSectorFeed || matchesTerms;
+      });
+
+      // Score e seleciona os 5 melhores deste setor
+      const scored = scoreArticles(sectorRaw, ARTICLES_PER_SECTOR * 3)
+        .filter(a => {
+          const key = a.url || a.title;
+          if (usedUrls.has(key)) return false;
+          return true;
+        })
+        .slice(0, ARTICLES_PER_SECTOR);
+
+      scored.forEach(a => {
+        a._forcedCategory = sectorKey;
+        usedUrls.add(a.url || a.title);
+      });
+
+      sectorArticles.push(...scored);
+      console.log(`[agent] Setor ${sectorKey}: ${scored.length} artigos`);
+    }
+
+    const selectedArticles = sectorArticles.slice(0, 25);
     // Enriquece imagens e gera resumos AI em paralelo
     const [enrichedArticles, aiSummaries] = await Promise.all([
       enrichWithImages(selectedArticles),
