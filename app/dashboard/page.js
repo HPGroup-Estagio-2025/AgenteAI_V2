@@ -100,17 +100,27 @@ function buildCompanies(connectedAccounts, companiesData = []) {
     }
   }
 
-  // LinkedIn: cada conta é uma entrada independente
+  // LinkedIn: agrupa na empresa existente se tiver o mesmo companyId, senão cria entrada nova
   for (const acc of liAccs) {
-    const dbCompany = acc.companyId ? companiesData.find(c => c.id === acc.companyId) : null;
-    companies.push({
-      id:         `linkedin-${acc.id}`,
-      companyId:  acc.companyId || null,
-      name:       dbCompany?.name || acc.companyName || acc.name,
-      picture:    acc.picture,
-      platforms:  ['linkedin'],
-      accountIds: { linkedin: acc.id },
-    });
+    const existingCompany = acc.companyId
+      ? companies.find(c => c.companyId === acc.companyId)
+      : null;
+
+    if (existingCompany) {
+      // Adiciona LinkedIn à empresa já existente (ex: Partyard Marine)
+      if (!existingCompany.platforms.includes('linkedin')) existingCompany.platforms.push('linkedin');
+      existingCompany.accountIds.linkedin = acc.id;
+    } else {
+      const dbCompany = acc.companyId ? companiesData.find(c => c.id === acc.companyId) : null;
+      companies.push({
+        id:         `linkedin-${acc.id}`,
+        companyId:  acc.companyId || null,
+        name:       dbCompany?.name || acc.companyName || acc.name,
+        picture:    acc.picture,
+        platforms:  ['linkedin'],
+        accountIds: { linkedin: acc.id },
+      });
+    }
   }
 
   // Adiciona empresas do Supabase que ainda não estão representadas por nenhuma conta social
