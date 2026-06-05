@@ -16,13 +16,17 @@ async function signOtpToken(otp) {
 }
 
 async function sendOtpEmail(otp) {
+  const port = parseInt(process.env.SMTP_PORT || '465');
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'mail.hp-group.org',
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: parseInt(process.env.SMTP_PORT || '465') === 465,
+    port,
+    secure: port === 465,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false, // cPanel usa certificados auto-assinados
     },
   });
 
@@ -56,8 +60,8 @@ export async function POST() {
   try {
     await sendOtpEmail(otp);
   } catch (err) {
-    console.error('[2fa] Erro ao enviar email:', err.message);
-    return NextResponse.json({ error: 'Erro ao enviar email. Verifica as configurações SMTP.' }, { status: 500 });
+    console.error('[2fa] Erro SMTP:', err.message, '| code:', err.code, '| host:', process.env.SMTP_HOST, '| port:', process.env.SMTP_PORT);
+    return NextResponse.json({ error: `Erro SMTP: ${err.message}` }, { status: 500 });
   }
 
   const otpToken = await signOtpToken(otp);
