@@ -149,7 +149,10 @@ textarea { resize: vertical; }
 
 /* Header */
 .header { background: linear-gradient(90deg, #1E0A3C 0%, #2D1B69 100%); border-bottom: 1px solid rgba(124,58,237,.3); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,.3); }
-.header-inner { max-width: 1280px; margin: 0 auto; padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.header-inner { max-width: 1280px; margin: 0 auto; padding: 0 28px; height: 64px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
+.header-brand { justify-self: start; }
+.header-nav { justify-self: center; }
+.header-actions { justify-self: end; }
 .header-brand { display: flex; align-items: center; gap: 10px; font-size: 1.0625rem; font-weight: 700; color: var(--white); flex-shrink: 0; }
 .header-actions { display: flex; align-items: center; gap: 12px; }
 .refresh-info { display: flex; align-items: center; gap: 6px; font-size: .75rem; color: var(--gray-400); }
