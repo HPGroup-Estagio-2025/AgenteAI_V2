@@ -479,7 +479,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
     console.log(`[agent] ${rawArticles.length} artigos brutos, ${filteredArticles.length} após filtrar publicados`);
 
     // Busca mais artigos por execução (15 em vez de 8)
-    const MAX_ARTICLES = 15;
+    const MAX_ARTICLES = 25;
     const selectedArticles = scoreArticles(filteredArticles, MAX_ARTICLES);
     // Enriquece imagens e gera resumos AI em paralelo
     const [enrichedArticles, aiSummaries] = await Promise.all([
