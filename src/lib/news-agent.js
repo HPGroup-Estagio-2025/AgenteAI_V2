@@ -368,7 +368,7 @@ function scoreArticles(items, maxArticles = 5) {
 
   // Distribui de forma equilibrada pelos setores prioritários
   const prioritySectors = ['marine', 'defense', 'space', 'aviation', 'railway', 'supplyChain', 'logistics', 'industry', 'engineering', 'automotive'];
-  const maxPerSector = Math.max(1, Math.ceil(maxArticles / prioritySectors.length) + 1);
+  const maxPerSector = Math.max(2, Math.ceil(maxArticles / prioritySectors.length) + 1);
   const sectorCounts = {};
   const selected = [];
 
@@ -437,16 +437,16 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
   try {
     const rawArticles = await fetchAllRss();
 
-    // Busca URLs já vistas no Supabase (publicadas ou rejeitadas) para evitar repetições
+    // Só filtra artigos JÁ PUBLICADOS — rejeitados e on_hold podem reaparecer
     let seenUrls = new Set();
     try {
       const { data: existingNews } = await supabase
         .from('news')
         .select('url')
         .not('url', 'is', null)
-        .in('status', ['published', 'rejected'])
+        .eq('status', 'published')
         .order('created_at', { ascending: false })
-        .limit(500);
+        .limit(1000);
       if (existingNews) existingNews.forEach(n => n.url && seenUrls.add(n.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase()));
     } catch { /* ignora erros — continua sem filtro */ }
 
@@ -458,9 +458,11 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         })
       : rawArticles;
 
-    console.log(`[agent] ${rawArticles.length} artigos brutos, ${filteredArticles.length} após filtrar já vistos`);
+    console.log(`[agent] ${rawArticles.length} artigos brutos, ${filteredArticles.length} após filtrar publicados`);
 
-    const selectedArticles = scoreArticles(filteredArticles, 8);
+    // Busca mais artigos por execução (15 em vez de 8)
+    const MAX_ARTICLES = 15;
+    const selectedArticles = scoreArticles(filteredArticles, MAX_ARTICLES);
     // Enriquece imagens e gera resumos AI em paralelo
     const [enrichedArticles, aiSummaries] = await Promise.all([
       enrichWithImages(selectedArticles),
