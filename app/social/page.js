@@ -508,20 +508,24 @@ function SocialPageContent() {
                 <div key={company.id} className="social-company-card">
                   {/* Header */}
                   <div className="social-company-header">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       {company.logo_url && (
-                        <img src={company.logo_url} alt="" onError={e => e.target.style.display='none'} style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fff', border: '1.5px solid var(--gray-200)', flexShrink: 0, padding: 2 }} />
+                        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#fff', border: '1.5px solid var(--gray-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,.08)', padding: 4 }}>
+                          <img src={company.logo_url} alt="" onError={e => e.target.parentElement.style.display='none'} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        </div>
                       )}
                       <div>
                         <div className="social-company-name">{company.name}</div>
-                        <div className="social-company-count">{connectedCount} {connectedCount === 1 ? 'conta ligada' : 'contas ligadas'}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                          <span style={{ fontSize: '.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: connectedCount > 0 ? 'var(--green-100)' : 'var(--gray-100)', color: connectedCount > 0 ? 'var(--green-600)' : 'var(--gray-400)' }}>
+                            {connectedCount} {connectedCount === 1 ? 'conta' : 'contas'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <div className="social-company-header-right">
-                      {/* Editar ícone */}
                       <button
-                        className="btn btn-ghost"
-                        style={{ padding: '5px 7px', height: 'auto', color: 'var(--gray-500)' }}
+                        className="social-icon-btn"
                         title="Editar empresa"
                         onClick={() => isSettingsOpen ? setEditingCompanySettings(null) : openCompanySettings(company)}
                       >
@@ -530,14 +534,17 @@ function SocialPageContent() {
                         </svg>
                       </button>
                       <button
-                        className="btn btn-danger"
-                        style={{ padding: '4px 10px', fontSize: '.72rem', height: 'auto' }}
+                        className="social-icon-btn social-icon-btn--danger"
+                        title="Apagar empresa"
                         disabled={deletingCompany === company.id}
                         onClick={() => setConfirmDeleteCompanyId(company.id)}
                       >
                         {deletingCompany === company.id
-                          ? <span className="loader" style={{ width: 10, height: 10 }} />
-                          : 'Apagar'}
+                          ? <span className="loader" style={{ width: 12, height: 12, borderColor: 'rgba(220,38,38,.3)', borderTopColor: '#DC2626' }} />
+                          : <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                            </svg>
+                        }
                       </button>
                     </div>
                   </div>
