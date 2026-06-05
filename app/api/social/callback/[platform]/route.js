@@ -152,9 +152,15 @@ export async function GET(request, { params }) {
       grant_type: 'authorization_code',
     });
 
+    const tokenHeaders = { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' };
+    // LinkedIn requer Basic auth no header para trocar o token
+    if (platform === 'linkedin') {
+      tokenHeaders['Authorization'] = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`;
+    }
+
     const tokenRes = await fetch(config.tokenUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+      headers: tokenHeaders,
       body: tokenBody.toString(),
     });
 
