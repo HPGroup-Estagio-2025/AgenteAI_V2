@@ -4,25 +4,48 @@
       <stop offset="0%" stop-color="#5B21B6"/>
       <stop offset="100%" stop-color="#3730A3"/>
     </linearGradient>
-    <linearGradient id="spark" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#C4B5FD"/>
-      <stop offset="100%" stop-color="#A78BFA"/>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#EDE9FE"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
     </linearGradient>
   </defs>
 
   <!-- Background -->
   <rect width="100" height="100" rx="22" fill="url(#bg)"/>
+  <rect x="0" y="0" width="100" height="50" rx="22" fill="white" fill-opacity="0.04"/>
 
-  <!-- Subtle top highlight -->
-  <rect x="0" y="0" width="100" height="52" rx="22" fill="white" fill-opacity="0.05"/>
+  <!-- Newspaper main sheet -->
+  <rect x="18" y="18" width="46" height="60" rx="6" fill="url(#paper)"/>
 
-  <!-- Letter P — bold, clean -->
-  <path d="M28 22 L28 78 L38 78 L38 58 L54 58 C65 58 72 51 72 40 C72 29 65 22 54 22 Z
-           M38 31 L52 31 C59 31 62 34.5 62 40 C62 45.5 59 49 52 49 L38 49 Z"
-        fill="white"/>
+  <!-- Newspaper fold corner -->
+  <path d="M52 18 L64 30 L52 30 Z" fill="#DDD6FE"/>
+  <path d="M52 18 L64 18 L64 30 Z" fill="#C4B5FD"/>
 
-  <!-- Spark / AI dot — accent top right -->
-  <circle cx="74" cy="28" r="8" fill="url(#spark)" opacity="0.9"/>
-  <path d="M74 23 L75.2 26.8 L79 28 L75.2 29.2 L74 33 L72.8 29.2 L69 28 L72.8 26.8 Z"
-        fill="white"/>
+  <!-- Headline bar (big title) -->
+  <rect x="24" y="25" width="22" height="5" rx="2" fill="#5B21B6"/>
+
+  <!-- Sub-headline lines -->
+  <rect x="24" y="34" width="34" height="2.5" rx="1.2" fill="#7C3AED" opacity="0.4"/>
+  <rect x="24" y="39" width="28" height="2.5" rx="1.2" fill="#7C3AED" opacity="0.3"/>
+
+  <!-- Divider -->
+  <rect x="24" y="45" width="36" height="1" rx="0.5" fill="#C4B5FD" opacity="0.6"/>
+
+  <!-- Text lines -->
+  <rect x="24" y="49" width="36" height="2" rx="1" fill="#7C3AED" opacity="0.2"/>
+  <rect x="24" y="54" width="32" height="2" rx="1" fill="#7C3AED" opacity="0.2"/>
+  <rect x="24" y="59" width="36" height="2" rx="1" fill="#7C3AED" opacity="0.2"/>
+  <rect x="24" y="64" width="20" height="2" rx="1" fill="#7C3AED" opacity="0.2"/>
+
+  <!-- AI spark badge — overlapping bottom right -->
+  <circle cx="72" cy="72" r="16" fill="url(#accent)"/>
+  <circle cx="72" cy="72" r="16" fill="white" fill-opacity="0.08"/>
+
+  <!-- Lightning bolt inside badge -->
+  <path d="M75 60 L69 72 L73.5 72 L70 84 L78 70 L73 70 Z"
+        fill="white" fill-opacity="0.95"/>
 </svg>
