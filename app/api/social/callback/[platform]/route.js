@@ -108,7 +108,18 @@ const CONFIGS = {
         headers: { Authorization: `Bearer ${token}` },
       });
       const d = await res.json();
-      return { accountId: d.sub || d.id || null, name: d.name || `${d.given_name} ${d.family_name}`, email: d.email || null, picture: d.picture || null };
+      console.log('[linkedin] userinfo:', JSON.stringify(d));
+      const fullName = d.name
+        || [d.given_name, d.family_name].filter(Boolean).join(' ')
+        || d.localizedFirstName && d.localizedLastName ? `${d.localizedFirstName || ''} ${d.localizedLastName || ''}`.trim() : null
+        || d.email
+        || 'LinkedIn User';
+      return {
+        accountId: d.sub || d.id || null,
+        name: fullName,
+        email: d.email || null,
+        picture: d.picture || null,
+      };
     },
   },
 };
