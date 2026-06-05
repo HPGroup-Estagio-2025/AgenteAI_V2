@@ -1013,7 +1013,7 @@ export default function DashboardPage() {
                 </button>
               ))}
             </div>
-            {filterStatus === 'pending' && displayedNews.length > 0 && (
+            {filterStatus === 'pending' && bulkSelected.size > 0 && (
               <button
                 className="btn btn-ghost"
                 style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
