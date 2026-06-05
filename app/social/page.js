@@ -469,7 +469,7 @@ function SocialPageContent() {
                       src={newCompanyLogo}
                       alt="preview"
                       onError={e => e.target.style.display = 'none'}
-                      style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1.5px solid var(--gray-200)', flexShrink: 0 }}
+                      style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fff', border: '1.5px solid var(--gray-200)', flexShrink: 0, padding: 2 }}
                     />
                   )}
                   <input
@@ -510,7 +510,7 @@ function SocialPageContent() {
                   <div className="social-company-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       {company.logo_url && (
-                        <img src={company.logo_url} alt="" onError={e => e.target.style.display='none'} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1.5px solid var(--gray-200)', flexShrink: 0 }} />
+                        <img src={company.logo_url} alt="" onError={e => e.target.style.display='none'} style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fff', border: '1.5px solid var(--gray-200)', flexShrink: 0, padding: 2 }} />
                       )}
                       <div>
                         <div className="social-company-name">{company.name}</div>
@@ -585,7 +585,7 @@ function SocialPageContent() {
                 <label style={{ fontSize: '.78rem', fontWeight: 700, color: 'var(--gray-600)', display: 'block', marginBottom: 6 }}>Logotipo (URL da imagem)</label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   {companySettingsForm.logo_url && (
-                    <img src={companySettingsForm.logo_url} alt="" onError={e => e.target.style.display='none'} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1.5px solid var(--gray-200)', flexShrink: 0 }} />
+                    <img src={companySettingsForm.logo_url} alt="" onError={e => e.target.style.display='none'} style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fff', border: '1.5px solid var(--gray-200)', flexShrink: 0, padding: 2 }} />
                   )}
                   <input type="url" placeholder="https://exemplo.com/logo.png" value={companySettingsForm.logo_url} onChange={e => setCompanySettingsForm(f => ({ ...f, logo_url: e.target.value }))} />
                 </div>
