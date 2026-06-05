@@ -345,7 +345,7 @@ function SocialPageContent() {
     return grouped;
   }
 
-  function SocialPlatformCard({ platform, company }) {
+  function PlatformRow({ platform, company }) {
     const { id, name, color, bg, Icon } = platform;
     const companyAccounts = getAccountsByCompany(company.id);
     const platformAccounts = companyAccounts[id] || [];
@@ -353,74 +353,55 @@ function SocialPageContent() {
     const hasAccounts = platformAccounts.length > 0;
 
     return (
-      <div className="social-platform-card">
-        <div className="social-platform-top">
-          <div style={{ background: bg, padding: 8, borderRadius: 8, display: 'flex' }}>
+      <>
+        <div className="social-platform-row">
+          <div className="social-platform-icon" style={{ background: bg }}>
             <Icon />
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, color: '#1F2937', fontSize: '.9rem' }}>{name}</div>
-            <div style={{ fontSize: '.75rem', color: hasAccounts ? '#10B981' : '#6B7280', marginTop: 2 }}>
+          <div className="social-platform-info">
+            <div className="social-platform-name">{name}</div>
+            <div className={`social-platform-status ${hasAccounts ? 'social-platform-status--on' : 'social-platform-status--off'}`}>
               {hasAccounts ? '✓ Conectado' : '○ Desconectado'}
             </div>
           </div>
+          {!hasAccounts && (
+            <button
+              className="btn-connect"
+              style={{ background: color }}
+              disabled={isConnecting}
+              onClick={() => handleConnect(id, company.name)}
+            >
+              {isConnecting ? <span className="loader" style={{ width: 11, height: 11 }} /> : 'Conectar'}
+            </button>
+          )}
         </div>
-
-        {hasAccounts && (
-          <div className="social-platform-account-list">
-            {platformAccounts.map(account => (
-              <div key={account.id} className="social-account-item">
-                <div style={{ fontWeight: 500, fontSize: '.8rem', color: '#1F2937' }}>
-                  {account.email || account.name}
-                </div>
-                {id === 'facebook' && account.pages?.length > 0 && (
-                  <div style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 3 }}>
-                    Página: {account.pages[0].name}
-                  </div>
-                )}
-                <div style={{ fontSize: '.7rem', color: '#9CA3AF', marginTop: 3 }}>
-                  {formatDate(account.connectedAt)}
-                </div>
-                <button
-                  className="btn btn-danger"
-                  onClick={() => handleDisconnect(account.id)}
-                  style={{ marginTop: 6, padding: '4px 8px', fontSize: '.75rem', height: 'auto' }}
-                >
-                  Desconectar
-                </button>
-              </div>
-            ))}
+        {hasAccounts && platformAccounts.map(account => (
+          <div key={account.id} className="social-account-panel">
+            <div className="social-account-panel-info">
+              <span className="social-account-panel-name">{account.email || account.name}</span>
+              {id === 'facebook' && account.pages?.length > 0 && (
+                <span className="social-account-panel-sub">Página: {account.pages[0].name}</span>
+              )}
+              <span className="social-account-panel-sub">{formatDate(account.connectedAt)}</span>
+            </div>
+            <button
+              className="btn btn-danger"
+              style={{ padding: '4px 10px', fontSize: '.72rem', height: 'auto' }}
+              onClick={() => handleDisconnect(account.id)}
+            >
+              Desconectar
+            </button>
           </div>
-        )}
-
-        {!hasAccounts && (
-          <button
-            className="btn btn-primary"
-            style={{
-              width: '100%',
-              marginTop: 10,
-              background: color,
-              borderColor: color,
-              fontSize: '.8rem',
-              padding: '8px 12px',
-              height: 'auto'
-            }}
-            disabled={isConnecting}
-            onClick={() => handleConnect(id, company.name)}
-          >
-            {isConnecting ? (
-              <>
-                <span className="loader" style={{ width: 11, height: 11 }} />
-                Ligando...
-              </>
-            ) : (
-              'Conectar'
-            )}
-          </button>
-        )}
-      </div>
+        ))}
+      </>
     );
   }
+
+  const WP_ICON = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="#3858E9">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-5l-2 2.5-1.5-1L12 7l4.5 6-1.5 1-2-2.5v5h-2z"/>
+    </svg>
+  );
 
   return (
     <div className="dashboard-page">
@@ -463,311 +444,145 @@ function SocialPageContent() {
             <div className="loader" style={{ width: 32, height: 32, borderColor: 'rgba(0,0,0,.15)', borderTopColor: 'var(--blue-600)' }} />
           </div>
         ) : (
-          <>
-            {/* SECTION: Gerenciar Empresas */}
-            <div style={{ marginBottom: 40 }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1F2937', marginBottom: 16 }}>
-                Empresas
-              </h2>
-
-              <div className="social-grid">
-                {/* Create Company Card */}
-                <div className="social-company-card" style={{ background: '#F9FAFB', border: '1.5px dashed #E5E7EB' }}>
-                  <h3 style={{ fontSize: '.9rem', fontWeight: 600, color: '#6B7280', marginBottom: 12 }}>
-                    NOVA EMPRESA
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <input
-                      type="text"
-                      placeholder="Nome da empresa"
-                      value={newCompanyInput}
-                      onChange={e => setNewCompanyInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') handleCreateCompany();
-                      }}
-                      style={{
-                        padding: '8px 12px',
-                        border: '1.5px solid #E5E7EB',
-                        borderRadius: '6px',
-                        fontSize: '.875rem',
-                        outline: 'none',
-                      }}
-                    />
-                    <button
-                      className="btn btn-primary"
-                      style={{ width: '100%', justifyContent: 'center' }}
-                      onClick={handleCreateCompany}
-                      disabled={!newCompanyInput.trim()}
-                    >
-                      Criar Empresa
-                    </button>
-                  </div>
-                </div>
-
-                {/* Company Cards */}
-                {companies.map(company => {
-                  const companyAccounts = getAccountsByCompany(company.id);
-                  const hasWordpress = Boolean(company.wordpress_url && company.wordpress_username && company.wordpress_app_password);
-                  const visibleAccountCount = Object.values(companyAccounts).reduce((sum, platformAccounts) => sum + platformAccounts.length, 0) + (hasWordpress ? 1 : 0);
-
-                  return (
-                  <div key={company.id} className="social-company-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 12 }}>
-                      <div>
-                        <h3 className="social-company-name">{company.name}</h3>
-                        <p style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 4 }}>
-                          {visibleAccountCount || company.accountCount || 0} contas
-                        </p>
-                      </div>
-                      <button
-                        className="btn btn-danger"
-                        style={{ padding: '4px 8px', fontSize: '.75rem', height: 'auto' }}
-                        disabled={deletingCompany === company.id}
-                        onClick={() => {
-                          if (confirmDeleteCompanyId === company.id) {
-                            handleDeleteCompany(company.id);
-                          } else {
-                            setConfirmDeleteCompanyId(company.id);
-                          }
-                        }}
-                      >
-                        {deletingCompany === company.id ? (
-                          <>
-                            <span className="loader" style={{ width: 10, height: 10 }} />
-                            Apagando...
-                          </>
-                        ) : confirmDeleteCompanyId === company.id ? (
-                          'Confirmar'
-                        ) : (
-                          'Apagar'
-                        )}
-                      </button>
-                    </div>
-                    {confirmDeleteCompanyId === company.id && (
-                      <p style={{ fontSize: '.75rem', color: '#DC2626', marginBottom: 8 }}>
-                        As contas ligadas ficarão sem empresa.
-                      </p>
-                    )}
-                    {confirmDeleteCompanyId === company.id && (
-                      <button
-                        className="btn btn-ghost"
-                        style={{ padding: '4px 8px', fontSize: '.75rem', height: 'auto', width: '100%', marginBottom: 12 }}
-                        onClick={() => setConfirmDeleteCompanyId(null)}
-                      >
-                        Cancelar
-                      </button>
-                    )}
-                    <div className="social-platforms-grid">
-                      {PLATFORMS.map(platform => (
-                        <SocialPlatformCard key={platform.id} platform={platform} company={company} />
-                      ))}
-                      {/* WordPress card */}
-                      <div className="social-platform-card">
-                        <div className="social-platform-top">
-                          <div style={{ background: '#EEF2FF', padding: 8, borderRadius: 8, display: 'flex' }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#3858E9">
-                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-5l-2 2.5-1.5-1L12 7l4.5 6-1.5 1-2-2.5v5h-2z"/>
-                            </svg>
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, color: '#1F2937', fontSize: '.9rem' }}>WordPress</div>
-                            <div style={{ fontSize: '.75rem', color: hasWordpress ? '#10B981' : '#6B7280', marginTop: 2 }}>
-                              {hasWordpress ? '✓ Configurado' : '○ Não configurado'}
-                            </div>
-                          </div>
-                        </div>
-                        {hasWordpress && (
-                          <div style={{ fontSize: '.75rem', color: '#6B7280', marginTop: 8 }}>
-                            {company.wordpress_url}
-                          </div>
-                        )}
-                        {!hasWordpress && (
-                          <p style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 8 }}>
-                            Configura em ⚙️ Configurações abaixo
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Settings panel */}
-                    <div style={{ marginTop: 16, borderTop: '1px solid #E5E7EB', paddingTop: 12 }}>
-                      <button
-                        className="btn btn-ghost"
-                        style={{ fontSize: '.8rem', padding: '6px 10px', height: 'auto', width: '100%', justifyContent: 'space-between' }}
-                        onClick={() => editingCompanySettings === company.id ? setEditingCompanySettings(null) : openCompanySettings(company)}
-                      >
-                        <span>⚙️ Configurações (Website & WordPress)</span>
-                        <span>{editingCompanySettings === company.id ? '▲' : '▼'}</span>
-                      </button>
-
-                      {editingCompanySettings === company.id && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
-                          <div>
-                            <label style={{ fontSize: '.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>
-                              URL do Website (usado nas publicações)
-                            </label>
-                            <input
-                              type="url"
-                              placeholder="https://www.exemplo.com"
-                              value={companySettingsForm.website_url}
-                              onChange={e => setCompanySettingsForm(f => ({ ...f, website_url: e.target.value }))}
-                              style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #E5E7EB', borderRadius: 6, fontSize: '.8rem' }}
-                            />
-                          </div>
-                          <div style={{ borderTop: '1px dashed #E5E7EB', paddingTop: 10 }}>
-                            <div style={{ fontSize: '.75rem', fontWeight: 700, color: '#6B7280', marginBottom: 8 }}>WORDPRESS</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                              <input
-                                type="url"
-                                placeholder="URL do WordPress (ex: https://blog.exemplo.com)"
-                                value={companySettingsForm.wordpress_url}
-                                onChange={e => setCompanySettingsForm(f => ({ ...f, wordpress_url: e.target.value }))}
-                                style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #E5E7EB', borderRadius: 6, fontSize: '.8rem' }}
-                              />
-                              <input
-                                type="text"
-                                placeholder="Utilizador WordPress"
-                                value={companySettingsForm.wordpress_username}
-                                onChange={e => setCompanySettingsForm(f => ({ ...f, wordpress_username: e.target.value }))}
-                                style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #E5E7EB', borderRadius: 6, fontSize: '.8rem' }}
-                              />
-                              <input
-                                type="password"
-                                placeholder="Application Password (gerada em WordPress → Utilizadores)"
-                                value={companySettingsForm.wordpress_app_password}
-                                onChange={e => setCompanySettingsForm(f => ({ ...f, wordpress_app_password: e.target.value }))}
-                                style={{ width: '100%', padding: '7px 10px', border: '1.5px solid #E5E7EB', borderRadius: 6, fontSize: '.8rem' }}
-                              />
-                              <p style={{ fontSize: '.7rem', color: '#9CA3AF', margin: 0 }}>
-                                Cria a Application Password em: WordPress → Utilizadores → O teu perfil → Application Passwords
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            className="btn btn-primary"
-                            style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}
-                            disabled={savingSettings}
-                            onClick={() => handleSaveCompanySettings(company.id)}
-                          >
-                            {savingSettings ? <><span className="loader" style={{ width: 11, height: 11 }} /> A guardar...</> : 'Guardar Configurações'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
+          <div className="social-grid">
+            {/* ── Create Company Card ── */}
+            <div className="social-create-card">
+              <span className="social-create-card-label">Nova Empresa</span>
+              <input
+                type="text"
+                placeholder="Nome da empresa"
+                value={newCompanyInput}
+                onChange={e => setNewCompanyInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCreateCompany()}
+              />
+              <button
+                className="btn btn-primary btn-full"
+                onClick={handleCreateCompany}
+                disabled={!newCompanyInput.trim()}
+              >
+                Criar Empresa
+              </button>
 
               {companies.length === 0 && (
-                <div className="empty-state">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                  </svg>
-                  <p>Nenhuma empresa criada. Começa por criar uma na secção acima.</p>
-                </div>
+                <p style={{ fontSize: '.78rem', color: 'var(--gray-400)', marginTop: 4, lineHeight: 1.5 }}>
+                  Cria uma empresa para organizar as tuas contas de redes sociais.
+                </p>
               )}
             </div>
 
-            {/* SECTION: Redes Sociais por Empresa */}
-            {false && companies.length > 0 && (
-              <div>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1F2937', marginBottom: 16 }}>
-                  Conectar Redes Sociais
-                </h2>
+            {/* ── Company Cards ── */}
+            {companies.map(company => {
+              const companyAccounts = getAccountsByCompany(company.id);
+              const hasWordpress = Boolean(company.wordpress_url && company.wordpress_username && company.wordpress_app_password);
+              const connectedCount = Object.values(companyAccounts).reduce((s, arr) => s + arr.length, 0) + (hasWordpress ? 1 : 0);
+              const isSettingsOpen = editingCompanySettings === company.id;
+              const isConfirmingDelete = confirmDeleteCompanyId === company.id;
 
-                <div className="social-grid">
-                  {companies.map(company => {
-                    const companyAccounts = getAccountsByCompany(company.id);
-                    const hasAnyAccount = Object.values(companyAccounts).some(arr => arr.length > 0);
+              return (
+                <div key={company.id} className="social-company-card">
+                  {/* Header */}
+                  <div className="social-company-header">
+                    <div>
+                      <div className="social-company-name">{company.name}</div>
+                      <div className="social-company-count">{connectedCount} {connectedCount === 1 ? 'conta ligada' : 'contas ligadas'}</div>
+                    </div>
+                    <div className="social-company-header-right">
+                      <button
+                        className="btn btn-danger"
+                        style={{ padding: '4px 10px', fontSize: '.72rem', height: 'auto' }}
+                        disabled={deletingCompany === company.id}
+                        onClick={() => isConfirmingDelete ? handleDeleteCompany(company.id) : setConfirmDeleteCompanyId(company.id)}
+                      >
+                        {deletingCompany === company.id
+                          ? <span className="loader" style={{ width: 10, height: 10 }} />
+                          : isConfirmingDelete ? 'Confirmar' : 'Apagar'}
+                      </button>
+                    </div>
+                  </div>
 
-                    return (
-                      <div key={company.id} className="social-company-card">
-                        <h3 className="social-company-name" style={{ marginBottom: 12 }}>{company.name}</h3>
+                  {/* Delete confirmation */}
+                  {isConfirmingDelete && (
+                    <div className="social-delete-confirm">
+                      <span>As contas ligadas ficarão sem empresa.</span>
+                      <div className="social-delete-confirm-actions">
+                        <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: '.72rem', height: 'auto' }} onClick={() => setConfirmDeleteCompanyId(null)}>Cancelar</button>
+                      </div>
+                    </div>
+                  )}
 
-                        <div className="social-platforms-grid">
-                          {PLATFORMS.map(({ id, name, color, bg, Icon }) => {
-                            const platformAccounts = companyAccounts[id] || [];
-                            const isConnecting = connecting === id;
-                            const hasAccounts = platformAccounts.length > 0;
+                  {/* Platform Rows */}
+                  <div className="social-platforms-list">
+                    {PLATFORMS.map(platform => (
+                      <PlatformRow key={platform.id} platform={platform} company={company} />
+                    ))}
 
-                            return (
-                              <div key={id} className="social-platform-card">
-                                <div className="social-platform-top">
-                                  <div style={{ background: bg, padding: 8, borderRadius: 8, display: 'flex' }}>
-                                    <Icon />
-                                  </div>
-                                  <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 600, color: '#1F2937', fontSize: '.9rem' }}>{name}</div>
-                                    <div style={{ fontSize: '.75rem', color: hasAccounts ? '#10B981' : '#6B7280', marginTop: 2 }}>
-                                      {hasAccounts ? '✓ Conectado' : '○ Desconectado'}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {hasAccounts && (
-                                  <div className="social-platform-account-list">
-                                    {platformAccounts.map(account => (
-                                      <div key={account.id} className="social-account-item">
-                                        <div style={{ fontWeight: 500, fontSize: '.8rem', color: '#1F2937' }}>
-                                          {account.email || account.name}
-                                        </div>
-                                        {id === 'facebook' && account.pages?.length > 0 && (
-                                          <div style={{ fontSize: '.75rem', color: '#9CA3AF', marginTop: 3 }}>
-                                            Página: {account.pages[0].name}
-                                          </div>
-                                        )}
-                                        <div style={{ fontSize: '.7rem', color: '#9CA3AF', marginTop: 3 }}>
-                                          {formatDate(account.connectedAt)}
-                                        </div>
-                                        <button
-                                          className="btn btn-danger"
-                                          onClick={() => handleDisconnect(account.id)}
-                                          style={{ marginTop: 6, padding: '4px 8px', fontSize: '.75rem', height: 'auto' }}
-                                        >
-                                          Desconectar
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {!hasAccounts && (
-                                  <button
-                                    className="btn btn-primary"
-                                    style={{
-                                      width: '100%',
-                                      marginTop: 10,
-                                      background: color,
-                                      borderColor: color,
-                                      fontSize: '.8rem',
-                                      padding: '8px 12px',
-                                      height: 'auto'
-                                    }}
-                                    disabled={isConnecting}
-                                    onClick={() => handleConnect(id, company.name)}
-                                  >
-                                    {isConnecting ? (
-                                      <>
-                                        <span className="loader" style={{ width: 11, height: 11 }} />
-                                        Ligando...
-                                      </>
-                                    ) : (
-                                      'Conectar'
-                                    )}
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
+                    {/* WordPress row */}
+                    <div className="social-platform-row">
+                      <div className="social-platform-icon" style={{ background: '#EEF2FF' }}>
+                        <WP_ICON />
+                      </div>
+                      <div className="social-platform-info">
+                        <div className="social-platform-name">WordPress</div>
+                        <div className={`social-platform-status ${hasWordpress ? 'social-platform-status--on' : 'social-platform-status--off'}`}>
+                          {hasWordpress ? '✓ Configurado' : '○ Não configurado'}
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                    {hasWordpress && <div className="social-wp-url">{company.wordpress_url}</div>}
+                    {!hasWordpress && <div className="social-wp-hint">Configura nas definições abaixo</div>}
+                  </div>
+
+                  {/* Settings Accordion */}
+                  <button
+                    className={`social-settings-toggle${isSettingsOpen ? ' open' : ''}`}
+                    onClick={() => isSettingsOpen ? setEditingCompanySettings(null) : openCompanySettings(company)}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/>
+                      </svg>
+                      Configurações (Website & WordPress)
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+
+                  {isSettingsOpen && (
+                    <div className="social-settings-body">
+                      <div>
+                        <label>URL do Website (usado nas publicações)</label>
+                        <input type="url" placeholder="https://www.exemplo.com" value={companySettingsForm.website_url} onChange={e => setCompanySettingsForm(f => ({ ...f, website_url: e.target.value }))} />
+                      </div>
+                      <div className="social-settings-divider">WordPress</div>
+                      <div>
+                        <label>URL do WordPress</label>
+                        <input type="url" placeholder="https://blog.exemplo.com" value={companySettingsForm.wordpress_url} onChange={e => setCompanySettingsForm(f => ({ ...f, wordpress_url: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label>Utilizador WordPress</label>
+                        <input type="text" placeholder="utilizador" value={companySettingsForm.wordpress_username} onChange={e => setCompanySettingsForm(f => ({ ...f, wordpress_username: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label>Application Password</label>
+                        <input type="password" placeholder="gerada em WordPress → Utilizadores → Perfil" value={companySettingsForm.wordpress_app_password} onChange={e => setCompanySettingsForm(f => ({ ...f, wordpress_app_password: e.target.value }))} />
+                      </div>
+                      <p className="social-settings-hint">
+                        Cria em: WordPress → Utilizadores → O teu perfil → Application Passwords
+                      </p>
+                      <button
+                        className="btn btn-primary btn-full"
+                        disabled={savingSettings}
+                        onClick={() => handleSaveCompanySettings(company.id)}
+                      >
+                        {savingSettings ? <><span className="loader" style={{ width: 11, height: 11 }} /> A guardar...</> : 'Guardar Configurações'}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-          </>
+              );
+            })}
+          </div>
         )}
 
       </main>
