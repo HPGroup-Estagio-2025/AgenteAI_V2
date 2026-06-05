@@ -262,6 +262,7 @@ textarea { resize: vertical; }
 .sector-tab[data-sector=""].active        { background: var(--gray-700); }
 .sector-tab[data-sector="maritimo"].active       { background: #0369A1; }
 .sector-tab[data-sector="defesa-militar"].active  { background: #4a5320; }
+.sector-tab[data-sector="defesa-militar"]:hover:not(.active) { border-color: #4a5320; color: #4a5320; background: #eaecda; }
 .sector-tab[data-sector="aeroespacial"].active   { background: #6D28D9; }
 .sector-tab[data-sector="ferroviario"].active    { background: #92400E; }
 .sector-count { font-size: .68rem; padding: 1px 6px; border-radius: 10px; background: rgba(0,0,0,.1); min-width: 18px; text-align: center; font-weight: 700; }
