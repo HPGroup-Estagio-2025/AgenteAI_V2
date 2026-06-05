@@ -626,6 +626,44 @@ textarea { resize: vertical; }
   .header-brand span { display: none; }
 }
 
+/* ── Agent Button ──────────────────────────────────────────────── */
+.btn-agent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: .875rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%);
+  box-shadow: 0 4px 14px rgba(124,58,237,.4);
+  transition: box-shadow var(--transition), transform var(--transition), opacity var(--transition);
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+.btn-agent::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-agent:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(124,58,237,.55);
+  transform: translateY(-1px);
+}
+.btn-agent:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 8px rgba(124,58,237,.4); }
+.btn-agent:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+.btn-agent--running { background: linear-gradient(135deg, #6D28D9 0%, #4338CA 100%); animation: agent-pulse 2s ease-in-out infinite; }
+@keyframes agent-pulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(124,58,237,.4); }
+  50%       { box-shadow: 0 4px 22px rgba(124,58,237,.7); }
+}
+
 .agent-run-info {
   margin: 0 0 16px;
   padding: 10px 14px;

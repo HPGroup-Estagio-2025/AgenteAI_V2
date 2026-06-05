@@ -1034,20 +1034,21 @@ export default function DashboardPage() {
             )}
           </div>
           {/* Direita */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button className="btn btn-ghost" onClick={() => fetchNews({ force: true, notify: true })} disabled={loading || agentRunning}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
-              </svg>
-              Atualizar
-            </button>
-            <button type="button" className="btn btn-primary" onClick={runAgentManually} disabled={agentRunning}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 3l14 9-14 9V3z"/>
-              </svg>
-              {agentRunning ? 'A executar...' : 'Executar agente'}
-            </button>
-          </div>
+          <button type="button" className={`btn-agent${agentRunning ? ' btn-agent--running' : ''}`} onClick={runAgentManually} disabled={agentRunning}>
+            {agentRunning ? (
+              <>
+                <span className="loader" style={{ width: 15, height: 15, borderColor: 'rgba(255,255,255,.35)', borderTopColor: '#fff' }} />
+                A executar...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><path d="M18 2v4h4"/>
+                </svg>
+                Executar agente
+              </>
+            )}
+          </button>
         </div>
 
         {lastAgentRun?.run_id && (
