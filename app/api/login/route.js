@@ -44,25 +44,6 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
   }
 
-  // Se SMTP está configurado, exige OTP por email
-  const emailOtpEnabled = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
-  if (emailOtpEnabled) {
-    const { otp, otpToken } = body;
-    if (!otp || !otpToken) {
-      // Primeiro passo: credenciais válidas, pede para enviar OTP
-      return NextResponse.json({ requires2fa: true }, { status: 200 });
-    }
-    // Segundo passo: valida o OTP contra o token assinado
-    try {
-      const { payload } = await jwtVerify(otpToken, SECRET);
-      if (String(payload.otp) !== String(otp).replace(/\s/g, '')) {
-        return NextResponse.json({ error: 'Código inválido ou expirado' }, { status: 401 });
-      }
-    } catch {
-      return NextResponse.json({ error: 'Código inválido ou expirado' }, { status: 401 });
-    }
-  }
-
-  const token = signToken({ username: ADMIN_USERNAME, role: 'admin' });
+const token = signToken({ username: ADMIN_USERNAME, role: 'admin' });
   return NextResponse.json({ token, expiresIn: 14400 });
 }
