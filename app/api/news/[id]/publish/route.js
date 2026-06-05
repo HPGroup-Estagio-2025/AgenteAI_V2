@@ -462,9 +462,11 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
       body: JSON.stringify(body),
     });
     const d = await r.json().catch(() => ({}));
+    console.log('[linkedin] tryPost response:', r.status, JSON.stringify(d).slice(0, 300));
     return { ok: r.ok, data: d };
   }
 
+  console.log('[linkedin] authorUrn:', authorUrn, '| linkUrl:', linkUrl, '| postText length:', postText.length);
   // Tenta como organização primeiro
   let result = await tryPost(authorUrn);
 
@@ -790,7 +792,9 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: 'LinkedIn ainda não está conectado em Redes Sociais' }, { status: 409 });
       }
       console.log('[publish] Publicando no LinkedIn com accountId=%s', liAccountId || 'default');
-      publishTasks.push(publishToLinkedIn(item, liAccountId, socialLinkUrl, company));
+      // Usa WordPress URL se disponível, senão URL original do artigo
+      const linkedInUrl = socialLinkUrl || item.url || null;
+      publishTasks.push(publishToLinkedIn(item, liAccountId, linkedInUrl, company));
     }
 
     const remainingResults = await Promise.all(publishTasks);
