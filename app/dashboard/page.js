@@ -158,6 +158,14 @@ function formatDate(iso) {
   } catch { return iso; }
 }
 
+function decodeHtml(text) {
+  return (text || '')
+    .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(parseInt(c, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ');
+}
+
 function cleanContent(item) {
   // 1. Resumo gerado pela IA — melhor opção
   if (item.summary && item.summary.trim().length > 20) return item.summary;
@@ -165,7 +173,7 @@ function cleanContent(item) {
   const title = (item.title || '').toLowerCase().trim();
 
   function strip(text) {
-    return (text || '')
+    return decodeHtml((text || '')
       .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
       .replace(/<[^>]+>/g, ' ')
       .replace(/Key sectors:[^\n]*/gi, '')
@@ -174,9 +182,8 @@ function cleanContent(item) {
       .replace(/Sensitive terms[^.]*\./gi, '')
       .replace(/Read the full story here\.?/gi, '')
       .replace(/According to the original report[^.]*\./gi, '')
-      .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
       .replace(/\s{2,}/g, ' ')
-      .trim();
+      .trim());
   }
 
   // Descarta texto que é apenas o título repetido
@@ -324,7 +331,7 @@ function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetC
           {item.source && <span className="news-meta-text">Fonte: {item.source}</span>}
         </div>
 
-        <h2 className="news-card-title">{item.title}</h2>
+        <h2 className="news-card-title">{decodeHtml(item.title)}</h2>
         <p className="news-card-body">{cleanContent(item)}</p>
 
         {/* 1 dropdown com todas as empresas + checkboxes das redes dessa empresa */}
@@ -436,7 +443,7 @@ function SavedArticleCard({ item, companies, onPublish, onRemove, isPublishing }
           {item.source && <span className="news-meta-text">Fonte: {item.source}</span>}
         </div>
 
-        <h2 className="news-card-title">{item.title}</h2>
+        <h2 className="news-card-title">{decodeHtml(item.title)}</h2>
         <p className="news-card-body">{cleanContent(item)}</p>
 
         {item.status === 'on_hold' && companies.length > 0 && (
