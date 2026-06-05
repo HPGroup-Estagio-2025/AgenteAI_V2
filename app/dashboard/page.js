@@ -150,7 +150,9 @@ function formatDate(iso) {
 }
 
 function cleanContent(item) {
-  const raw = item.description || item.summary || item.excerpt || '';
+  // Usa o resumo gerado pela IA se disponível
+  if (item.summary) return item.summary;
+  const raw = item.description || item.excerpt || '';
   const base = raw.trim().length > 20
     ? raw
     : (item.content || '')
@@ -958,6 +960,10 @@ export default function DashboardPage() {
   // Total para o badge "Todos"
   const sectorTotalCount = filterStatus === 'pending' ? pendingArticles.length : totalNews;
 
+  // Totais efetivos (pendentes filtrados por setor vs BD)
+  const effectiveTotalNews = filterStatus === 'pending' ? sectorFilteredPending.length : totalNews;
+  const effectiveTotalPages = Math.max(1, Math.ceil(effectiveTotalNews / PAGE_SIZE));
+
   // Artigos a mostrar
   const displayedNews = filterStatus === 'pending'
     ? sectorFilteredPending.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -1117,7 +1123,7 @@ export default function DashboardPage() {
                   key={key}
                   className={`sector-tab${filterSector === key ? ' active' : ''}`}
                   data-sector={key}
-                  onClick={() => { setFilterSector(key); setPage(1); }}
+                  onClick={() => { setFilterSector(key); setPage(1); setBulkSelected(new Set()); }}
                 >
                   {label}
                   <span className="sector-count">{sectorCounts[key]}</span>
@@ -1182,12 +1188,12 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {totalPages > 1 && (
+        {effectiveTotalPages > 1 && (
           <div className="pagination">
             <button className="pagination-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={loading || page <= 1} aria-label="Anterior">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+            {Array.from({ length: effectiveTotalPages }, (_, i) => i + 1).map(n => (
               <button
                 key={n}
                 className={`pagination-btn${n === page ? ' active' : ''}`}
@@ -1197,7 +1203,7 @@ export default function DashboardPage() {
                 {n}
               </button>
             ))}
-            <button className="pagination-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={loading || page >= totalPages} aria-label="Seguinte">
+            <button className="pagination-btn" onClick={() => setPage(p => Math.min(effectiveTotalPages, p + 1))} disabled={loading || page >= effectiveTotalPages} aria-label="Seguinte">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </div>

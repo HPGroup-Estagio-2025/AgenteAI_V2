@@ -1,6 +1,29 @@
 import crypto from 'crypto';
+import Anthropic from '@anthropic-ai/sdk';
 import { supabase } from './supabase';
 import { notifyClients } from './events';
+
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
+
+async function generateAiSummary(title, rawText) {
+  if (!anthropic) return null;
+  try {
+    const text = rawText.replace(/\s{2,}/g, ' ').trim().slice(0, 800);
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 120,
+      messages: [{
+        role: 'user',
+        content: `Summarize this news article in 2 sentences (max 160 characters total). Be factual and concise. Reply only with the summary, no quotes or labels.\n\nTitle: ${title}\n\n${text}`,
+      }],
+    });
+    return msg.content[0]?.text?.trim() || null;
+  } catch {
+    return null;
+  }
+}
 
 const AGENT_RUNS_TABLE = process.env.SUPABASE_AGENT_RUNS_TABLE || 'agent_runs';
 
@@ -424,12 +447,17 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
     console.log(`[agent] ${rawArticles.length} artigos brutos, ${filteredArticles.length} após filtrar já vistos`);
 
     const selectedArticles = scoreArticles(filteredArticles, 8);
-    // Enriquece imagens apenas nos artigos finais (evita timeout)
-    const enrichedArticles = await enrichWithImages(selectedArticles);
+    // Enriquece imagens e gera resumos AI em paralelo
+    const [enrichedArticles, aiSummaries] = await Promise.all([
+      enrichWithImages(selectedArticles),
+      Promise.all(selectedArticles.map(a =>
+        generateAiSummary(a.title, a.description || a.content || '')
+      )),
+    ]);
 
     // Os artigos NÃO são guardados no Supabase aqui.
     // Ficam em memória local no browser até o admin decidir publicar ou rejeitar.
-    const articles = enrichedArticles.map(article => {
+    const articles = enrichedArticles.map((article, i) => {
       const category = dashboardCategory(article.matchedSectors);
       const fallback = FALLBACK_IMAGES[category] || FALLBACK_IMAGES['default'];
       return {
@@ -437,6 +465,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         title: article.title.slice(0, 300),
         content: article.postDescription,
         description: (article.description || article.content || '').slice(0, 500),
+        summary: aiSummaries[i] || null,
         url: article.url || null,
         source: article.source || 'RSS',
         category,

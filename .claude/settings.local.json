@@ -83,7 +83,9 @@
       "WebFetch(domain:creatorflow.so)",
       "WebFetch(domain:instantdm.com)",
       "WebFetch(domain:blog.postly.ai)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "WebFetch(domain:www.partyard.eu)",
+      "Bash(node -e \"require\\('@anthropic-ai/sdk'\\)\")"
     ]
   }
 }
