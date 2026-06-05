@@ -149,6 +149,23 @@ function formatDate(iso) {
   } catch { return iso; }
 }
 
+function cleanContent(item) {
+  const raw = item.description || item.summary || item.excerpt || '';
+  if (raw.trim().length > 20) {
+    return raw.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  }
+  return (item.content || '')
+    .replace(/Key sectors:[^\n]*/gi, '')
+    .replace(/Source:[^\n]*/gi, '')
+    .replace(/This article highlights[^.]*\./gi, '')
+    .replace(/Sensitive terms[^.]*\./gi, '')
+    .replace(/Read the full story here\.?/gi, '')
+    .replace(new RegExp(item.title || '__NOTITLE__', 'gi'), '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function SectorBadge({ category }) {
   if (!category) return null;
   const sector = SECTOR_MAP[category.toLowerCase()];
@@ -270,7 +287,7 @@ function AgentArticleCard({ item, connectedAccounts, companiesData, selection, o
         </div>
 
         <h2 className="news-card-title">{item.title}</h2>
-        <p className="news-card-body">{item.content}</p>
+        <p className="news-card-body">{cleanContent(item)}</p>
 
         {/* 1 dropdown com todas as empresas + checkboxes das redes dessa empresa */}
         {companies.length > 0 && (
@@ -381,7 +398,7 @@ function SavedArticleCard({ item, connectedAccounts, companiesData, onPublish, o
         </div>
 
         <h2 className="news-card-title">{item.title}</h2>
-        <p className="news-card-body">{item.content}</p>
+        <p className="news-card-body">{cleanContent(item)}</p>
 
         {item.status === 'on_hold' && companies.length > 0 && (
           <div className="card-platforms">
