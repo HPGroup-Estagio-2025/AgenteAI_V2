@@ -508,9 +508,9 @@ function SocialPageContent() {
                 <div key={company.id} className="social-company-card">
                   {/* Header */}
                   <div className="social-company-header">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                       {company.logo_url && (
-                        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#fff', border: '1.5px solid var(--gray-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,.08)', padding: 4 }}>
+                        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#fff', border: '1.5px solid var(--gray-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,.08)', padding: 4, marginTop: 1 }}>
                           <img src={company.logo_url} alt="" onError={e => e.target.parentElement.style.display='none'} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
                       )}
