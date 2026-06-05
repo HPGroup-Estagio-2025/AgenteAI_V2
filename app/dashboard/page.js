@@ -1011,8 +1011,8 @@ export default function DashboardPage() {
               </button>
             ))}
           </div>
-          {/* Selecionar Tudo — só visível em "Para Revisão" */}
-          {filterStatus === 'pending' && pendingArticles.length > 0 && (
+          {/* Selecionar Tudo — só visível em "Para Revisão" com artigos presentes */}
+          {filterStatus === 'pending' && displayedNews.length > 0 && (
             <button
               className="btn btn-ghost"
               style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
@@ -1031,18 +1031,20 @@ export default function DashboardPage() {
                 ? 'Desselecionar Tudo' : `Selecionar ${filterSector ? 'Setor' : 'Tudo'}`}
             </button>
           )}
-          <button type="button" className="btn btn-primary" onClick={runAgentManually} disabled={agentRunning}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 3l14 9-14 9V3z"/>
-            </svg>
-            {agentRunning ? 'A executar...' : 'Executar agente'}
-          </button>
-          <button className="btn btn-ghost" onClick={() => fetchNews({ force: true, notify: true })} disabled={loading || agentRunning}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
-            </svg>
-            Atualizar
-          </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <button type="button" className="btn btn-primary" onClick={runAgentManually} disabled={agentRunning}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 3l14 9-14 9V3z"/>
+              </svg>
+              {agentRunning ? 'A executar...' : 'Executar agente'}
+            </button>
+            <button className="btn btn-ghost" onClick={() => fetchNews({ force: true, notify: true })} disabled={loading || agentRunning}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+              </svg>
+              Atualizar
+            </button>
+          </div>
         </div>
 
         {lastAgentRun?.run_id && (
@@ -1137,15 +1139,21 @@ export default function DashboardPage() {
 
         {totalPages > 1 && (
           <div className="pagination">
-            <button className="btn btn-ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={loading || page <= 1}>
-              Anterior
+            <button className="pagination-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={loading || page <= 1} aria-label="Anterior">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
-            <span>
-              Página {page} de {totalPages}
-              {totalNews > 0 && ` · ${Math.min((page - 1) * PAGE_SIZE + 1, totalNews)}-${Math.min(page * PAGE_SIZE, totalNews)} de ${totalNews}`}
-            </span>
-            <button className="btn btn-ghost" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={loading || page >= totalPages}>
-              Seguinte
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+              <button
+                key={n}
+                className={`pagination-btn${n === page ? ' active' : ''}`}
+                onClick={() => setPage(n)}
+                disabled={loading}
+              >
+                {n}
+              </button>
+            ))}
+            <button className="pagination-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={loading || page >= totalPages} aria-label="Seguinte">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </div>
         )}
