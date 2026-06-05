@@ -110,9 +110,10 @@ const CONFIGS = {
       const d = await res.json();
       console.log('[linkedin] userinfo:', JSON.stringify(d));
       const fullName = d.name
-        || [d.given_name, d.family_name].filter(Boolean).join(' ')
-        || d.localizedFirstName && d.localizedLastName ? `${d.localizedFirstName || ''} ${d.localizedLastName || ''}`.trim() : null
+        || [d.given_name, d.family_name].filter(Boolean).join(' ').trim()
+        || [d.localizedFirstName, d.localizedLastName].filter(Boolean).join(' ').trim()
         || d.email
+        || d.sub
         || 'LinkedIn User';
       return {
         accountId: d.sub || d.id || null,
