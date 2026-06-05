@@ -491,24 +491,14 @@ function SocialPageContent() {
                         className="btn btn-danger"
                         style={{ padding: '4px 10px', fontSize: '.72rem', height: 'auto' }}
                         disabled={deletingCompany === company.id}
-                        onClick={() => isConfirmingDelete ? handleDeleteCompany(company.id) : setConfirmDeleteCompanyId(company.id)}
+                        onClick={() => setConfirmDeleteCompanyId(company.id)}
                       >
                         {deletingCompany === company.id
                           ? <span className="loader" style={{ width: 10, height: 10 }} />
-                          : isConfirmingDelete ? 'Confirmar' : 'Apagar'}
+                          : 'Apagar'}
                       </button>
                     </div>
                   </div>
-
-                  {/* Delete confirmation */}
-                  {isConfirmingDelete && (
-                    <div className="social-delete-confirm">
-                      <span>As contas ligadas ficarão sem empresa.</span>
-                      <div className="social-delete-confirm-actions">
-                        <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: '.72rem', height: 'auto' }} onClick={() => setConfirmDeleteCompanyId(null)}>Cancelar</button>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Platform Rows */}
                   <div className="social-platforms-list">
@@ -586,6 +576,35 @@ function SocialPageContent() {
         )}
 
       </main>
+
+      {confirmDeleteCompanyId && (
+        <div className="modal-overlay" onClick={() => setConfirmDeleteCompanyId(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Excluir empresa</h2>
+            </div>
+            <div className="modal-body">
+              Tem a certeza que quer excluir esta empresa?
+              <br />
+              <span style={{ fontSize: '.85rem', color: 'var(--gray-400)', marginTop: 6, display: 'block' }}>
+                As contas ligadas ficarão sem empresa associada.
+              </span>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setConfirmDeleteCompanyId(null)}>
+                Cancelar
+              </button>
+              <button
+                className="btn btn-danger"
+                disabled={!!deletingCompany}
+                onClick={() => handleDeleteCompany(confirmDeleteCompanyId)}
+              >
+                {deletingCompany ? <span className="loader" style={{ width: 12, height: 12 }} /> : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className={`toast toast-${toast.type}`} role="alert">
