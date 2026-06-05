@@ -238,12 +238,11 @@ function AgentArticleCard({ item, connectedAccounts, companiesData, selection, o
     <article className="news-card" style={{ ...(bulkStatusColor ? { outline: `2px solid ${bulkStatusColor}` } : {}), position: 'relative' }}>
       {/* Checkbox de seleção múltipla — canto superior esquerdo sobre a imagem */}
       {onToggleSelect && (
-        <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, background: 'white', borderRadius: 4, boxShadow: '0 1px 4px rgba(0,0,0,.2)', padding: 2 }}>
+        <div className="news-card-checkbox">
           <input
             type="checkbox"
             checked={isSelected || false}
             onChange={onToggleSelect}
-            style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#7C3AED', display: 'block' }}
           />
         </div>
       )}

@@ -219,6 +219,30 @@ textarea { resize: vertical; }
   animation: fadeIn .25s ease;
   overflow: hidden;
   min-height: 160px;
+  position: relative;
+}
+/* Checkbox overlay no canto superior esquerdo da imagem */
+.news-card-checkbox {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  width: 20px;
+  height: 20px;
+  background: rgba(255,255,255,.92);
+  border-radius: 5px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.news-card-checkbox input {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--blue-600);
+  display: block;
+  margin: 0;
 }
 .news-card:hover { box-shadow: var(--shadow-md); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -245,7 +269,7 @@ textarea { resize: vertical; }
   background: var(--gray-100);
 }
 
-.news-card-content { min-width: 0; padding: 16px 14px 16px 18px; display: flex; flex-direction: column; }
+.news-card-content { min-width: 0; padding: 16px 14px 16px 20px; display: flex; flex-direction: column; border-left: 1px solid var(--gray-100); }
 .news-card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
 .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .badge-pending  { background: var(--amber-100); color: var(--amber-600); }
