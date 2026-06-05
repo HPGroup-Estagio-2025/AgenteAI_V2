@@ -559,7 +559,7 @@ export default function DashboardPage() {
   }, [pendingArticles, connectedAccounts, companiesData]);
 
   // ── Fetch da BD (publicadas / em espera) ─────────────────────────
-  const fetchNews = useCallback(async ({ force = false, notify = false } = {}) => {
+  const fetchNews = useCallback(async ({ force = false, notify = false, sector: sectorOverride } = {}) => {
     if (loadingRef.current && !force) return;
     loadingRef.current = true;
     setLoading(true);
@@ -595,6 +595,8 @@ export default function DashboardPage() {
 
     const params = new URLSearchParams({ limit: PAGE_SIZE, page: page.toString(), _: Date.now().toString() });
     params.set('status', filterStatus);
+    const activeSector = sectorOverride !== undefined ? sectorOverride : filterSector;
+    if (activeSector) params.set('sector', activeSector);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -625,7 +627,7 @@ export default function DashboardPage() {
       loadingRef.current = false;
       if (isMountedRef.current) setLoading(false);
     }
-  }, [filterStatus, page, router]);
+  }, [filterStatus, page, filterSector, router]);
 
   useEffect(() => { fetchRef.current = fetchNews; }, [fetchNews]);
   useEffect(() => { return () => { isMountedRef.current = false; clearTimeout(toastTimer.current); }; }, []);
@@ -923,15 +925,18 @@ export default function DashboardPage() {
     }
   }
 
-  // Artigos filtrados por setor (só para pendentes)
+  // Artigos filtrados por setor (pendentes — filtro local)
   const sectorFilteredPending = filterSector
     ? pendingArticles.filter(a => (a.category || '').toLowerCase() === filterSector)
     : pendingArticles;
 
-  // Contagens por setor para os badges
-  const sectorCounts = Object.fromEntries(
-    Object.keys(SECTOR_MAP).map(s => [s, pendingArticles.filter(a => (a.category || '').toLowerCase() === s).length])
-  );
+  // Contagens por setor
+  const sectorCounts = filterStatus === 'pending'
+    ? Object.fromEntries(Object.keys(SECTOR_MAP).map(s => [s, pendingArticles.filter(a => (a.category || '').toLowerCase() === s).length]))
+    : Object.fromEntries(Object.keys(SECTOR_MAP).map(s => [s, news.filter(a => (a.category || '').toLowerCase() === s).length]));
+
+  // Total para o badge "Todos"
+  const sectorTotalCount = filterStatus === 'pending' ? pendingArticles.length : totalNews;
 
   // Artigos a mostrar
   const displayedNews = filterStatus === 'pending'
@@ -974,15 +979,15 @@ export default function DashboardPage() {
       <main className="main">
         {/* Stat cards */}
         <div className="stats-bar">
-          <div className="stat-card stat-pending" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('pending'); setPage(1); }}>
+          <div className="stat-card stat-pending" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('pending'); setPage(1); setFilterSector(''); }}>
             <div className="stat-value">{counts.pending}</div>
             <div className="stat-label">Para Revisão</div>
           </div>
-          <div className="stat-card stat-published" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('published'); setPage(1); }}>
+          <div className="stat-card stat-published" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('published'); setPage(1); setFilterSector(''); }}>
             <div className="stat-value">{counts.published}</div>
             <div className="stat-label">Publicadas</div>
           </div>
-          <div className="stat-card stat-onhold" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('on_hold'); setPage(1); }}>
+          <div className="stat-card stat-onhold" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('on_hold'); setPage(1); setFilterSector(''); }}>
             <div className="stat-value">{counts.on_hold}</div>
             <div className="stat-label">Guardados</div>
           </div>
@@ -1000,7 +1005,7 @@ export default function DashboardPage() {
                 key={status}
                 className={`filter-tab${filterStatus === status ? ' active' : ''}`}
                 role="tab"
-                onClick={() => { setFilterStatus(status); setPage(1); }}
+                onClick={() => { setFilterStatus(status); setPage(1); setFilterSector(''); }}
               >
                 {label}
               </button>
@@ -1048,8 +1053,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Barra de filtro por setor — só em "Para Revisão" */}
-        {filterStatus === 'pending' && pendingArticles.length > 0 && (
+        {/* Barra de filtro por setor */}
+        {(filterStatus === 'pending' ? pendingArticles.length > 0 : news.length > 0 || filterSector !== '') && (
           <div className="sector-bar" style={{ marginBottom: 16 }}>
             <button
               className={`sector-tab${filterSector === '' ? ' active' : ''}`}
@@ -1057,10 +1062,10 @@ export default function DashboardPage() {
               onClick={() => { setFilterSector(''); setPage(1); }}
             >
               Todos
-              <span className="sector-count">{pendingArticles.length}</span>
+              <span className="sector-count">{sectorTotalCount}</span>
             </button>
             {Object.entries(SECTOR_MAP).map(([key, { label }]) =>
-              sectorCounts[key] > 0 ? (
+              sectorCounts[key] > 0 || filterSector === key ? (
                 <button
                   key={key}
                   className={`sector-tab${filterSector === key ? ' active' : ''}`}
