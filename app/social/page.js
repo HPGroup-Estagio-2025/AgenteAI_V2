@@ -119,13 +119,13 @@ function SocialPageContent() {
     const token = localStorage.getItem('auth_token');
     if (!token) { router.replace('/'); return; }
     try {
-      const res = await fetch('/api/social/accounts', {
+      const res = await fetch(`/api/social/accounts?_=${Date.now()}`, {
         headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
       });
       if (res.status === 401) { clearAuth(); router.replace('/'); return; }
       const data = await res.json();
-      const accounts = data.accounts || {};
-      setAccounts(accounts);
+      setAccounts(data.accounts || {});
     } catch (err) {
       console.error('[social] Erro ao carregar contas:', err);
     } finally {
@@ -153,9 +153,12 @@ function SocialPageContent() {
     if (connected) {
       const platform = PLATFORMS.find(p => p.id === connected);
       showToast(`${platform?.name || connected} conectado com sucesso!`, 'success');
-      loadAccounts();
-      loadCompanies();
       router.replace('/social', { scroll: false });
+      // Delay para garantir que o Supabase processou antes de recarregar
+      setTimeout(async () => {
+        await loadAccounts();
+        await loadCompanies();
+      }, 800);
     } else if (error) {
       const detail = searchParams.get('detail');
       const base = ERROR_MESSAGES[error] || `Erro: ${error}`;
@@ -314,8 +317,14 @@ function SocialPageContent() {
         body: JSON.stringify({ accountId }),
       });
       if (res.ok) {
-        await loadAccounts();
         showToast('Conta desconectada.', 'info');
+        // Pequeno delay para o Supabase processar antes de recarregar
+        setTimeout(async () => {
+          await loadAccounts();
+          await loadCompanies();
+        }, 500);
+      } else {
+        showToast('Erro ao desconectar.', 'error');
       }
     } catch {
       showToast('Erro ao desconectar. Tenta novamente.', 'error');
