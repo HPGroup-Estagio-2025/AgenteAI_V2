@@ -435,21 +435,66 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
     hashtags,
   ].filter(Boolean).join('\n\n').trim();
 
+  // Upload de imagem para o LinkedIn
+  let imageAssetUrn = null;
+  const imageUrl = getItemImage(item);
+  try {
+    // 1. Registar upload
+    const registerRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
+      body: JSON.stringify({
+        registerUploadRequest: {
+          owner: authorUrn,
+          recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
+          serviceRelationships: [{ identifier: 'urn:li:userGeneratedContent', relationshipType: 'OWNER' }],
+        },
+      }),
+    });
+    const registerData = await registerRes.json().catch(() => ({}));
+    const uploadUrl = registerData?.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl;
+    imageAssetUrn = registerData?.value?.asset;
+
+    if (uploadUrl && imageAssetUrn) {
+      // 2. Fazer upload da imagem
+      const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(8000) });
+      if (imgRes.ok) {
+        const imgBuffer = await imgRes.arrayBuffer();
+        await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/octet-stream' },
+          body: imgBuffer,
+          signal: AbortSignal.timeout(15000),
+        });
+        console.log('[linkedin] ✓ Imagem carregada:', imageAssetUrn);
+      }
+    }
+  } catch (err) {
+    console.warn('[linkedin] Falha no upload de imagem, continua sem imagem:', err.message);
+    imageAssetUrn = null;
+  }
+
   async function tryPost(urn) {
+    const useImage = imageAssetUrn;
     const body = {
       author: urn,
       lifecycleState: 'PUBLISHED',
       specificContent: {
         'com.linkedin.ugc.ShareContent': {
           shareCommentary: { text: postText },
-          shareMediaCategory: linkUrl ? 'ARTICLE' : 'NONE',
-          ...(linkUrl ? {
-            media: [{ status: 'READY', description: { text: summary }, originalUrl: linkUrl, title: { text: item.title } }],
-          } : {}),
+          shareMediaCategory: useImage ? 'IMAGE' : (linkUrl ? 'ARTICLE' : 'NONE'),
+          media: useImage
+            ? [{ status: 'READY', media: imageAssetUrn, title: { text: item.title }, description: { text: summary } }]
+            : linkUrl
+              ? [{ status: 'READY', description: { text: summary }, originalUrl: linkUrl, title: { text: item.title } }]
+              : undefined,
         },
       },
       visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
     };
+    if (!body.specificContent['com.linkedin.ugc.ShareContent'].media) {
+      delete body.specificContent['com.linkedin.ugc.ShareContent'].media;
+    }
     const r = await fetch('https://api.linkedin.com/v2/ugcPosts', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
