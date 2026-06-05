@@ -163,11 +163,10 @@ function cleanContent(item) {
 
   const clean = base.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
 
-  // Extrai só a primeira frase completa, máximo 160 caracteres
-  const firstSentence = clean.match(/^[^.!?]+[.!?]/)?.[0]?.trim() || clean;
-  return firstSentence.length > 160
-    ? firstSentence.slice(0, 157) + '...'
-    : firstSentence;
+  // Extrai as primeiras 2 frases completas, máximo 220 caracteres
+  const sentences = clean.match(/[^.!?]+[.!?]+/g) || [];
+  const summary = sentences.slice(0, 2).join(' ').trim() || clean.slice(0, 220);
+  return summary.length > 220 ? summary.slice(0, 217) + '...' : summary;
 }
 
 function SectorBadge({ category }) {
