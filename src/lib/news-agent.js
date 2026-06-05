@@ -27,45 +27,31 @@ async function generateAiSummary(title, rawText) {
 
 const AGENT_RUNS_TABLE = process.env.SUPABASE_AGENT_RUNS_TABLE || 'agent_runs';
 
-const RSS_FEEDS = [
-  // Fontes especializadas — Marítimo / Naval (prioritárias)
-  'https://www.naval-technology.com/feed/',
-  'https://www.maritime-executive.com/rss',
-  'https://splash247.com/feed/',
-  'https://www.tradewindsnews.com/rss',
-  'https://gcaptain.com/feed/',
-  'https://www.hellenicshippingnews.com/feed/',
-  'https://marinemec.com/news/feed/',
-  'https://www.seatrade-maritime.com/rss.xml',
-  'https://www.maritimenews.com/feed/',
-  'https://news.google.com/rss/search?q=shipping+vessel+port+maritime+industry&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=shipbuilding+naval+vessel+marine+propulsion&hl=en-US&gl=US&ceid=US:en',
-  // Fontes especializadas — Defesa / Militar
-  'https://www.defensenews.com/arc/outboundfeeds/rss/',
-  'https://www.janes.com/feeds/news',
-  'https://breakingdefense.com/feed/',
-  // Fontes especializadas — Aeroespacial / Aviação
-  'https://spacenews.com/feed/',
-  'https://www.aviationweek.com/rss.xml',
-  'https://simpleflying.com/feed/',
-  // Fontes especializadas — Ferroviário
-  'https://www.railway-technology.com/feed/',
-  'https://www.railjournal.com/feed/',
-  // Fontes especializadas — Indústria / Supply Chain
-  'https://www.supplychaindive.com/feeds/news/',
-  'https://www.industryweek.com/rss',
-  // Google News — Marítimo / Naval
-  'https://news.google.com/rss/search?q=maritime+shipping+port+vessel+2025&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=naval+shipbuilding+marine+engine&hl=en-US&gl=US&ceid=US:en',
-  // Google News — Defesa / Militar
-  'https://news.google.com/rss/search?q=defense+military+navy+procurement+2025&hl=en-US&gl=US&ceid=US:en',
-  // Google News — Aeroespacial
-  'https://news.google.com/rss/search?q=aerospace+aviation+aircraft+space+launch+2025&hl=en-US&gl=US&ceid=US:en',
-  // Google News — Ferroviário
-  'https://news.google.com/rss/search?q=railway+rail+train+rolling+stock+2025&hl=en-US&gl=US&ceid=US:en',
-  // Google News — Supply Chain / Logistics
-  'https://news.google.com/rss/search?q=supply+chain+logistics+shipping+freight+2025&hl=en-US&gl=US&ceid=US:en',
-];
+// Feeds organizados por setor — 2 fontes por setor
+const SECTOR_FEEDS = {
+  'maritimo': [
+    'https://www.naval-technology.com/feed/',
+    'https://gcaptain.com/feed/',
+  ],
+  'defesa-militar': [
+    'https://www.defensenews.com/arc/outboundfeeds/rss/',
+    'https://breakingdefense.com/feed/',
+  ],
+  'aeroespacial': [
+    'https://spacenews.com/feed/',
+    'https://simpleflying.com/feed/',
+  ],
+  'ferroviario': [
+    'https://www.railway-technology.com/feed/',
+    'https://www.railjournal.com/feed/',
+  ],
+  'tecnologia': [
+    'https://feeds.arstechnica.com/arstechnica/index',
+    'https://www.theverge.com/rss/index.xml',
+  ],
+};
+
+const RSS_FEEDS = Object.values(SECTOR_FEEDS).flat();
 
 // Pools de imagens de fallback por categoria (rodam para evitar repetição)
 const FALLBACK_POOLS = {
@@ -200,6 +186,7 @@ function dashboardCategory(matchedSectors = []) {
   if (matchedSectors.includes('defense')) return 'defesa-militar';
   if (matchedSectors.includes('space') || matchedSectors.includes('aviation')) return 'aeroespacial';
   if (matchedSectors.includes('railway')) return 'ferroviario';
+  if (matchedSectors.includes('technology') || matchedSectors.includes('engineering')) return 'tecnologia';
   return matchedSectors[0] || 'industry';
 }
 
@@ -547,7 +534,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
     // Os artigos NÃO são guardados no Supabase aqui.
     // Ficam em memória local no browser até o admin decidir publicar ou rejeitar.
     const articles = enrichedArticles.map((article, i) => {
-      const category = dashboardCategory(article.matchedSectors);
+      const category = article._forcedCategory || dashboardCategory(article.matchedSectors);
       const fallback = getFallbackImage(category);
       return {
         id: articleId(),

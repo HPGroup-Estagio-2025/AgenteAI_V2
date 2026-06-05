@@ -86,7 +86,13 @@
       "Bash(git stash *)",
       "WebFetch(domain:www.partyard.eu)",
       "Bash(node -e \"require\\('@anthropic-ai/sdk'\\)\")",
-      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\dashboard_news_agent_interno_fix_uuid\\\\dashboard_news\\\\app\\\\api\\\\2fa\\\\setup\")"
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\dashboard_news_agent_interno_fix_uuid\\\\dashboard_news\\\\app\\\\api\\\\2fa\\\\setup\")",
+      "Bash(node -e ' *)",
+      "Bash(node -c src/lib/news-agent.js)",
+      "Bash(node src/lib/news-agent.js)",
+      "Bash(node -e \"require\\('./src/lib/news-agent.js'\\)\")",
+      "Bash(node --input-type=module)",
+      "Bash(grep -v \"^//\")"
     ]
   }
 }

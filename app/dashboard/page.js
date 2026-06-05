@@ -28,6 +28,7 @@ const SECTOR_MAP = {
   'defesa-militar': { label: 'Defesa Militar', cls: 'badge-sector-defesa' },
   'aeroespacial':   { label: 'Aeroespacial',   cls: 'badge-sector-aeroespacial' },
   'ferroviario':    { label: 'Ferroviário',    cls: 'badge-sector-ferroviario' },
+  'tecnologia':     { label: 'Tecnologia',     cls: 'badge-sector-tecnologia' },
 };
 
 const STATUS_LABELS = {

@@ -209,6 +209,9 @@ textarea { resize: vertical; }
 .sector-tab[data-sector="defesa-militar"]:not(.active):hover { border-color: #4a5320; color: #4a5320; background: #eaecda; }
 .sector-tab[data-sector="aeroespacial"]:not(.active):hover   { border-color: #6D28D9; color: #6D28D9; background: #EDE9FE; }
 .sector-tab[data-sector="ferroviario"]:not(.active):hover    { border-color: #92400E; color: #92400E; background: #FEF3C7; }
+.sector-tab[data-sector="tecnologia"].active,
+.sector-tab[data-sector="tecnologia"].active:hover   { background: #15803D; color: var(--white); border-color: transparent; }
+.sector-tab[data-sector="tecnologia"]:not(.active):hover     { border-color: #15803D; color: #15803D; background: #F0FDF4; }
 .sector-count { font-size: .7rem; padding: 1px 6px; border-radius: 10px; background: rgba(0,0,0,.12); min-width: 18px; text-align: center; }
 .sector-tab.active .sector-count { background: rgba(255,255,255,.25); }
 
@@ -263,6 +266,7 @@ textarea { resize: vertical; }
 .badge-sector-defesa       { background: #eaecda; color: #4a5320; text-transform: none; letter-spacing: 0; font-size: .75rem; }
 .badge-sector-aeroespacial { background: #EDE9FE; color: #6D28D9; text-transform: none; letter-spacing: 0; font-size: .75rem; }
 .badge-sector-ferroviario  { background: #FEF3C7; color: #92400E; text-transform: none; letter-spacing: 0; font-size: .75rem; }
+.badge-sector-tecnologia   { background: #F0FDF4; color: #15803D; text-transform: none; letter-spacing: 0; font-size: .75rem; }
 
 .news-meta-text { font-size: .78rem; color: var(--gray-400); }
 .news-card-title { font-size: 1rem; font-weight: 600; color: var(--gray-900); margin-bottom: 8px; line-height: 1.4; }
