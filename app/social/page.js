@@ -363,10 +363,15 @@ function SocialPageContent() {
     const platformAccounts = companyAccounts[id] || [];
     const isConnecting = connecting === id;
     const hasAccounts = platformAccounts.length > 0;
+    const [open, setOpen] = useState(false);
 
     return (
       <>
-        <div className="social-platform-row">
+        <div
+          className="social-platform-row"
+          style={{ cursor: hasAccounts ? 'pointer' : 'default' }}
+          onClick={() => hasAccounts && setOpen(o => !o)}
+        >
           <div className="social-platform-icon" style={{ background: bg }}>
             <Icon />
           </div>
@@ -376,19 +381,24 @@ function SocialPageContent() {
               {hasAccounts ? '✓ Conectado' : '○ Desconectado'}
             </div>
           </div>
-          {!hasAccounts && (
+          {!hasAccounts ? (
             <button
               className="btn-connect"
               style={{ background: color }}
               disabled={isConnecting}
-              onClick={() => handleConnect(id, company.name)}
+              onClick={e => { e.stopPropagation(); handleConnect(id, company.name); }}
             >
               {isConnecting ? <span className="loader" style={{ width: 11, height: 11 }} /> : 'Conectar'}
             </button>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ color: 'var(--gray-400)', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
           )}
         </div>
-        {hasAccounts && platformAccounts.map(account => (
-          <div key={account.id} className="social-account-panel">
+        {hasAccounts && open && platformAccounts.map(account => (
+          <div key={account.id} className="social-account-panel" onClick={e => e.stopPropagation()}>
             <div className="social-account-panel-info">
               <span className="social-account-panel-name">{account.email || account.name}</span>
               {id === 'facebook' && account.pages?.length > 0 && (
@@ -405,6 +415,50 @@ function SocialPageContent() {
             </button>
           </div>
         ))}
+      </>
+    );
+  }
+
+  function WpRow({ company, hasWordpress, onEdit }) {
+    const [open, setOpen] = useState(false);
+    return (
+      <>
+        <div
+          className="social-platform-row"
+          style={{ cursor: hasWordpress ? 'pointer' : 'default' }}
+          onClick={() => hasWordpress && setOpen(o => !o)}
+        >
+          <div className="social-platform-icon" style={{ background: '#EEF2FF' }}>
+            <WP_ICON />
+          </div>
+          <div className="social-platform-info">
+            <div className="social-platform-name">WordPress</div>
+            <div className={`social-platform-status ${hasWordpress ? 'social-platform-status--on' : 'social-platform-status--off'}`}>
+              {hasWordpress ? '✓ Configurado' : '○ Não configurado'}
+            </div>
+          </div>
+          {!hasWordpress ? (
+            <button className="btn-connect" style={{ background: '#3858E9' }} onClick={e => { e.stopPropagation(); onEdit(); }}>
+              Configurar
+            </button>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ color: 'var(--gray-400)', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          )}
+        </div>
+        {hasWordpress && open && (
+          <div className="social-account-panel" onClick={e => e.stopPropagation()}>
+            <div className="social-account-panel-info">
+              <span className="social-account-panel-name">{company.wordpress_url}</span>
+              <span className="social-account-panel-sub">Utilizador: {company.wordpress_username}</span>
+            </div>
+            <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '.72rem', height: 'auto' }} onClick={onEdit}>
+              Editar
+            </button>
+          </div>
+        )}
       </>
     );
   }
@@ -565,19 +619,7 @@ function SocialPageContent() {
                     ))}
 
                     {/* WordPress row */}
-                    <div className="social-platform-row">
-                      <div className="social-platform-icon" style={{ background: '#EEF2FF' }}>
-                        <WP_ICON />
-                      </div>
-                      <div className="social-platform-info">
-                        <div className="social-platform-name">WordPress</div>
-                        <div className={`social-platform-status ${hasWordpress ? 'social-platform-status--on' : 'social-platform-status--off'}`}>
-                          {hasWordpress ? '✓ Configurado' : '○ Não configurado'}
-                        </div>
-                      </div>
-                    </div>
-                    {hasWordpress && <div className="social-wp-url">{company.wordpress_url}</div>}
-                    {!hasWordpress && <div className="social-wp-hint">Configura nas definições abaixo</div>}
+                    <WpRow company={company} hasWordpress={hasWordpress} onEdit={() => openCompanySettings(company)} />
                   </div>
 
                 </div>
