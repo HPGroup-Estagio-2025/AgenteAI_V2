@@ -23,7 +23,7 @@ export async function POST(request, { params }) {
   const { id } = await params;
   const item = await findNews(id);
   if (!item) return NextResponse.json({ error: 'Notícia não encontrada' }, { status: 404 });
-  if (item.status !== 'pending') return NextResponse.json({ error: 'Notícia já foi processada' }, { status: 409 });
+  if (!['pending', 'on_hold'].includes(item.status)) return NextResponse.json({ error: 'Notícia já foi processada' }, { status: 409 });
 
   const body = await request.json().catch(() => ({}));
   const reason = body?.reason ? String(body.reason).substring(0, 300) : null;

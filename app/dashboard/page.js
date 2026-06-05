@@ -332,7 +332,7 @@ function AgentArticleCard({ item, connectedAccounts, companiesData, selection, o
 }
 
 // ── Card para artigos já guardados na BD ───────────────────────────
-function SavedArticleCard({ item, connectedAccounts, companiesData, onPublish }) {
+function SavedArticleCard({ item, connectedAccounts, companiesData, onPublish, onRemove }) {
   const companies = buildCompanies(connectedAccounts || {}, companiesData);
   const [selectedCompanyId, setSelectedCompanyId] = useState(companies[0]?.id || null);
   const [selectedPlatforms, setSelectedPlatforms] = useState(companies[0]?.platforms ? [...companies[0].platforms] : []);
@@ -425,8 +425,19 @@ function SavedArticleCard({ item, connectedAccounts, companiesData, onPublish })
           </a>
         )}
         {item.status === 'on_hold' && onPublish && (
-          <button className="btn btn-success" onClick={() => onPublish(item, selectedPlatforms, selectedAccounts, selectedCompany?.companyId || null /* UUID real */ )}>
+          <button className="btn btn-success" onClick={() => onPublish(item, selectedPlatforms, selectedAccounts, selectedCompany?.companyId || null)}>
             Publicar
+          </button>
+        )}
+        {item.status === 'on_hold' && onRemove && (
+          <button
+            className="btn btn-ghost btn-danger"
+            title="Remover notícia"
+            onClick={() => onRemove(item)}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
           </button>
         )}
       </div>
@@ -874,6 +885,25 @@ export default function DashboardPage() {
     }
   }
 
+  // ── Remover artigo guardado (on_hold → rejected) ─────────────────
+  async function handleRemoveSaved(item) {
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/reject`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Erro ao remover notícia', 'error'); return; }
+      showToast('Notícia removida.', 'info');
+      fetchNews({ force: true });
+    } catch {
+      showToast('Erro de ligação. Tenta novamente.', 'error');
+    }
+  }
+
   // ── Guardar artigo (on_hold) ──────────────────────────────────────
   async function handleSave(item) {
     if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
@@ -1095,6 +1125,7 @@ export default function DashboardPage() {
                 connectedAccounts={connectedAccounts}
                 companiesData={companiesData}
                 onPublish={filterStatus === 'on_hold' ? handlePublishSaved : null}
+                onRemove={filterStatus === 'on_hold' ? handleRemoveSaved : null}
               />
             ))
           )}
