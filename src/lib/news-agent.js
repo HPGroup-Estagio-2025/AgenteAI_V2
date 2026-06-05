@@ -158,15 +158,24 @@ function dashboardCategory(matchedSectors = []) {
   return matchedSectors[0] || 'industry';
 }
 
+function decodeEntities(raw) {
+  return (raw || '')
+    .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(parseInt(c, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ').replace(/&mdash;/g, '—').replace(/&ndash;/g, '–')
+    .replace(/&rsquo;/g, ''').replace(/&lsquo;/g, ''').replace(/&hellip;/g, '…')
+    .replace(/&rdquo;/g, '"').replace(/&ldquo;/g, '"');
+}
+
 function generatePostDescription(article) {
   const titleLower = (article.title || '').toLowerCase().trim();
 
   function cleanRaw(raw) {
-    return (raw || '')
+    return decodeEntities(raw || '')
       .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
       .replace(/<[^>]+>/g, ' ')
-      .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
       .replace(/\s{2,}/g, ' ')
       .trim();
   }

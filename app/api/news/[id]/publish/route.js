@@ -76,11 +76,31 @@ function selectFacebookPage(pages) {
   return availablePages[0] || null;
 }
 
+function decodeHtmlEntities(text) {
+  return (text || '')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&mdash;/g, '—')
+    .replace(/&ndash;/g, '–')
+    .replace(/&hellip;/g, '…')
+    .replace(/&rsquo;/g, '’')
+    .replace(/&lsquo;/g, '‘')
+    .replace(/&rdquo;/g, '”')
+    .replace(/&ldquo;/g, '“');
+}
+
 function buildSocialSummary(item) {
   const title = (item.title || '').toLowerCase().trim();
 
   function cleanText(raw) {
-    return (raw || '')
+    return decodeHtmlEntities(raw || '')
       .replace(/<[^>]+>/g, ' ')
       .replace(/Key sectors:[^\n]*/gi, '')
       .replace(/Source:[^\n]*/gi, '')
