@@ -28,12 +28,18 @@ async function generateAiSummary(title, rawText) {
 const AGENT_RUNS_TABLE = process.env.SUPABASE_AGENT_RUNS_TABLE || 'agent_runs';
 
 const RSS_FEEDS = [
-  // Fontes especializadas — Marítimo / Naval
+  // Fontes especializadas — Marítimo / Naval (prioritárias)
   'https://www.naval-technology.com/feed/',
   'https://www.maritime-executive.com/rss',
   'https://splash247.com/feed/',
   'https://www.tradewindsnews.com/rss',
   'https://gcaptain.com/feed/',
+  'https://www.hellenicshippingnews.com/feed/',
+  'https://marinemec.com/news/feed/',
+  'https://www.seatrade-maritime.com/rss.xml',
+  'https://www.maritimenews.com/feed/',
+  'https://news.google.com/rss/search?q=shipping+vessel+port+maritime+industry&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=shipbuilding+naval+vessel+marine+propulsion&hl=en-US&gl=US&ceid=US:en',
   // Fontes especializadas — Defesa / Militar
   'https://www.defensenews.com/arc/outboundfeeds/rss/',
   'https://www.janes.com/feeds/news',
@@ -390,9 +396,19 @@ function scoreArticles(items, maxArticles = 5) {
   const sectorCounts = {};
   const selected = [];
 
+  // Passo 0: garante mínimo de 5 artigos marítimos (marine)
+  const MARINE_MIN = 5;
+  const marineCandidates = allCandidates.filter(a => a.matchedSectors?.includes('marine'));
+  for (const article of marineCandidates) {
+    if ((sectorCounts['marine'] || 0) >= MARINE_MIN) break;
+    selected.push(article);
+    sectorCounts['marine'] = (sectorCounts['marine'] || 0) + 1;
+  }
+
   // Passa 1: seleciona até maxPerSector por setor, por ordem de score
   for (const article of allCandidates) {
     if (selected.length >= maxArticles) break;
+    if (selected.includes(article)) continue;
     const primarySector = article.matchedSectors?.[0] || 'other';
     const count = sectorCounts[primarySector] || 0;
     if (count < maxPerSector) {
