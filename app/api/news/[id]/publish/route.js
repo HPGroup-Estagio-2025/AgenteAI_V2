@@ -435,23 +435,13 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
   ].filter(Boolean).join('\n\n').trim();
 
   async function tryPost(urn) {
-    // Usa ARTICLE quando há link (LinkedIn busca imagem via Open Graph automaticamente)
-    // Evita upload manual de imagem que causa erros de ownership
     const body = {
       author: urn,
       lifecycleState: 'PUBLISHED',
       specificContent: {
         'com.linkedin.ugc.ShareContent': {
           shareCommentary: { text: postText },
-          shareMediaCategory: linkUrl ? 'ARTICLE' : 'NONE',
-          ...(linkUrl ? {
-            media: [{
-              status: 'READY',
-              originalUrl: linkUrl,
-              title: { text: item.title },
-              description: { text: summary },
-            }],
-          } : {}),
+          shareMediaCategory: 'NONE',
         },
       },
       visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
