@@ -995,54 +995,57 @@ export default function DashboardPage() {
 
         {/* Toolbar */}
         <div className="toolbar">
-          <div className="filter-tabs" role="tablist">
-            {[
-              { status: 'pending',   label: `Para Revisão (${counts.pending})` },
-              { status: 'published', label: 'Publicadas' },
-              { status: 'on_hold',   label: 'Guardados' },
-            ].map(({ status, label }) => (
+          {/* Esquerda */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div className="filter-tabs" role="tablist">
+              {[
+                { status: 'pending',   label: `Para Revisão (${counts.pending})` },
+                { status: 'published', label: 'Publicadas' },
+                { status: 'on_hold',   label: 'Guardados' },
+              ].map(({ status, label }) => (
+                <button
+                  key={status}
+                  className={`filter-tab${filterStatus === status ? ' active' : ''}`}
+                  role="tab"
+                  onClick={() => { setFilterStatus(status); setPage(1); setFilterSector(''); }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {filterStatus === 'pending' && displayedNews.length > 0 && (
               <button
-                key={status}
-                className={`filter-tab${filterStatus === status ? ' active' : ''}`}
-                role="tab"
-                onClick={() => { setFilterStatus(status); setPage(1); setFilterSector(''); }}
+                className="btn btn-ghost"
+                style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
+                onClick={() => {
+                  const visibleIds = sectorFilteredPending.map(a => a.id);
+                  const allSelected = visibleIds.every(id => bulkSelected.has(id));
+                  setBulkSelected(prev => {
+                    const next = new Set(prev);
+                    if (allSelected) visibleIds.forEach(id => next.delete(id));
+                    else visibleIds.forEach(id => next.add(id));
+                    return next;
+                  });
+                }}
               >
-                {label}
+                {sectorFilteredPending.length > 0 && sectorFilteredPending.every(a => bulkSelected.has(a.id))
+                  ? 'Desselecionar Tudo' : `Selecionar ${filterSector ? 'Setor' : 'Tudo'}`}
               </button>
-            ))}
+            )}
           </div>
-          {/* Selecionar Tudo — só visível em "Para Revisão" com artigos presentes */}
-          {filterStatus === 'pending' && displayedNews.length > 0 && (
-            <button
-              className="btn btn-ghost"
-              style={{ fontSize: '.8rem', padding: '6px 12px', height: 'auto' }}
-              onClick={() => {
-                const visibleIds = sectorFilteredPending.map(a => a.id);
-                const allSelected = visibleIds.every(id => bulkSelected.has(id));
-                setBulkSelected(prev => {
-                  const next = new Set(prev);
-                  if (allSelected) visibleIds.forEach(id => next.delete(id));
-                  else visibleIds.forEach(id => next.add(id));
-                  return next;
-                });
-              }}
-            >
-              {sectorFilteredPending.length > 0 && sectorFilteredPending.every(a => bulkSelected.has(a.id))
-                ? 'Desselecionar Tudo' : `Selecionar ${filterSector ? 'Setor' : 'Tudo'}`}
-            </button>
-          )}
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-            <button type="button" className="btn btn-primary" onClick={runAgentManually} disabled={agentRunning}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 3l14 9-14 9V3z"/>
-              </svg>
-              {agentRunning ? 'A executar...' : 'Executar agente'}
-            </button>
+          {/* Direita */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button className="btn btn-ghost" onClick={() => fetchNews({ force: true, notify: true })} disabled={loading || agentRunning}>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
               </svg>
               Atualizar
+            </button>
+            <button type="button" className="btn btn-primary" onClick={runAgentManually} disabled={agentRunning}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 3l14 9-14 9V3z"/>
+              </svg>
+              {agentRunning ? 'A executar...' : 'Executar agente'}
             </button>
           </div>
         </div>
