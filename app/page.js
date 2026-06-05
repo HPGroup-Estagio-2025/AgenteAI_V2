@@ -177,7 +177,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="login-footer">Dashboard de Notícias &copy; 2026</p>
+          <p className="login-footer">Partyard &copy; 2026</p>
         </div>
       </div>
     </div>
