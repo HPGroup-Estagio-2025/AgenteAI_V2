@@ -979,17 +979,38 @@ export default function DashboardPage() {
       <main className="main">
         {/* Stat cards */}
         <div className="stats-bar">
-          <div className="stat-card stat-pending" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('pending'); setPage(1); setFilterSector(''); }}>
-            <div className="stat-value">{counts.pending}</div>
-            <div className="stat-label">Para Revisão</div>
+          <div className="stat-card stat-pending" onClick={() => { setFilterStatus('pending'); setPage(1); setFilterSector(''); }}>
+            <div className="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div className="stat-text">
+              <div className="stat-value">{counts.pending}</div>
+              <div className="stat-label">Para Revisão</div>
+            </div>
           </div>
-          <div className="stat-card stat-published" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('published'); setPage(1); setFilterSector(''); }}>
-            <div className="stat-value">{counts.published}</div>
-            <div className="stat-label">Publicadas</div>
+          <div className="stat-card stat-published" onClick={() => { setFilterStatus('published'); setPage(1); setFilterSector(''); }}>
+            <div className="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <div className="stat-text">
+              <div className="stat-value">{counts.published}</div>
+              <div className="stat-label">Publicadas</div>
+            </div>
           </div>
-          <div className="stat-card stat-onhold" style={{ cursor: 'pointer' }} onClick={() => { setFilterStatus('on_hold'); setPage(1); setFilterSector(''); }}>
-            <div className="stat-value">{counts.on_hold}</div>
-            <div className="stat-label">Guardados</div>
+          <div className="stat-card stat-onhold" onClick={() => { setFilterStatus('on_hold'); setPage(1); setFilterSector(''); }}>
+            <div className="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+              </svg>
+            </div>
+            <div className="stat-text">
+              <div className="stat-value">{counts.on_hold}</div>
+              <div className="stat-label">Guardados</div>
+            </div>
           </div>
         </div>
 
@@ -1272,6 +1293,9 @@ export default function DashboardPage() {
 
       {toast && (
         <div className={`toast toast-${toast.type}`} role="alert" aria-live="polite">
+          {toast.type === 'success' && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><polyline points="20 6 9 17 4 12"/></svg>}
+          {toast.type === 'error'   && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>}
+          {toast.type === 'info'    && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>}
           {toast.message}
         </div>
       )}
