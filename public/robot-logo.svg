@@ -1,60 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4C1D95"/>
-      <stop offset="100%" stop-color="#312E81"/>
-    </linearGradient>
-    <linearGradient id="paper" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#EEF2FF"/>
-    </linearGradient>
-    <linearGradient id="pgrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#7C3AED"/>
-      <stop offset="100%" stop-color="#4F46E5"/>
+      <stop offset="0%" stop-color="#5B21B6"/>
+      <stop offset="100%" stop-color="#4338CA"/>
     </linearGradient>
   </defs>
 
   <!-- Background -->
-  <rect width="100" height="100" rx="20" fill="url(#bg)"/>
-  <rect x="0" y="0" width="100" height="50" rx="20" fill="white" fill-opacity="0.04"/>
+  <rect width="100" height="100" rx="22" fill="url(#bg)"/>
+  <rect x="0" y="0" width="100" height="55" rx="22" fill="white" fill-opacity="0.05"/>
 
-  <!-- Newspaper body -->
-  <rect x="14" y="18" width="52" height="66" rx="6" fill="url(#paper)"/>
-
-  <!-- Fold corner -->
-  <path d="M52 18 L66 32 L52 32 Z" fill="#C4B5FD"/>
-  <path d="M52 18 L66 18 L66 32 Z" fill="#A78BFA"/>
-
-  <!-- Purple header strip -->
-  <rect x="14" y="18" width="38" height="18" rx="0" fill="url(#pgrad)"/>
-  <rect x="14" y="18" width="38" height="18" rx="6" fill="url(#pgrad)"/>
-  <!-- Remove bottom-right radius of strip -->
-  <rect x="38" y="24" width="14" height="12" fill="url(#pgrad)"/>
-
-  <!-- Bold "P" inside the header -->
-  <path d="M21 22 L21 34 L24.5 34 L24.5 30 L29 30 C32.5 30 34.5 28.2 34.5 26 C34.5 23.8 32.5 22 29 22 Z
-           M24.5 25 L28.5 25 C30.5 25 31.2 25.8 31.2 26 C31.2 26.2 30.5 27 28.5 27 L24.5 27 Z"
+  <!-- Bold P letterform -->
+  <path d="M22 18 L22 82 L34 82 L34 58
+           C34 58 58 60 62 58
+           C72 54 76 46 74 36
+           C72 26 64 18 52 18 Z
+           M34 28 L50 28
+           C58 28 63 32 63 38
+           C63 44 58 48 50 48
+           L34 48 Z"
         fill="white"/>
 
-  <!-- Divider line below header -->
-  <rect x="14" y="36" width="52" height="1" fill="#C4B5FD" opacity="0.5"/>
+  <!-- News lines inside the bowl of P -->
+  <rect x="37" y="32" width="18" height="2.5" rx="1.2" fill="#7C3AED" opacity="0.5"/>
+  <rect x="37" y="37" width="14" height="2.5" rx="1.2" fill="#7C3AED" opacity="0.4"/>
+  <rect x="37" y="42" width="16" height="2.5" rx="1.2" fill="#7C3AED" opacity="0.3"/>
 
-  <!-- Headline text line -->
-  <rect x="20" y="41" width="38" height="3.5" rx="1.5" fill="#1E1B4B" opacity="0.7"/>
-  <rect x="20" y="47" width="28" height="2.5" rx="1.2" fill="#3730A3" opacity="0.35"/>
+  <!-- Lines below the P bowl (article text) -->
+  <rect x="22" y="60" width="30" height="2.5" rx="1.2" fill="white" opacity="0.25"/>
+  <rect x="22" y="66" width="24" height="2.5" rx="1.2" fill="white" opacity="0.2"/>
+  <rect x="22" y="72" width="28" height="2.5" rx="1.2" fill="white" opacity="0.15"/>
 
-  <!-- Divider -->
-  <rect x="20" y="53" width="40" height="0.8" rx="0.4" fill="#A78BFA" opacity="0.4"/>
-
-  <!-- Body text lines -->
-  <rect x="20" y="57" width="40" height="2" rx="1" fill="#4338CA" opacity="0.15"/>
-  <rect x="20" y="62" width="33" height="2" rx="1" fill="#4338CA" opacity="0.15"/>
-  <rect x="20" y="67" width="40" height="2" rx="1" fill="#4338CA" opacity="0.15"/>
-  <rect x="20" y="72" width="24" height="2" rx="1" fill="#4338CA" opacity="0.15"/>
-
-  <!-- Signal dot + waves (bottom right outside paper) -->
-  <circle cx="76" cy="72" r="4" fill="#7C3AED"/>
-  <circle cx="76" cy="72" r="2" fill="white"/>
-  <path d="M72 66 Q80 72 72 78" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M69 63 Q80 72 69 81" stroke="#7C3AED" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <!-- Signal dot top-right -->
+  <circle cx="76" cy="24" r="6" fill="white" fill-opacity="0.15"/>
+  <circle cx="76" cy="24" r="3.5" fill="white" fill-opacity="0.9"/>
+  <path d="M72 19 Q80 24 72 29" stroke="white" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.5"/>
+  <path d="M70 16 Q82 24 70 32" stroke="white" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.3"/>
 </svg>
