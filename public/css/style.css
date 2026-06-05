@@ -272,7 +272,8 @@ textarea { resize: vertical; }
 .news-card-title { font-size: 1rem; font-weight: 600; color: var(--gray-900); margin-bottom: 8px; line-height: 1.4; }
 .news-card-body { font-size: .875rem; color: var(--gray-600); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .news-card-footer { margin-top: 10px; font-size: .75rem; color: var(--gray-400); display: flex; gap: 16px; flex-wrap: wrap; }
-.news-card-actions { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; align-items: stretch; }
+.news-card-actions { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; width: 120px; }
+.news-card-actions .btn, .news-card-actions a.btn { width: 100%; justify-content: center; }
 .news-processed-info { margin-top: 8px; font-size: .78rem; color: var(--gray-400); font-style: italic; }
 
 /* Platform selection inside card */
