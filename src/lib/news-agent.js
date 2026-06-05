@@ -537,14 +537,27 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
     for (const [sectorKey, feeds] of Object.entries(SECTOR_FEEDS)) {
       const terms = SECTOR_TERMS[sectorKey] || [];
 
-      // Filtra artigos desta categoria a partir dos artigos já buscados
+      // Domínios das fontes dedicadas a este setor
+      const sectorDomains = feeds.map(f => { try { return new URL(f).hostname.replace('www.',''); } catch { return ''; } });
+
+      // Filtra artigos desta categoria
       const sectorRaw = filteredArticles.filter(a => {
-        const feedUrl = (a.rawProvider || '').toLowerCase();
+        const articleDomain = a.url ? (() => { try { return new URL(a.url).hostname.replace('www.',''); } catch { return ''; } })() : '';
         const text = `${a.title} ${a.description} ${a.content}`.toLowerCase();
-        // Prioriza artigos das fontes dedicadas ao setor
-        const fromSectorFeed = feeds.some(f => a.url && a.url.includes(new URL(f).hostname.replace('www.','')));
-        const matchesTerms = terms.some(t => text.includes(t));
-        return fromSectorFeed || matchesTerms;
+
+        // Artigo vem de uma fonte dedicada a ESTE setor → aceita sempre
+        const fromThisSectorFeed = sectorDomains.some(d => d && articleDomain.includes(d));
+        if (fromThisSectorFeed) return true;
+
+        // Artigo vem de uma fonte dedicada a OUTRO setor → rejeita (evita cross-contamination)
+        const allOtherDomains = Object.entries(SECTOR_FEEDS)
+          .filter(([k]) => k !== sectorKey)
+          .flatMap(([, fs]) => fs.map(f => { try { return new URL(f).hostname.replace('www.',''); } catch { return ''; } }));
+        const fromOtherSectorFeed = allOtherDomains.some(d => d && articleDomain.includes(d));
+        if (fromOtherSectorFeed) return false;
+
+        // Fonte genérica (Google News etc.) → aceita só se corresponde aos termos
+        return terms.some(t => text.includes(t));
       });
 
       // Score e seleciona os 5 melhores deste setor
