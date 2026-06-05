@@ -1,51 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#5B21B6"/>
-      <stop offset="100%" stop-color="#3730A3"/>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4C1D95"/>
+      <stop offset="100%" stop-color="#312E81"/>
     </linearGradient>
-    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#EDE9FE"/>
-    </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
-      <stop offset="0%" stop-color="#A78BFA"/>
-      <stop offset="100%" stop-color="#7C3AED"/>
+    <linearGradient id="paper" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#EEF2FF"/>
     </linearGradient>
   </defs>
 
   <!-- Background -->
-  <rect width="100" height="100" rx="22" fill="url(#bg)"/>
-  <rect x="0" y="0" width="100" height="50" rx="22" fill="white" fill-opacity="0.04"/>
+  <rect width="100" height="100" rx="20" fill="url(#bg)"/>
 
-  <!-- Newspaper main sheet -->
-  <rect x="18" y="18" width="46" height="60" rx="6" fill="url(#paper)"/>
+  <!-- Newspaper body -->
+  <rect x="15" y="20" width="50" height="62" rx="5" fill="url(#paper)"/>
 
-  <!-- Newspaper fold corner -->
-  <path d="M52 18 L64 30 L52 30 Z" fill="#DDD6FE"/>
-  <path d="M52 18 L64 18 L64 30 Z" fill="#C4B5FD"/>
+  <!-- Fold corner -->
+  <path d="M51 20 L65 34 L51 34 Z" fill="#C4B5FD"/>
+  <path d="M51 20 L65 20 L65 34 Z" fill="#A78BFA"/>
 
-  <!-- Headline bar (big title) -->
-  <rect x="24" y="25" width="22" height="5" rx="2" fill="#5B21B6"/>
+  <!-- Red breaking-news strip -->
+  <rect x="15" y="26" width="36" height="8" rx="0" fill="#7C3AED"/>
+  <rect x="15" y="26" width="36" height="8" rx="2" fill="#6D28D9"/>
 
-  <!-- Sub-headline lines -->
-  <rect x="24" y="34" width="34" height="2.5" rx="1.2" fill="#7C3AED" opacity="0.4"/>
-  <rect x="24" y="39" width="28" height="2.5" rx="1.2" fill="#7C3AED" opacity="0.3"/>
+  <!-- "NEWS" text suggestion — 4 tight bold bars -->
+  <rect x="19" y="28.5" width="5" height="3" rx="1" fill="white"/>
+  <rect x="26" y="28.5" width="5" height="3" rx="1" fill="white"/>
+  <rect x="33" y="28.5" width="5" height="3" rx="1" fill="white"/>
+  <rect x="40" y="28.5" width="7" height="3" rx="1" fill="white" opacity="0.6"/>
+
+  <!-- Headline -->
+  <rect x="20" y="39" width="32" height="4" rx="2" fill="#1E1B4B"/>
+  <rect x="20" y="45" width="24" height="3" rx="1.5" fill="#3730A3" opacity="0.5"/>
 
   <!-- Divider -->
-  <rect x="24" y="45" width="36" height="1" rx="0.5" fill="#C4B5FD" opacity="0.6"/>
+  <rect x="20" y="51" width="36" height="0.8" rx="0.4" fill="#C4B5FD" opacity="0.8"/>
 
-  <!-- Text lines -->
-  <rect x="24" y="49" width="36" height="2" rx="1" fill="#7C3AED" opacity="0.2"/>
-  <rect x="24" y="54" width="32" height="2" rx="1" fill="#7C3AED" opacity="0.2"/>
-  <rect x="24" y="59" width="36" height="2" rx="1" fill="#7C3AED" opacity="0.2"/>
-  <rect x="24" y="64" width="20" height="2" rx="1" fill="#7C3AED" opacity="0.2"/>
+  <!-- Body text lines -->
+  <rect x="20" y="55" width="36" height="2.2" rx="1" fill="#6D28D9" opacity="0.18"/>
+  <rect x="20" y="59.5" width="30" height="2.2" rx="1" fill="#6D28D9" opacity="0.18"/>
+  <rect x="20" y="64" width="36" height="2.2" rx="1" fill="#6D28D9" opacity="0.18"/>
+  <rect x="20" y="68.5" width="20" height="2.2" rx="1" fill="#6D28D9" opacity="0.18"/>
 
-  <!-- AI spark badge — overlapping bottom right -->
-  <circle cx="72" cy="72" r="16" fill="url(#accent)"/>
-  <circle cx="72" cy="72" r="16" fill="white" fill-opacity="0.08"/>
-
-  <!-- Lightning bolt inside badge -->
-  <path d="M75 60 L69 72 L73.5 72 L70 84 L78 70 L73 70 Z"
-        fill="white" fill-opacity="0.95"/>
+  <!-- Signal waves — top right, broadcasting -->
+  <path d="M68 22 Q82 35 68 48" stroke="#C4B5FD" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <path d="M72 26 Q82 35 72 44" stroke="#A78BFA" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <path d="M76 30 Q82 35 76 40" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- Source dot -->
+  <circle cx="67" cy="35" r="3" fill="#7C3AED"/>
+  <circle cx="67" cy="35" r="1.5" fill="white"/>
 </svg>
