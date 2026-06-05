@@ -247,6 +247,7 @@ function SocialPageContent() {
     setCompanySettingsForm({
       logo_url: company.logo_url || '',
       website_url: company.website_url || '',
+      linkedin_org_id: company.linkedin_org_id || '',
       wordpress_url: company.wordpress_url || '',
       wordpress_username: company.wordpress_username || '',
       wordpress_app_password: company.wordpress_app_password || '',
@@ -652,6 +653,16 @@ function SocialPageContent() {
               <div>
                 <label style={{ fontSize: '.78rem', fontWeight: 700, color: 'var(--gray-600)', display: 'block', marginBottom: 6 }}>URL do Website</label>
                 <input type="url" placeholder="https://www.exemplo.com" value={companySettingsForm.website_url} onChange={e => setCompanySettingsForm(f => ({ ...f, website_url: e.target.value }))} />
+              </div>
+              {/* LinkedIn Org ID */}
+              <div>
+                <label style={{ fontSize: '.78rem', fontWeight: 700, color: '#0A66C2', display: 'block', marginBottom: 4 }}>
+                  LinkedIn Organization ID
+                </label>
+                <input type="text" placeholder="ex: 123456789" value={companySettingsForm.linkedin_org_id} onChange={e => setCompanySettingsForm(f => ({ ...f, linkedin_org_id: e.target.value.replace(/\D/g, '') }))} />
+                <p style={{ fontSize: '.7rem', color: 'var(--gray-400)', marginTop: 4, lineHeight: 1.5 }}>
+                  Vai a linkedin.com/company/<strong>ID</strong>/admin — o número no URL é o ID. Necessário para publicar como empresa.
+                </p>
               </div>
               {/* WordPress */}
               <div style={{ borderTop: '1px dashed var(--gray-200)', paddingTop: 12 }}>

@@ -302,7 +302,7 @@ export async function updateCompanySettings(companyId, settings) {
     throw err;
   }
 
-  const allowed = ['logo_url', 'website_url', 'wordpress_url', 'wordpress_username', 'wordpress_app_password'];
+  const allowed = ['logo_url', 'website_url', 'wordpress_url', 'wordpress_username', 'wordpress_app_password', 'linkedin_org_id'];
   const updates = {};
   for (const key of allowed) {
     if (key in settings) updates[key] = settings[key] || null;

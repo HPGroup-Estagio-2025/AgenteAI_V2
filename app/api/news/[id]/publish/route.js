@@ -363,30 +363,38 @@ async function publishToWordPress(item, company) {
   return { platform: 'wordpress', postId: String(data.id), postUrl: data.link };
 }
 
-async function publishToLinkedIn(item, accountId = null, linkUrl = null) {
+async function publishToLinkedIn(item, accountId = null, linkUrl = null, company = null) {
   const account = accountId ? getAccountById(accountId) : getAccount('linkedin');
   if (!account) throw Object.assign(new Error('LinkedIn não conectado'), { code: 'linkedin_not_connected' });
 
   const token = account.accessToken;
-
-  // Tenta obter o ID da organização que o utilizador administra
   let authorUrn;
-  try {
-    const orgRes = await fetch(
-      'https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organization~(id,localizedName)))',
-      { headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' } }
-    );
-    const orgData = await orgRes.json().catch(() => ({}));
-    const org = orgData?.elements?.[0]?.['organization~'];
-    if (org?.id) {
-      authorUrn = `urn:li:organization:${org.id}`;
-      console.log('[linkedin] A publicar como organização:', org.localizedName, authorUrn);
-    }
-  } catch (e) {
-    console.warn('[linkedin] Não foi possível obter organização, publica como membro:', e.message);
+
+  // 1. Usa o LinkedIn Organization ID guardado nas definições da empresa (mais fiável)
+  if (company?.linkedin_org_id) {
+    authorUrn = `urn:li:organization:${company.linkedin_org_id}`;
+    console.log('[linkedin] A publicar como organização (ID manual):', company.linkedin_org_id);
   }
 
-  // Fallback: publica como membro pessoal
+  // 2. Tenta detetar automaticamente via API
+  if (!authorUrn) {
+    try {
+      const orgRes = await fetch(
+        'https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organization~(id,localizedName)))',
+        { headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' } }
+      );
+      const orgData = await orgRes.json().catch(() => ({}));
+      const org = orgData?.elements?.[0]?.['organization~'];
+      if (org?.id) {
+        authorUrn = `urn:li:organization:${org.id}`;
+        console.log('[linkedin] A publicar como organização (auto):', org.localizedName, authorUrn);
+      }
+    } catch (e) {
+      console.warn('[linkedin] Não foi possível obter organização:', e.message);
+    }
+  }
+
+  // 3. Fallback: publica como membro pessoal
   if (!authorUrn) {
     const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', {
       headers: { Authorization: `Bearer ${token}` },
@@ -395,7 +403,7 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null) {
     const memberId = profile.sub;
     if (!memberId) throw Object.assign(new Error('Não foi possível obter ID do membro LinkedIn'), { code: 'linkedin_publish_failed' });
     authorUrn = `urn:li:person:${memberId}`;
-    console.log('[linkedin] A publicar como membro:', profile.name, authorUrn);
+    console.log('[linkedin] A publicar como membro (fallback):', profile.name, authorUrn);
   }
 
   const summary = buildSocialSummary(item);
@@ -748,7 +756,7 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: 'LinkedIn ainda não está conectado em Redes Sociais' }, { status: 409 });
       }
       console.log('[publish] Publicando no LinkedIn com accountId=%s', liAccountId || 'default');
-      publishTasks.push(publishToLinkedIn(item, liAccountId, socialLinkUrl));
+      publishTasks.push(publishToLinkedIn(item, liAccountId, socialLinkUrl, company));
     }
 
     const remainingResults = await Promise.all(publishTasks);
