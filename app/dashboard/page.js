@@ -283,7 +283,7 @@ function ImagePlaceholder() {
 }
 
 // ── Card para artigos do agente ─────────────────────────────────────
-function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetCompany, onPublish, onSave, isSelected, onToggleSelect, bulkStatus }) {
+function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetCompany, onPublish, onSave, isSelected, onToggleSelect, bulkStatus, isPublishing }) {
   const selectedId = selection?.companyId || companies[0]?.id;
   const selectedCompany = companies.find(c => c.id === selectedId) || companies[0];
 
@@ -376,7 +376,9 @@ function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetC
             Ver notícia
           </a>
         )}
-        <button className="btn btn-success" onClick={() => onPublish(item)}>Publicar</button>
+        <button className="btn btn-success" onClick={() => onPublish(item)} disabled={isPublishing}>
+          {isPublishing ? <><span className="loader" style={{ width: 13, height: 13, borderColor: 'rgba(22,163,74,.3)', borderTopColor: '#16A34A' }} /> A publicar...</> : 'Publicar'}
+        </button>
         <button className="btn btn-primary" style={{ background: 'var(--gray-600)', borderColor: 'var(--gray-600)' }} onClick={() => onSave(item)}>
           Guardar
         </button>
@@ -386,7 +388,7 @@ function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetC
 }
 
 // ── Card para artigos já guardados na BD ───────────────────────────
-function SavedArticleCard({ item, companies, onPublish, onRemove }) {
+function SavedArticleCard({ item, companies, onPublish, onRemove, isPublishing }) {
   const [selectedCompanyId, setSelectedCompanyId] = useState(companies[0]?.id || null);
   const [selectedPlatforms, setSelectedPlatforms] = useState(companies[0]?.platforms ? [...companies[0].platforms] : []);
   const [selectedAccounts, setSelectedAccounts] = useState(companies[0]?.accountIds || {});
@@ -478,8 +480,8 @@ function SavedArticleCard({ item, companies, onPublish, onRemove }) {
           </a>
         )}
         {item.status === 'on_hold' && onPublish && (
-          <button className="btn btn-success" onClick={() => onPublish(item, selectedPlatforms, selectedAccounts, selectedCompany?.companyId || null)}>
-            Publicar
+          <button className="btn btn-success" onClick={() => onPublish(item, selectedPlatforms, selectedAccounts, selectedCompany?.companyId || null)} disabled={isPublishing}>
+            {isPublishing ? <><span className="loader" style={{ width: 13, height: 13, borderColor: 'rgba(22,163,74,.3)', borderTopColor: '#16A34A' }} /> A publicar...</> : 'Publicar'}
           </button>
         )}
         {item.status === 'on_hold' && onRemove && (
@@ -537,6 +539,7 @@ export default function DashboardPage() {
   const [bulkSelected, setBulkSelected] = useState(new Set());
   const [bulkPublishing, setBulkPublishing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({});
+  const [publishingId, setPublishingId] = useState(null);
   const [filterSector, setFilterSector] = useState('');
 
   const loadingRef = useRef(false);
@@ -868,6 +871,7 @@ export default function DashboardPage() {
 
   // ── Publicar artigo ───────────────────────────────────────────────
   async function handlePublish(item) {
+    setPublishingId(item.id);
     if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
     const token = localStorage.getItem('auth_token');
     const sel = articleSelections[item.id] || { platforms: [], accounts: {} };
@@ -905,11 +909,14 @@ export default function DashboardPage() {
       showToast('Notícia publicada com sucesso!', 'success');
     } catch {
       showToast('Erro de ligação. Tenta novamente.', 'error');
+    } finally {
+      setPublishingId(null);
     }
   }
 
   // ── Publicar artigo guardado (on_hold → published) ───────────────
   async function handlePublishSaved(item, platforms, accounts, companyId = null) {
+    setPublishingId(item.id);
     if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
     if (!platforms || platforms.length === 0) {
       showToast('Seleciona pelo menos uma rede social para publicar.', 'error');
@@ -937,6 +944,8 @@ export default function DashboardPage() {
       fetchNews({ force: true });
     } catch {
       showToast('Erro de ligação. Tenta novamente.', 'error');
+    } finally {
+      setPublishingId(null);
     }
   }
 
@@ -1194,6 +1203,7 @@ export default function DashboardPage() {
                 key={item.id}
                 item={item}
                 companies={companies}
+                isPublishing={publishingId === item.id}
                 selection={articleSelections[item.id]}
                 onTogglePlatform={pid => toggleArticlePlatform(item.id, pid)}
                 onSetCompany={cid => setArticleCompany(item.id, cid)}
@@ -1214,6 +1224,7 @@ export default function DashboardPage() {
                 key={item.id}
                 item={item}
                 companies={companies}
+                isPublishing={publishingId === item.id}
                 onPublish={filterStatus === 'on_hold' ? handlePublishSaved : null}
                 onRemove={filterStatus === 'on_hold' ? handleRemoveSaved : null}
               />
