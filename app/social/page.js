@@ -87,6 +87,7 @@ function SocialPageContent() {
   const [toast, setToast] = useState(null);
   const [appOrigin, setAppOrigin] = useState('');
   const [newCompanyInput, setNewCompanyInput] = useState('');
+  const [newCompanyLogo, setNewCompanyLogo] = useState('');
   const [confirmDeleteCompanyId, setConfirmDeleteCompanyId] = useState(null);
   const [showCompanySelector, setShowCompanySelector] = useState(null);
   const [editingCompanySettings, setEditingCompanySettings] = useState(null);
@@ -196,12 +197,13 @@ function SocialPageContent() {
       const res = await fetch('/api/companies', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCompanyInput.trim() }),
+        body: JSON.stringify({ name: newCompanyInput.trim(), logo_url: newCompanyLogo.trim() || null }),
       });
       const data = await res.json();
       if (res.ok) {
         showToast('Empresa criada com sucesso!', 'success');
         setNewCompanyInput('');
+        setNewCompanyLogo('');
         await loadCompanies();
       } else {
         showToast(data.error || 'Erro ao criar empresa', 'error');
@@ -240,6 +242,7 @@ function SocialPageContent() {
   function openCompanySettings(company) {
     setEditingCompanySettings(company.id);
     setCompanySettingsForm({
+      logo_url: company.logo_url || '',
       website_url: company.website_url || '',
       wordpress_url: company.wordpress_url || '',
       wordpress_username: company.wordpress_username || '',
@@ -455,6 +458,29 @@ function SocialPageContent() {
                 onChange={e => setNewCompanyInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCreateCompany()}
               />
+              {/* Logo field with preview */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                  Logotipo <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional)</span>
+                </label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {newCompanyLogo && (
+                    <img
+                      src={newCompanyLogo}
+                      alt="preview"
+                      onError={e => e.target.style.display = 'none'}
+                      style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1.5px solid var(--gray-200)', flexShrink: 0 }}
+                    />
+                  )}
+                  <input
+                    type="url"
+                    placeholder="https://exemplo.com/logo.png"
+                    value={newCompanyLogo}
+                    onChange={e => setNewCompanyLogo(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                </div>
+              </div>
               <button
                 className="btn btn-primary btn-full"
                 onClick={handleCreateCompany}
@@ -482,9 +508,17 @@ function SocialPageContent() {
                 <div key={company.id} className="social-company-card">
                   {/* Header */}
                   <div className="social-company-header">
-                    <div>
-                      <div className="social-company-name">{company.name}</div>
-                      <div className="social-company-count">{connectedCount} {connectedCount === 1 ? 'conta ligada' : 'contas ligadas'}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {company.logo_url
+                        ? <img src={company.logo_url} alt="" onError={e => e.target.style.display='none'} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1.5px solid var(--gray-200)', flexShrink: 0 }} />
+                        : <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <span style={{ color: '#fff', fontWeight: 800, fontSize: '.9rem' }}>{company.name.charAt(0).toUpperCase()}</span>
+                          </div>
+                      }
+                      <div>
+                        <div className="social-company-name">{company.name}</div>
+                        <div className="social-company-count">{connectedCount} {connectedCount === 1 ? 'conta ligada' : 'contas ligadas'}</div>
+                      </div>
                     </div>
                     <div className="social-company-header-right">
                       <button
@@ -540,6 +574,15 @@ function SocialPageContent() {
 
                   {isSettingsOpen && (
                     <div className="social-settings-body">
+                      <div>
+                        <label>Logotipo (URL da imagem)</label>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          {companySettingsForm.logo_url && (
+                            <img src={companySettingsForm.logo_url} alt="" onError={e => e.target.style.display='none'} style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', border: '1.5px solid var(--gray-200)', flexShrink: 0 }} />
+                          )}
+                          <input type="url" placeholder="https://exemplo.com/logo.png" value={companySettingsForm.logo_url} onChange={e => setCompanySettingsForm(f => ({ ...f, logo_url: e.target.value }))} style={{ flex: 1 }} />
+                        </div>
+                      </div>
                       <div>
                         <label>URL do Website (usado nas publicações)</label>
                         <input type="url" placeholder="https://www.exemplo.com" value={companySettingsForm.website_url} onChange={e => setCompanySettingsForm(f => ({ ...f, website_url: e.target.value }))} />

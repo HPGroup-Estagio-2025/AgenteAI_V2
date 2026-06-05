@@ -23,7 +23,7 @@ const supabaseAdmin = USE_SUPABASE
  * @returns {Promise<{id, name, created_at, created_by}>}
  * @throws {Error} with code='invalid_name' if name is empty, or code='duplicate' if name exists
  */
-export async function createCompany(name, createdBy) {
+export async function createCompany(name, createdBy, logoUrl = null) {
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     const err = new Error('Nome da empresa é obrigatório');
     err.code = 'invalid_name';
@@ -48,6 +48,7 @@ export async function createCompany(name, createdBy) {
           created_by: createdBy || null,
           created_at: new Date().toISOString(),
           active: true,
+          logo_url: logoUrl || null,
           website_url: null,
           wordpress_url: null,
           wordpress_username: null,
@@ -301,7 +302,7 @@ export async function updateCompanySettings(companyId, settings) {
     throw err;
   }
 
-  const allowed = ['website_url', 'wordpress_url', 'wordpress_username', 'wordpress_app_password'];
+  const allowed = ['logo_url', 'website_url', 'wordpress_url', 'wordpress_username', 'wordpress_app_password'];
   const updates = {};
   for (const key of allowed) {
     if (key in settings) updates[key] = settings[key] || null;

@@ -36,7 +36,7 @@ export async function POST(request) {
   }
 
   try {
-    const company = await createCompany(body.name, user.username);
+    const company = await createCompany(body.name, user.username, body.logo_url || null);
     return NextResponse.json(company, { status: 201 });
   } catch (err) {
     if (err.code === 'duplicate') {
