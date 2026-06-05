@@ -67,13 +67,52 @@ const RSS_FEEDS = [
   'https://news.google.com/rss/search?q=supply+chain+logistics+shipping+freight+2025&hl=en-US&gl=US&ceid=US:en',
 ];
 
-// Imagens de fallback estáveis por categoria (usadas quando o artigo não tem imagem)
+// Pools de imagens de fallback por categoria (rodam para evitar repetição)
+const FALLBACK_POOLS = {
+  'maritimo': [
+    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+    'https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=800&q=80',
+    'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=800&q=80',
+    'https://images.unsplash.com/photo-1559827291-72ee739d0d9a?w=800&q=80',
+    'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80',
+    'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80',
+  ],
+  'defesa-militar': [
+    'https://images.unsplash.com/photo-1547745369-5fa52b64e8ac?w=800&q=80',
+    'https://images.unsplash.com/photo-1540573133985-87b6da6d54a9?w=800&q=80',
+    'https://images.unsplash.com/photo-1585114685099-1c7a0dd06d05?w=800&q=80',
+  ],
+  'aeroespacial': [
+    'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=800&q=80',
+    'https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?w=800&q=80',
+    'https://images.unsplash.com/photo-1457364887197-9150188c107b?w=800&q=80',
+  ],
+  'ferroviario': [
+    'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800&q=80',
+    'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80',
+    'https://images.unsplash.com/photo-1508361001413-7a9dca21d08a?w=800&q=80',
+  ],
+  'default': [
+    'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&q=80',
+    'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=800&q=80',
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80',
+  ],
+};
+
+let _fallbackCounters = {};
+function getFallbackImage(category) {
+  const pool = FALLBACK_POOLS[category] || FALLBACK_POOLS['default'];
+  const idx = (_fallbackCounters[category] || 0) % pool.length;
+  _fallbackCounters[category] = idx + 1;
+  return pool[idx];
+}
+
 const FALLBACK_IMAGES = {
-  'maritimo':       'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-  'defesa-militar': 'https://images.unsplash.com/photo-1547745369-5fa52b64e8ac?w=800&q=80',
-  'aeroespacial':   'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=800&q=80',
-  'ferroviario':    'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800&q=80',
-  'default':        'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&q=80',
+  'maritimo':       FALLBACK_POOLS['maritimo'][0],
+  'defesa-militar': FALLBACK_POOLS['defesa-militar'][0],
+  'aeroespacial':   FALLBACK_POOLS['aeroespacial'][0],
+  'ferroviario':    FALLBACK_POOLS['ferroviario'][0],
+  'default':        FALLBACK_POOLS['default'][0],
 };
 
 const sectors = {
@@ -509,7 +548,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
     // Ficam em memória local no browser até o admin decidir publicar ou rejeitar.
     const articles = enrichedArticles.map((article, i) => {
       const category = dashboardCategory(article.matchedSectors);
-      const fallback = FALLBACK_IMAGES[category] || FALLBACK_IMAGES['default'];
+      const fallback = getFallbackImage(category);
       return {
         id: articleId(),
         title: article.title.slice(0, 300),
