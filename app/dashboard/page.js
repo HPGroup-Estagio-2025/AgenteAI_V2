@@ -150,24 +150,49 @@ function formatDate(iso) {
 }
 
 function cleanContent(item) {
-  // Usa o resumo gerado pela IA se disponível
-  if (item.summary) return item.summary;
-  const raw = item.description || item.excerpt || '';
-  const base = raw.trim().length > 20
-    ? raw
-    : (item.content || '')
-        .replace(/Key sectors:[^\n]*/gi, '')
-        .replace(/Source:[^\n]*/gi, '')
-        .replace(/This article highlights[^.]*\./gi, '')
-        .replace(/Sensitive terms[^.]*\./gi, '')
-        .replace(/Read the full story here\.?/gi, '')
-        .replace(new RegExp(item.title || '__NOTITLE__', 'gi'), '');
+  // 1. Resumo gerado pela IA — melhor opção
+  if (item.summary && item.summary.trim().length > 20) return item.summary;
 
-  const clean = base.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  const title = (item.title || '').toLowerCase().trim();
 
-  // Extrai as primeiras 2 frases completas, máximo 220 caracteres
-  const sentences = clean.match(/[^.!?]+[.!?]+/g) || [];
-  const summary = sentences.slice(0, 2).join(' ').trim() || clean.slice(0, 220);
+  function strip(text) {
+    return (text || '')
+      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/Key sectors:[^\n]*/gi, '')
+      .replace(/Source:[^\n]*/gi, '')
+      .replace(/This article highlights[^.]*\./gi, '')
+      .replace(/Sensitive terms[^.]*\./gi, '')
+      .replace(/Read the full story here\.?/gi, '')
+      .replace(/According to the original report[^.]*\./gi, '')
+      .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
+  // Descarta texto que é apenas o título repetido
+  function isRedundant(text) {
+    const t = text.toLowerCase().trim();
+    return t.length < 25 || t === title || title.includes(t) || t.includes(title);
+  }
+
+  // Tenta cada fonte por ordem de qualidade
+  const candidates = [
+    strip(item.description),
+    strip(item.excerpt),
+    strip(item.content),
+  ].filter(t => t.length > 25 && !isRedundant(t));
+
+  const best = candidates[0] || strip(item.content) || strip(item.description) || '';
+
+  if (!best || best.length < 15) return '';
+
+  // Extrai as primeiras 2 frases, máximo 220 chars
+  const sentences = best.match(/[^.!?]+[.!?]+/g) || [];
+  const summary = sentences.length >= 2
+    ? sentences.slice(0, 2).join(' ').trim()
+    : sentences[0]?.trim() || best.slice(0, 220);
+
   return summary.length > 220 ? summary.slice(0, 217) + '...' : summary;
 }
 

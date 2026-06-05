@@ -159,16 +159,30 @@ function dashboardCategory(matchedSectors = []) {
 }
 
 function generatePostDescription(article) {
-  // Usa a descrição real do RSS — limpa HTML e trunca
-  const raw = article.description || article.content || '';
-  const clean = raw
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-  return clean.slice(0, 500) || article.title || '';
+  const titleLower = (article.title || '').toLowerCase().trim();
+
+  function cleanRaw(raw) {
+    return (raw || '')
+      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
+  // Tenta description primeiro, depois content — descarta se for só o título
+  for (const raw of [article.description, article.content]) {
+    const clean = cleanRaw(raw);
+    const cleanLower = clean.toLowerCase();
+    if (clean.length > 40 && !cleanLower.startsWith(titleLower.slice(0, 30))) {
+      return clean.slice(0, 500);
+    }
+  }
+
+  // Fallback: usa o que tiver, mesmo que curto
+  const fallback = cleanRaw(article.description || article.content || '');
+  return fallback.slice(0, 500) || article.title || '';
 }
 
 function parseRss(xml, feedUrl) {
