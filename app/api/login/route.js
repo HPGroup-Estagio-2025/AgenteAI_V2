@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { authenticator } from 'otplib';
 import { signToken } from '@/src/lib/auth';
 
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').toLowerCase();
@@ -39,6 +40,21 @@ export async function POST(request) {
 
   if (!userMatch || !passMatch) {
     return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
+  }
+
+  // Se TOTP_SECRET está configurado, exige o código 2FA
+  const totpSecret = process.env.TOTP_SECRET;
+  if (totpSecret) {
+    const { totp } = body;
+    if (!totp) {
+      // Primeiro passo: credenciais válidas, pede o código 2FA
+      return NextResponse.json({ requires2fa: true }, { status: 200 });
+    }
+    // Segundo passo: valida o código TOTP
+    const isValid = authenticator.verify({ token: String(totp).replace(/\s/g, ''), secret: totpSecret });
+    if (!isValid) {
+      return NextResponse.json({ error: 'Código 2FA inválido ou expirado' }, { status: 401 });
+    }
   }
 
   const token = signToken({ username: ADMIN_USERNAME, role: 'admin' });

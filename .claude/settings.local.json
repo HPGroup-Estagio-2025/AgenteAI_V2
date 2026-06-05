@@ -85,7 +85,8 @@
       "WebFetch(domain:blog.postly.ai)",
       "Bash(git stash *)",
       "WebFetch(domain:www.partyard.eu)",
-      "Bash(node -e \"require\\('@anthropic-ai/sdk'\\)\")"
+      "Bash(node -e \"require\\('@anthropic-ai/sdk'\\)\")",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\dashboard_news_agent_interno_fix_uuid\\\\dashboard_news\\\\app\\\\api\\\\2fa\\\\setup\")"
     ]
   }
 }

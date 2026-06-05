@@ -9,6 +9,8 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1); // 1 = credentials, 2 = 2FA
+  const [totp, setTotp] = useState('');
 
   useEffect(() => {
     // Migra token antigo do sessionStorage para localStorage (utilizadores com sessão antiga)
@@ -32,30 +34,61 @@ export default function LoginPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    if (!username.trim() || !password) {
-      setError('Preenche o utilizador e a password.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Erro ao autenticar. Tenta novamente.');
-        setPassword('');
+
+    if (step === 1) {
+      if (!username.trim() || !password) {
+        setError('Preenche o utilizador e a password.');
         return;
       }
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('token_expiry', String(Date.now() + data.expiresIn * 1000));
-      router.replace('/dashboard');
-    } catch {
-      setError('Não foi possível ligar ao servidor. Verifica a tua ligação.');
-    } finally {
-      setLoading(false);
+      setLoading(true);
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username.trim(), password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || 'Erro ao autenticar. Tenta novamente.');
+          setPassword('');
+          return;
+        }
+        if (data.requires2fa) {
+          setStep(2);
+          return;
+        }
+        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('token_expiry', String(Date.now() + data.expiresIn * 1000));
+        router.replace('/dashboard');
+      } catch {
+        setError('Não foi possível ligar ao servidor. Verifica a tua ligação.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Passo 2: submete com o código TOTP
+      if (!totp.trim()) { setError('Insere o código de autenticação.'); return; }
+      setLoading(true);
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username.trim(), password, totp: totp.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || 'Código inválido. Tenta novamente.');
+          setTotp('');
+          return;
+        }
+        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('token_expiry', String(Date.now() + data.expiresIn * 1000));
+        router.replace('/dashboard');
+      } catch {
+        setError('Não foi possível ligar ao servidor.');
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
@@ -72,56 +105,66 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} noValidate>
-            <div className="form-group">
-              <label htmlFor="username">Utilizador</label>
-              <input
-                type="text"
-                id="username"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                placeholder="admin"
-                autoComplete="username"
-                maxLength={50}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <div className="input-wrapper">
+            {step === 1 ? (
+              <>
+                <div className="form-group">
+                  <label htmlFor="username">Utilizador</label>
+                  <input type="text" id="username" value={username} onChange={e => setUsername(e.target.value)} placeholder="admin" autoComplete="username" maxLength={50} required />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="password">Password</label>
+                  <div className="input-wrapper">
+                    <input
+                      type={showPwd ? 'text' : 'password'}
+                      id="password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                      maxLength={128}
+                      required
+                    />
+                    <button type="button" className="toggle-password" onClick={() => setShowPwd(v => !v)}>
+                      {showPwd ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="twofa-step">
+                <div className="twofa-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                  </svg>
+                </div>
+                <p className="twofa-label">Insere o código da tua app de autenticação</p>
                 <input
-                  type={showPwd ? 'text' : 'password'}
-                  id="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  maxLength={128}
-                  required
+                  type="text"
+                  value={totp}
+                  onChange={e => setTotp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000 000"
+                  maxLength={6}
+                  autoFocus
+                  style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '.3em', fontWeight: 700 }}
                 />
-                <button
-                  type="button"
-                  className="toggle-password"
-                  aria-label={showPwd ? 'Esconder password' : 'Mostrar password'}
-                  onClick={() => setShowPwd(v => !v)}
-                >
-                  {showPwd ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" /><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" /><line x1="2" x2="22" y1="2" y2="22" />
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
+                <button type="button" className="twofa-back" onClick={() => { setStep(1); setError(''); setTotp(''); }}>
+                  ← Voltar
                 </button>
               </div>
-            </div>
+            )}
 
             {error && <div className="alert alert-error">{error}</div>}
 
-            <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-              {loading ? <span className="loader" /> : 'Entrar'}
+            <button type="submit" className="btn btn-primary btn-full mt-2" disabled={loading}>
+              {loading ? <span className="loader" /> : step === 1 ? 'Entrar' : 'Verificar'}
             </button>
           </form>
 
