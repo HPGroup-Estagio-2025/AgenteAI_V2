@@ -194,7 +194,7 @@ textarea { resize: vertical; }
 .sector-tab.active { color: var(--white); border-color: transparent; }
 .sector-tab[data-sector=""].active       { background: var(--gray-700); }
 .sector-tab[data-sector="maritimo"].active      { background: #0369A1; }
-.sector-tab[data-sector="defesa-militar"].active { background: #9F1239; }
+.sector-tab[data-sector="defesa-militar"].active { background: #4a5320; }
 .sector-tab[data-sector="aeroespacial"].active  { background: #6D28D9; }
 .sector-tab[data-sector="ferroviario"].active   { background: #92400E; }
 .sector-count { font-size: .7rem; padding: 1px 6px; border-radius: 10px; background: rgba(0,0,0,.12); min-width: 18px; text-align: center; }
@@ -248,7 +248,7 @@ textarea { resize: vertical; }
 
 /* Sector badges */
 .badge-sector-maritimo     { background: #E0F2FE; color: #0369A1; text-transform: none; letter-spacing: 0; font-size: .75rem; }
-.badge-sector-defesa       { background: #FFE4E6; color: #9F1239; text-transform: none; letter-spacing: 0; font-size: .75rem; }
+.badge-sector-defesa       { background: #eaecda; color: #4a5320; text-transform: none; letter-spacing: 0; font-size: .75rem; }
 .badge-sector-aeroespacial { background: #EDE9FE; color: #6D28D9; text-transform: none; letter-spacing: 0; font-size: .75rem; }
 .badge-sector-ferroviario  { background: #FEF3C7; color: #92400E; text-transform: none; letter-spacing: 0; font-size: .75rem; }
 
