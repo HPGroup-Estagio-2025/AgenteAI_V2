@@ -323,6 +323,15 @@ export async function updateCompanySettings(companyId, settings) {
 
   if (error) {
     console.error('[companies] Erro ao atualizar configurações:', error.message);
+    // Coluna pode não existir ainda — remove logo_url e tenta de novo
+    if ((error.message?.includes('logo_url') || error.code === '42703') && 'logo_url' in updates) {
+      delete updates.logo_url;
+      if (Object.keys(updates).length === 0) return { id: companyId };
+      const { data: retry, error: retryErr } = await supabaseAdmin
+        .from(COMPANIES_TABLE).update(updates).eq('id', companyId).select().single();
+      if (retryErr) throw retryErr;
+      return retry;
+    }
     throw error;
   }
 
