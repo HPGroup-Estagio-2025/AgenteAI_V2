@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
@@ -47,11 +47,9 @@ const SOCIAL_PLATFORMS = [
 // Meta (Facebook + Instagram) partilham a mesma entrada; LinkedIn é separado.
 // companiesData: lista de empresas do Supabase (com campos wordpress_*)
 function buildCompanies(connectedAccounts, companiesData = []) {
-  console.log('[buildCompanies] Contas recebidas:', connectedAccounts);
   const fbAccs = connectedAccounts.facebook  || [];
   const igAccs = connectedAccounts.instagram || [];
   const liAccs = connectedAccounts.linkedin  || [];
-  console.log('[buildCompanies] FB:', fbAccs.length, 'IG:', igAccs.length, 'LI:', liAccs.length);
 
   const metaCompanies = new Map();
   const getMetaKey = acc => acc.companyId || acc.companyName || 'unassigned-meta';
@@ -274,8 +272,7 @@ function ImagePlaceholder() {
 }
 
 // ── Card para artigos do agente ─────────────────────────────────────
-function AgentArticleCard({ item, connectedAccounts, companiesData, selection, onTogglePlatform, onSetCompany, onPublish, onSave, isSelected, onToggleSelect, bulkStatus }) {
-  const companies = buildCompanies(connectedAccounts, companiesData);
+function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetCompany, onPublish, onSave, isSelected, onToggleSelect, bulkStatus }) {
   const selectedId = selection?.companyId || companies[0]?.id;
   const selectedCompany = companies.find(c => c.id === selectedId) || companies[0];
 
@@ -378,8 +375,7 @@ function AgentArticleCard({ item, connectedAccounts, companiesData, selection, o
 }
 
 // ── Card para artigos já guardados na BD ───────────────────────────
-function SavedArticleCard({ item, connectedAccounts, companiesData, onPublish, onRemove }) {
-  const companies = buildCompanies(connectedAccounts || {}, companiesData);
+function SavedArticleCard({ item, companies, onPublish, onRemove }) {
   const [selectedCompanyId, setSelectedCompanyId] = useState(companies[0]?.id || null);
   const [selectedPlatforms, setSelectedPlatforms] = useState(companies[0]?.platforms ? [...companies[0].platforms] : []);
   const [selectedAccounts, setSelectedAccounts] = useState(companies[0]?.accountIds || {});
@@ -576,8 +572,8 @@ export default function DashboardPage() {
     // Carrega imediatamente
     loadAccounts();
 
-    // Recarrega a cada 3 segundos (mais rápido para sincronizar)
-    const interval = setInterval(loadAccounts, 3000);
+    // Recarrega a cada 30 segundos (era 3s — causava lentidão)
+    const interval = setInterval(loadAccounts, 30000);
 
     return () => clearInterval(interval);
   }, []);
@@ -585,7 +581,7 @@ export default function DashboardPage() {
   // Inicializa seleção por empresa para novos artigos
   useEffect(() => {
     if (pendingArticles.length === 0) return;
-    const companies = buildCompanies(connectedAccounts, companiesData);
+    const companies = buildCompanies(connectedAccounts, companiesData); // fallback local
     const firstCompany = companies[0];
     setArticleSelections(prev => {
       const updated = { ...prev };
@@ -730,7 +726,7 @@ export default function DashboardPage() {
 
   // Muda a empresa selecionada: atualiza companyId, platforms e accounts
   function setArticleCompany(articleId, companyId) {
-    const companies = buildCompanies(connectedAccounts, companiesData);
+    const companies = buildCompanies(connectedAccounts, companiesData); // fallback local
     const company = companies.find(c => c.id === companyId);
     if (!company) return;
     setArticleSelections(prev => ({
@@ -812,7 +808,7 @@ export default function DashboardPage() {
       setBulkProgress(prev => ({ ...prev, [item.id]: 'publishing' }));
       const token = localStorage.getItem('auth_token');
       const sel = articleSelections[item.id] || { platforms: [], accounts: {} };
-      const companies = buildCompanies(connectedAccounts, companiesData);
+      const companies = buildCompanies(connectedAccounts, companiesData); // fallback local
       const selectedCompany = companies.find(c => c.id === sel.companyId) || companies[0];
       const realCompanyId = selectedCompany?.companyId || null;
 
@@ -869,7 +865,7 @@ export default function DashboardPage() {
       return;
     }
     // Resolve o UUID real da empresa (sel.companyId é o ID interno do frontend)
-    const companies = buildCompanies(connectedAccounts, companiesData);
+    const companies = buildCompanies(connectedAccounts, companiesData); // fallback local
     const selectedCompany = companies.find(c => c.id === sel.companyId) || companies[0];
     const realCompanyId = selectedCompany?.companyId || null;
     try {
@@ -971,6 +967,9 @@ export default function DashboardPage() {
       showToast('Erro de ligação. Tenta novamente.', 'error');
     }
   }
+
+  // Companies calculado uma vez — evita re-calcular em cada card
+  const companies = useMemo(() => buildCompanies(connectedAccounts, companiesData), [connectedAccounts, companiesData]);
 
   // Artigos filtrados por setor (pendentes — filtro local)
   const sectorFilteredPending = filterSector
@@ -1183,8 +1182,7 @@ export default function DashboardPage() {
               <AgentArticleCard
                 key={item.id}
                 item={item}
-                connectedAccounts={connectedAccounts}
-                companiesData={companiesData}
+                companies={companies}
                 selection={articleSelections[item.id]}
                 onTogglePlatform={pid => toggleArticlePlatform(item.id, pid)}
                 onSetCompany={cid => setArticleCompany(item.id, cid)}
@@ -1204,8 +1202,7 @@ export default function DashboardPage() {
               <SavedArticleCard
                 key={item.id}
                 item={item}
-                connectedAccounts={connectedAccounts}
-                companiesData={companiesData}
+                companies={companies}
                 onPublish={filterStatus === 'on_hold' ? handlePublishSaved : null}
                 onRemove={filterStatus === 'on_hold' ? handleRemoveSaved : null}
               />
@@ -1261,7 +1258,6 @@ export default function DashboardPage() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {pendingArticles.filter(a => bulkSelected.has(a.id)).map(a => {
               const sel = articleSelections[a.id] || {};
-              const companies = buildCompanies(connectedAccounts, companiesData);
               const company = companies.find(c => c.id === sel.companyId) || companies[0];
               const platforms = sel.platforms || [];
               const platformIcons = { facebook: '📘', instagram: '📸', linkedin: '💼', wordpress: '🌐' };
