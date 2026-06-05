@@ -151,19 +151,23 @@ function formatDate(iso) {
 
 function cleanContent(item) {
   const raw = item.description || item.summary || item.excerpt || '';
-  if (raw.trim().length > 20) {
-    return raw.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
-  }
-  return (item.content || '')
-    .replace(/Key sectors:[^\n]*/gi, '')
-    .replace(/Source:[^\n]*/gi, '')
-    .replace(/This article highlights[^.]*\./gi, '')
-    .replace(/Sensitive terms[^.]*\./gi, '')
-    .replace(/Read the full story here\.?/gi, '')
-    .replace(new RegExp(item.title || '__NOTITLE__', 'gi'), '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+  const base = raw.trim().length > 20
+    ? raw
+    : (item.content || '')
+        .replace(/Key sectors:[^\n]*/gi, '')
+        .replace(/Source:[^\n]*/gi, '')
+        .replace(/This article highlights[^.]*\./gi, '')
+        .replace(/Sensitive terms[^.]*\./gi, '')
+        .replace(/Read the full story here\.?/gi, '')
+        .replace(new RegExp(item.title || '__NOTITLE__', 'gi'), '');
+
+  const clean = base.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+
+  // Extrai só a primeira frase completa, máximo 160 caracteres
+  const firstSentence = clean.match(/^[^.!?]+[.!?]/)?.[0]?.trim() || clean;
+  return firstSentence.length > 160
+    ? firstSentence.slice(0, 157) + '...'
+    : firstSentence;
 }
 
 function SectorBadge({ category }) {
