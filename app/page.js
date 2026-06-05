@@ -9,8 +9,9 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1 = credentials, 2 = 2FA
-  const [totp, setTotp] = useState('');
+  const [step, setStep] = useState(1); // 1 = credentials, 2 = OTP
+  const [otp, setOtp] = useState('');
+  const [otpToken, setOtpToken] = useState('');
 
   useEffect(() => {
     // Migra token antigo do sessionStorage para localStorage (utilizadores com sessão antiga)
@@ -54,6 +55,14 @@ export default function LoginPage() {
           return;
         }
         if (data.requires2fa) {
+          // Envia OTP por email
+          const otpRes = await fetch('/api/2fa/send-otp', { method: 'POST' });
+          const otpData = await otpRes.json();
+          if (!otpRes.ok) {
+            setError(otpData.error || 'Erro ao enviar código. Tenta novamente.');
+            return;
+          }
+          setOtpToken(otpData.otpToken);
           setStep(2);
           return;
         }
@@ -66,19 +75,18 @@ export default function LoginPage() {
         setLoading(false);
       }
     } else {
-      // Passo 2: submete com o código TOTP
-      if (!totp.trim()) { setError('Insere o código de autenticação.'); return; }
+      if (!otp.trim()) { setError('Insere o código enviado por email.'); return; }
       setLoading(true);
       try {
         const res = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: username.trim(), password, totp: totp.trim() }),
+          body: JSON.stringify({ username: username.trim(), password, otp: otp.trim(), otpToken }),
         });
         const data = await res.json();
         if (!res.ok) {
           setError(data.error || 'Código inválido. Tenta novamente.');
-          setTotp('');
+          setOtp('');
           return;
         }
         localStorage.setItem('auth_token', data.token);
@@ -146,16 +154,17 @@ export default function LoginPage() {
                   </svg>
                 </div>
                 <p className="twofa-label">Insere o código da tua app de autenticação</p>
+                <p className="twofa-sublabel">Código enviado para <strong>{process.env.NEXT_PUBLIC_OTP_EMAIL_HINT || 'o teu email'}</strong></p>
                 <input
                   type="text"
-                  value={totp}
-                  onChange={e => setTotp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="000 000"
+                  value={otp}
+                  onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
                   maxLength={6}
                   autoFocus
-                  style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '.3em', fontWeight: 700 }}
+                  style={{ textAlign: 'center', fontSize: '1.75rem', letterSpacing: '.4em', fontWeight: 700 }}
                 />
-                <button type="button" className="twofa-back" onClick={() => { setStep(1); setError(''); setTotp(''); }}>
+                <button type="button" className="twofa-back" onClick={() => { setStep(1); setError(''); setOtp(''); setOtpToken(''); }}>
                   ← Voltar
                 </button>
               </div>

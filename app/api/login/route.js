@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { authenticator } from 'otplib';
+import { jwtVerify } from 'jose';
 import { signToken } from '@/src/lib/auth';
+
+const SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'publixy-secret-key');
 
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').toLowerCase();
 const g = globalThis;
@@ -42,18 +44,22 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
   }
 
-  // Se TOTP_SECRET está configurado, exige o código 2FA
-  const totpSecret = process.env.TOTP_SECRET;
-  if (totpSecret) {
-    const { totp } = body;
-    if (!totp) {
-      // Primeiro passo: credenciais válidas, pede o código 2FA
+  // Se SMTP está configurado, exige OTP por email
+  const emailOtpEnabled = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+  if (emailOtpEnabled) {
+    const { otp, otpToken } = body;
+    if (!otp || !otpToken) {
+      // Primeiro passo: credenciais válidas, pede para enviar OTP
       return NextResponse.json({ requires2fa: true }, { status: 200 });
     }
-    // Segundo passo: valida o código TOTP
-    const isValid = authenticator.verify({ token: String(totp).replace(/\s/g, ''), secret: totpSecret });
-    if (!isValid) {
-      return NextResponse.json({ error: 'Código 2FA inválido ou expirado' }, { status: 401 });
+    // Segundo passo: valida o OTP contra o token assinado
+    try {
+      const { payload } = await jwtVerify(otpToken, SECRET);
+      if (String(payload.otp) !== String(otp).replace(/\s/g, '')) {
+        return NextResponse.json({ error: 'Código inválido ou expirado' }, { status: 401 });
+      }
+    } catch {
+      return NextResponse.json({ error: 'Código inválido ou expirado' }, { status: 401 });
     }
   }
 
