@@ -159,23 +159,23 @@ function dashboardCategory(matchedSectors = []) {
 }
 
 function decodeEntities(raw) {
-  return (raw || ‘’)
-    .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(parseInt(c, 10)))
+  return (raw || "")
+    .replace(/&#(d+);/g, (_, c) => String.fromCharCode(parseInt(c, 10)))
     .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
-    .replace(/&amp;/g, ‘&’)
-    .replace(/&quot;/g, ‘”’)
-    .replace(/&#39;/g, “’”)
-    .replace(/&apos;/g, “’”)
-    .replace(/&lt;/g, ‘<’)
-    .replace(/&gt;/g, ‘>’)
-    .replace(/&nbsp;/g, ‘ ‘)
-    .replace(/&mdash;/g, ‘—‘)
-    .replace(/&ndash;/g, ‘–‘)
-    .replace(/&rsquo;/g, ‘’’)
-    .replace(/&lsquo;/g, ‘‘’)
-    .replace(/&rdquo;/g, ‘”’)
-    .replace(/&ldquo;/g, ‘“’)
-    .replace(/&hellip;/g, ‘…’);
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"' )
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&mdash;/g, "—")
+    .replace(/&ndash;/g, "–")
+    .replace(/&rsquo;/g, "’")
+    .replace(/&lsquo;/g, "‘")
+    .replace(/&rdquo;/g, "”")
+    .replace(/&ldquo;/g, "“")
+    .replace(/&hellip;/g, "…");
 }
 
 function generatePostDescription(article) {
