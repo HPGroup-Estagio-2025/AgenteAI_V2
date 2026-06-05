@@ -104,20 +104,36 @@ const CONFIGS = {
     clientSecretEnv: 'LINKEDIN_CLIENT_SECRET',
     longLived: false,
     async getProfile(token) {
+      // Tenta userinfo (OpenID Connect)
       const res = await fetch('https://api.linkedin.com/v2/userinfo', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const d = await res.json();
       console.log('[linkedin] userinfo:', JSON.stringify(d));
-      const fullName = d.name
-        || [d.given_name, d.family_name].filter(Boolean).join(' ').trim()
-        || [d.localizedFirstName, d.localizedLastName].filter(Boolean).join(' ').trim()
-        || d.email
-        || d.sub
-        || 'LinkedIn User';
+
+      // Tenta também /v2/me para nome localizado
+      let meData = {};
+      try {
+        const meRes = await fetch(
+          'https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName)',
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        meData = await meRes.json().catch(() => ({}));
+        console.log('[linkedin] me:', JSON.stringify(meData));
+      } catch {}
+
+      const fullName =
+        d.name?.trim() ||
+        [d.given_name, d.family_name].filter(Boolean).join(' ').trim() ||
+        [meData.localizedFirstName, meData.localizedLastName].filter(Boolean).join(' ').trim() ||
+        [d.localizedFirstName, d.localizedLastName].filter(Boolean).join(' ').trim() ||
+        d.email?.split('@')[0] ||
+        d.sub ||
+        null;
+
       return {
-        accountId: d.sub || d.id || null,
-        name: fullName,
+        accountId: d.sub || d.id || meData.id || null,
+        name: fullName || 'Conta LinkedIn',
         email: d.email || null,
         picture: d.picture || null,
       };
