@@ -219,19 +219,14 @@ textarea { resize: vertical; }
   background: var(--white);
   border-radius: var(--radius-md);
   padding: 20px 24px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
   border: none;
   display: flex; align-items: center; gap: 16px;
   cursor: pointer;
-  transition: box-shadow var(--transition), transform var(--transition);
+  transition: transform var(--transition);
   position: relative; overflow: hidden;
 }
-.stat-card::after {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-}
-.stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.stat-card:hover { transform: translateY(-2px); }
 .stat-pending::after   { background: linear-gradient(90deg, #F59E0B, #FCD34D); }
 .stat-published::after { background: linear-gradient(90deg, #16A34A, #4ADE80); }
 .stat-onhold::after    { background: linear-gradient(90deg, #7C3AED, #A78BFA); }
