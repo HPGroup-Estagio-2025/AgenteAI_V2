@@ -18,16 +18,23 @@ const SECTOR_COLORS = {
   'tecnologia':     '#15803D',
 };
 
+function isUrl(str) {
+  return /^https?:\/\//i.test(str) || /\.[a-z]{2,}(\/|$)/i.test(str);
+}
+
 export default function SourcesPage() {
   const router = useRouter();
   const [sources, setSources] = useState([]);
   const [url, setUrl] = useState('');
   const [sector, setSector] = useState('maritimo');
   const [validating, setValidating] = useState(false);
-  const [validation, setValidation] = useState(null); // { valid, feedUrl, name, itemCount, error, note }
+  const [validation, setValidation] = useState(null);
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [suggestions, setSuggestions] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const searchTimer = useState(null);
 
   function showToast(message, type = 'info') {
     setToast({ message, type });
@@ -58,10 +65,43 @@ export default function SourcesPage() {
     loadSources();
   }, [loadSources]);
 
+  async function handleInputChange(value) {
+    setUrl(value);
+    setValidation(null);
+    setSuggestions([]);
+    if (!value.trim() || value.trim().length < 2) return;
+    // Se parece URL, não faz pesquisa por nome
+    if (isUrl(value.trim())) return;
+    // Pesquisa por nome com debounce
+    clearTimeout(searchTimer[0]);
+    searchTimer[0] = setTimeout(async () => {
+      setSearching(true);
+      const token = localStorage.getItem('auth_token');
+      try {
+        const res = await fetch('/api/sources/search', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: value.trim() }),
+        });
+        const data = await res.json();
+        setSuggestions(data.results || []);
+      } catch {}
+      setSearching(false);
+    }, 350);
+  }
+
+  function handleSelectSuggestion(suggestion) {
+    setUrl(suggestion.url);
+    if (suggestion.sector) setSector(suggestion.sector);
+    setSuggestions([]);
+    setValidation({ valid: true, feedUrl: suggestion.url, name: suggestion.name, itemCount: '?', fromSuggestion: true });
+  }
+
   async function handleValidate() {
     if (!url.trim()) return;
     setValidating(true);
     setValidation(null);
+    setSuggestions([]);
     const token = localStorage.getItem('auth_token');
     try {
       const res = await fetch('/api/sources/validate', {
@@ -151,25 +191,76 @@ export default function SourcesPage() {
         <div style={{ background: 'var(--white)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--gray-200)', padding: 24, marginBottom: 28, boxShadow: 'var(--shadow-sm)' }}>
           <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 16, color: 'var(--gray-800)' }}>Adicionar nova fonte</h2>
 
-          <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-            <input
-              type="url"
-              placeholder="https://exemplo.com/feed/ ou URL do site"
-              value={url}
-              onChange={e => { setUrl(e.target.value); setValidation(null); }}
-              onKeyDown={e => e.key === 'Enter' && handleValidate()}
-              style={{ flex: 1, minWidth: 200 }}
-            />
-            <button
-              className="btn btn-ghost"
-              onClick={handleValidate}
-              disabled={validating || !url.trim()}
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              {validating
-                ? <><span className="loader" style={{ width: 13, height: 13, borderColor: 'rgba(0,0,0,.15)', borderTopColor: 'var(--gray-600)' }} /> A verificar...</>
-                : '🔍 Verificar'}
-            </button>
+          <div style={{ position: 'relative', marginBottom: 14 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Nome do site (ex: Naval Technology) ou URL do feed"
+                  value={url}
+                  onChange={e => handleInputChange(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleValidate(); if (e.key === 'Escape') setSuggestions([]); }}
+                  autoComplete="off"
+                />
+                {searching && (
+                  <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
+                    <span className="loader" style={{ width: 13, height: 13, borderColor: 'rgba(0,0,0,.1)', borderTopColor: 'var(--gray-400)' }} />
+                  </span>
+                )}
+              </div>
+              <button
+                className="btn btn-ghost"
+                onClick={handleValidate}
+                disabled={validating || !url.trim()}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {validating
+                  ? <><span className="loader" style={{ width: 13, height: 13, borderColor: 'rgba(0,0,0,.15)', borderTopColor: 'var(--gray-600)' }} /> A verificar...</>
+                  : '🔍 Verificar'}
+              </button>
+            </div>
+
+            {/* Dropdown de sugestões */}
+            {suggestions.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                background: 'var(--white)', border: '1.5px solid var(--gray-200)',
+                borderRadius: 'var(--radius-sm)', boxShadow: 'var(--shadow-md)',
+                marginTop: 4, overflow: 'hidden',
+              }}>
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSelectSuggestion(s)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 14px', border: 'none', background: 'none',
+                      cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--gray-100)',
+                      transition: 'background .15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--blue-50)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '.875rem', color: 'var(--gray-800)' }}>{s.name}</div>
+                      <div style={{ fontSize: '.72rem', color: 'var(--gray-400)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.url}</div>
+                    </div>
+                    {s.sector && (
+                      <span style={{
+                        fontSize: '.68rem', fontWeight: 700, padding: '2px 8px',
+                        borderRadius: 10, background: 'var(--blue-50)', color: 'var(--blue-600)',
+                        flexShrink: 0, whiteSpace: 'nowrap',
+                      }}>
+                        {SECTORS.find(sec => sec.id === s.sector)?.label || s.sector}
+                      </span>
+                    )}
+                  </button>
+                ))}
+                <div style={{ padding: '6px 14px', fontSize: '.72rem', color: 'var(--gray-400)', background: 'var(--gray-50)' }}>
+                  Clica para selecionar · também podes colar um URL directamente
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Resultado da validação */}
