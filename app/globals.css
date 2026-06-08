@@ -555,17 +555,20 @@ textarea { resize: vertical; }
 /* ── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 768px) {
 
-  /* Header */
+  /* Header — só logo + live dot */
   .header-inner {
-    padding: 0 14px;
+    padding: 0 16px;
     grid-template-columns: 1fr auto;
-    height: 56px;
+    height: 52px;
+    gap: 0;
   }
   .header-nav { display: none; }
   .header-actions { gap: 6px; }
   .user-badge { display: none; }
+  .btn-logout { display: none; }
   .live-badge { padding: 4px 8px; font-size: .7rem; }
-  .btn-logout { padding: 6px 10px; font-size: .75rem; }
+  /* Espaço em baixo para o bottom nav não tapar conteúdo */
+  .main { padding-bottom: 80px !important; }
 
   /* Main */
   .main { padding: 16px 12px 64px; }
