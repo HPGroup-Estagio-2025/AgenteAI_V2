@@ -15,11 +15,6 @@ function countItems(xml) {
 }
 
 export async function GET(request) {
-  const token = getTokenFromRequest(request);
-  try { if (!token) throw new Error(); verifyToken(token); } catch {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
-  }
-
   const { data: sources } = await supabaseAdmin
     .from('news_sources').select('*').eq('active', true);
 
