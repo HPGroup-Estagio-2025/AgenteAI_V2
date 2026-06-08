@@ -390,7 +390,15 @@ function SocialPageContent() {
               {hasAccounts ? '✓ Conectado' : '○ Desconectado'}
             </div>
           </div>
-          {!hasAccounts ? (
+          {/* LinkedIn: só mostra chevron se conectado via org token; outras plataformas mostram botão Conectar */}
+          {id === 'linkedin' ? (
+            hasAccounts && (
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ color: 'var(--gray-400)', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            )
+          ) : !hasAccounts ? (
             <button
               className="btn-connect"
               style={{ background: color }}
@@ -406,23 +414,30 @@ function SocialPageContent() {
             </svg>
           )}
         </div>
-        {/* Botão para conectar token org (linkedin-org) se for LinkedIn e ainda não estiver ligado */}
-        {id === 'linkedin' && !accounts['linkedin-org']?.length && (
+        {/* LinkedIn: só mostra "Ligar Organização" — nunca o token pessoal */}
+        {id === 'linkedin' && (
           <div className="social-account-panel" onClick={e => e.stopPropagation()}>
             <div className="social-account-panel-info">
               <span className="social-account-panel-name">Publicação como Página de Empresa</span>
-              <span className="social-account-panel-sub">Necessário para publicar na página da empresa</span>
+              <span className="social-account-panel-sub">
+                {accounts['linkedin-org']?.length
+                  ? '✓ Token de organização ligado'
+                  : 'Aguarda aprovação do LinkedIn (10-14 dias úteis)'}
+              </span>
             </div>
-            <button
-              className="btn-connect"
-              style={{ background: '#0A66C2', padding: '4px 12px', fontSize: '.72rem', height: 'auto', whiteSpace: 'nowrap' }}
-              onClick={() => handleConnect('linkedin-org', company.id)}
-            >
-              Ligar Organização
-            </button>
+            {!accounts['linkedin-org']?.length && (
+              <button
+                className="btn-connect"
+                style={{ background: '#0A66C2', padding: '4px 12px', fontSize: '.72rem', height: 'auto', whiteSpace: 'nowrap' }}
+                onClick={() => handleConnect('linkedin-org', company.id)}
+              >
+                Ligar Organização
+              </button>
+            )}
           </div>
         )}
-        {!hasAccounts && reusableAccounts.map(acc => (
+        {/* Outras plataformas: mostra contas reutilizáveis */}
+        {id !== 'linkedin' && !hasAccounts && reusableAccounts.map(acc => (
           <div key={acc.id} className="social-account-panel" onClick={e => e.stopPropagation()}>
             <div className="social-account-panel-info">
               <span className="social-account-panel-name">{acc.name}</span>
