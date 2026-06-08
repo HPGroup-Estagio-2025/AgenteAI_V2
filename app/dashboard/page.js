@@ -56,7 +56,7 @@ function buildCompanies(connectedAccounts, companiesData = []) {
   // Aceita contas ligadas à empresa (companyId match) OU contas partilhadas (companyId = null)
   function findAccount(accs, companyId) {
     return accs.find(a => a.companyId === companyId)
-      || accs.find(a => !a.companyId && !a.companyName)
+      || accs.find(a => !a.companyId)
       || null;
   }
 

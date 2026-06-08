@@ -336,14 +336,10 @@ function SocialPageContent() {
     const shouldUseUnassignedAccounts = companies.length === 1;
 
     for (const [platform, platformAccounts] of Object.entries(accounts)) {
-      grouped[platform] = platformAccounts.filter(acc => {
-        const hasCompanyBinding = Boolean(acc.companyId || acc.companyName);
-        return (
-          acc.companyId === companyId ||
-          (acc.companyName && company?.name === acc.companyName) ||
-          !hasCompanyBinding // contas partilhadas (sem empresa) aparecem em todas
-        );
-      });
+      grouped[platform] = platformAccounts.filter(acc =>
+        acc.companyId === companyId ||
+        !acc.companyId // sem companyId = partilhada, aparece em todas as empresas
+      );
     }
     return grouped;
   }
