@@ -177,39 +177,46 @@ textarea { resize: vertical; }
   justify-content: center;
   pointer-events: none;
   z-index: 0;
-  perspective: 800px;
+  perspective: 1000px;
 }
-.login-robot-scene {
+/* Wrapper externo: rotação Y */
+.login-robot-spin {
   transform-style: preserve-3d;
-  animation: robot-float 6s ease-in-out infinite, robot-spin 18s linear infinite;
+  animation: robot-spin 12s linear infinite;
 }
-.login-robot-scene img {
-  width: 340px;
-  height: 340px;
-  opacity: .07;
-  filter: drop-shadow(0 0 60px rgba(124,58,237,.6)) drop-shadow(0 0 120px rgba(79,70,229,.4));
-  border-radius: 40px;
+/* Wrapper interno: flutuação */
+.login-robot-float {
+  animation: robot-float 4s ease-in-out infinite;
 }
-/* Sombra no chão */
+.login-robot-bg img {
+  width: 420px;
+  height: 420px;
+  opacity: .18;
+  filter:
+    drop-shadow(0 0 40px rgba(124,58,237,.9))
+    drop-shadow(0 0 80px rgba(167,139,250,.5));
+  border-radius: 48px;
+  display: block;
+}
 .login-robot-shadow {
-  width: 260px;
-  height: 40px;
-  background: radial-gradient(ellipse, rgba(124,58,237,.25) 0%, transparent 70%);
+  width: 280px;
+  height: 36px;
+  background: radial-gradient(ellipse, rgba(124,58,237,.35) 0%, transparent 70%);
   border-radius: 50%;
   margin: 0 auto;
-  animation: robot-shadow 6s ease-in-out infinite;
-}
-@keyframes robot-float {
-  0%, 100% { transform: translateY(0px) rotateX(4deg); }
-  50%       { transform: translateY(-30px) rotateX(-4deg); }
+  animation: robot-shadow 4s ease-in-out infinite;
 }
 @keyframes robot-spin {
-  0%   { transform: rotateY(0deg); }
-  100% { transform: rotateY(360deg); }
+  from { transform: rotateY(0deg); }
+  to   { transform: rotateY(360deg); }
+}
+@keyframes robot-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-28px); }
 }
 @keyframes robot-shadow {
-  0%, 100% { transform: scaleX(1);   opacity: .8; }
-  50%       { transform: scaleX(.7); opacity: .4; }
+  0%, 100% { transform: scaleX(1);    opacity: 1; }
+  50%       { transform: scaleX(.65); opacity: .4; }
 }
 
 .login-container { width: 100%; max-width: 420px; position: relative; z-index: 1; }
