@@ -395,27 +395,14 @@ function SocialPageContent() {
             </div>
           </div>
           {!hasAccounts ? (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-              {reusableAccounts.length > 0 && reusableAccounts.map(acc => (
-                <button
-                  key={acc.id}
-                  className="btn-connect"
-                  style={{ background: '#6b7280', fontSize: '.7rem', whiteSpace: 'nowrap' }}
-                  title={`Usar conta: ${acc.name}`}
-                  onClick={() => handleReuseAccount(acc.id)}
-                >
-                  Usar {acc.name}
-                </button>
-              ))}
-              <button
-                className="btn-connect"
-                style={{ background: color }}
-                disabled={isConnecting}
-                onClick={() => handleConnect(id, company.id)}
-              >
-                {isConnecting ? <span className="loader" style={{ width: 11, height: 11 }} /> : 'Conectar'}
-              </button>
-            </div>
+            <button
+              className="btn-connect"
+              style={{ background: color }}
+              disabled={isConnecting}
+              onClick={e => { e.stopPropagation(); handleConnect(id, company.id); }}
+            >
+              {isConnecting ? <span className="loader" style={{ width: 11, height: 11 }} /> : 'Conectar'}
+            </button>
           ) : (
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
               style={{ color: 'var(--gray-400)', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>
@@ -423,6 +410,21 @@ function SocialPageContent() {
             </svg>
           )}
         </div>
+        {!hasAccounts && reusableAccounts.map(acc => (
+          <div key={acc.id} className="social-account-panel" onClick={e => e.stopPropagation()}>
+            <div className="social-account-panel-info">
+              <span className="social-account-panel-name">{acc.name}</span>
+              <span className="social-account-panel-sub">Disponível para reutilizar</span>
+            </div>
+            <button
+              className="btn-connect"
+              style={{ background: color, padding: '4px 12px', fontSize: '.72rem', height: 'auto' }}
+              onClick={() => handleReuseAccount(acc.id)}
+            >
+              Usar esta conta
+            </button>
+          </div>
+        ))}
         {hasAccounts && open && platformAccounts.map(account => (
           <div key={account.id} className="social-account-panel" onClick={e => e.stopPropagation()}>
             <div className="social-account-panel-info">
