@@ -541,6 +541,9 @@ function SocialPageContent() {
             <button className="header-nav-item active">
               Redes Sociais
             </button>
+            <button className="header-nav-item" onClick={() => router.push('/sources')}>
+              Fontes
+            </button>
           </nav>
           <div className="header-actions">
             <button className="btn-logout" onClick={() => { clearAuth(); router.replace('/'); }}>
