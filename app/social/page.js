@@ -348,6 +348,23 @@ function SocialPageContent() {
     return grouped;
   }
 
+  async function handleReuseAccount(sourceAccountId, targetCompanyId) {
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch('/api/social/reuse-account', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceAccountId, targetCompanyId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Erro ao reutilizar conta', 'error'); return; }
+      showToast('Conta ligada com sucesso!', 'success');
+      await loadAccounts();
+    } catch {
+      showToast('Erro de ligação. Tenta novamente.', 'error');
+    }
+  }
+
   function PlatformRow({ platform, company }) {
     const { id, name, color, bg, Icon } = platform;
     const companyAccounts = getAccountsByCompany(company.id);
@@ -355,6 +372,11 @@ function SocialPageContent() {
     const isConnecting = connecting === id;
     const hasAccounts = platformAccounts.length > 0;
     const [open, setOpen] = useState(false);
+
+    // Contas do mesmo platform noutras empresas que podem ser reutilizadas
+    const reusableAccounts = !hasAccounts
+      ? (accounts[id] || []).filter(acc => acc.companyId !== company.id && !platformAccounts.find(a => a.id === acc.id))
+      : [];
 
     return (
       <>
@@ -373,14 +395,27 @@ function SocialPageContent() {
             </div>
           </div>
           {!hasAccounts ? (
-            <button
-              className="btn-connect"
-              style={{ background: color }}
-              disabled={isConnecting}
-              onClick={e => { e.stopPropagation(); handleConnect(id, company.id); }}
-            >
-              {isConnecting ? <span className="loader" style={{ width: 11, height: 11 }} /> : 'Conectar'}
-            </button>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+              {reusableAccounts.length > 0 && reusableAccounts.map(acc => (
+                <button
+                  key={acc.id}
+                  className="btn-connect"
+                  style={{ background: '#6b7280', fontSize: '.7rem', whiteSpace: 'nowrap' }}
+                  title={`Usar conta: ${acc.name}`}
+                  onClick={() => handleReuseAccount(acc.id, company.id)}
+                >
+                  Usar {acc.name}
+                </button>
+              ))}
+              <button
+                className="btn-connect"
+                style={{ background: color }}
+                disabled={isConnecting}
+                onClick={() => handleConnect(id, company.id)}
+              >
+                {isConnecting ? <span className="loader" style={{ width: 11, height: 11 }} /> : 'Conectar'}
+              </button>
+            </div>
           ) : (
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
               style={{ color: 'var(--gray-400)', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>
