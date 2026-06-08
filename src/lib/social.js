@@ -202,9 +202,25 @@ async function supabaseDeleteByPlatform(platform) {
   if (error) console.error('[social] Erro ao apagar contas do Supabase:', error.message);
 }
 
-async function findExistingAccountId(platform, accountId) {
+async function findExistingAccountId(platform, accountId, companyId) {
   if (!USE_SUPABASE || !platform || !accountId) return null;
   try {
+    // Se há companyId, procura a combinação exacta (platform + accountId + companyId)
+    // Isto permite o mesmo utilizador LinkedIn ligar a múltiplas empresas
+    if (companyId) {
+      const { data: exact } = await supabaseAdmin
+        .from(SOCIAL_TABLE)
+        .select('id')
+        .eq('platform', platform)
+        .eq('account_id', accountId)
+        .eq('company_id', companyId)
+        .limit(1);
+      if (exact?.[0]?.id) return exact[0].id;
+      // Não existe para esta empresa — vai criar nova entrada
+      return null;
+    }
+
+    // Sem companyId: comportamento original (upsert sobre a entrada mais recente)
     const { data, error } = await supabaseAdmin
       .from(SOCIAL_TABLE)
       .select('id')
@@ -306,7 +322,7 @@ export function getAccount(platform) {
 
 export async function addAccount(data) {
   const accountId = data.accountId || data.providerAccountId || null;
-  const existingId = await findExistingAccountId(data.platform, accountId);
+  const existingId = await findExistingAccountId(data.platform, accountId, data.companyId || null);
   const account = {
     id: data.id || existingId || crypto.randomUUID(),
     ...data,
@@ -321,7 +337,9 @@ export async function addAccount(data) {
       (
         account.accountId &&
         existing.platform === account.platform &&
-        existing.accountId === account.accountId
+        existing.accountId === account.accountId &&
+        // Mesmo utilizador + mesma empresa = upsert; empresa diferente = nova entrada
+        (existing.companyId === account.companyId || (!existing.companyId && !account.companyId))
       )
     );
     if (existingIndex >= 0) {
