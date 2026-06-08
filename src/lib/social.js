@@ -322,25 +322,39 @@ export function getAccount(platform) {
 
 export async function addAccount(data) {
   const accountId = data.accountId || data.providerAccountId || null;
-  const existingId = await findExistingAccountId(data.platform, accountId, data.companyId || null);
+
+  // Se já existe uma conta com o mesmo accountId nesta plataforma (qualquer empresa),
+  // reutiliza o mesmo registo e partilha-o (company_id = null) para ficar disponível em todas as empresas.
+  let existingId = null;
+  let shouldShare = false;
+  if (USE_SUPABASE && accountId) {
+    const { data: existing } = await supabaseAdmin
+      .from(SOCIAL_TABLE)
+      .select('id, company_id')
+      .eq('platform', data.platform)
+      .eq('account_id', accountId)
+      .limit(1);
+    if (existing?.[0]) {
+      existingId = existing[0].id;
+      // Se já existe para empresa diferente (ou partilhado), mantém partilhado
+      if (existing[0].company_id !== data.companyId) shouldShare = true;
+    }
+  }
+
   const account = {
     id: data.id || existingId || crypto.randomUUID(),
     ...data,
     accountId,
+    // Se a conta já existia para outra empresa, partilha automaticamente
+    companyId: shouldShare ? null : (data.companyId || null),
+    companyName: shouldShare ? null : (data.companyName || null),
     connectedAt: data.connectedAt || new Date().toISOString(),
   };
 
   if (USE_SUPABASE) {
     await supabaseUpsert(account);
-    const existingIndex = g._socialAccounts.findIndex(existing =>
-      existing.id === account.id ||
-      (
-        account.accountId &&
-        existing.platform === account.platform &&
-        existing.accountId === account.accountId &&
-        // Mesmo utilizador + mesma empresa = upsert; empresa diferente = nova entrada
-        (existing.companyId === account.companyId || (!existing.companyId && !account.companyId))
-      )
+    const existingIndex = g._socialAccounts.findIndex(a =>
+      a.id === account.id || (a.platform === account.platform && a.accountId === account.accountId)
     );
     if (existingIndex >= 0) {
       g._socialAccounts[existingIndex] = account;
