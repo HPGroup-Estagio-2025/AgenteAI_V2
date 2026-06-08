@@ -573,8 +573,8 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
       'tecnologia':     ['technology', 'software', 'hardware', 'artificial intelligence', 'digital', 'cybersecurity', 'semiconductor', 'cloud computing', 'robotics', 'startup'],
     };
 
-    // Busca os feeds de cada setor e garante 5 artigos por setor
-    const ARTICLES_PER_SECTOR = 5;
+    // Busca os feeds de cada setor e garante 7 artigos por setor
+    const ARTICLES_PER_SECTOR = 7;
     const sectorArticles = [];
     const usedUrls = new Set();
 
@@ -628,7 +628,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
       console.log(`[agent] Setor ${sectorKey}: ${scored.length} artigos`);
     }
 
-    const selectedArticles = sectorArticles.slice(0, 25);
+    const selectedArticles = sectorArticles.slice(0, 35);
     // Enriquece imagens e gera resumos AI em paralelo
     const [enrichedArticles, aiSummaries] = await Promise.all([
       enrichWithImages(selectedArticles),
