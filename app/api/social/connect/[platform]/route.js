@@ -38,7 +38,8 @@ export async function GET(request, { params }) {
     return Response.json({ error: `${config.clientIdEnv} nao configurado no .env` }, { status: 503 });
   }
 
-  const state = createState(platform);
+  const companyId = new URL(request.url).searchParams.get('companyId') || null;
+  const state = createState(platform, companyId);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://agente-ai-v2.vercel.app';
   const redirectUri = `${appUrl}/api/social/callback/${platform}`;
 

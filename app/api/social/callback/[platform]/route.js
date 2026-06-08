@@ -229,16 +229,25 @@ export async function GET(request, { params }) {
     // Para Instagram: usa o page token (nunca expira) guardado em profile.accessToken se disponível
     const tokenToStore = profile.accessToken || accessToken;
 
-    // Recupera o nome da empresa do cookie se foi definido
-    const companyNameCookie = request.cookies.get('pending_company_name')?.value;
-    const companyName = companyNameCookie ? decodeURIComponent(companyNameCookie) : null;
-    console.log(`[oauth:${platform}] Cookie pending_company_name: ${companyNameCookie || 'não encontrado'}`);
-
-    // Garante que a empresa existe e obtém seu ID
-    let companyId = null;
-    if (companyName) {
-      companyId = await ensureCompanyExists(companyName, 'oauth');
-      console.log(`[oauth:${platform}] Empresa '${companyName}' mapeada para ID: ${companyId}`);
+    // Recupera companyId do JWT state (fiável) com fallback para cookie legado
+    let companyId = stateData.companyId || null;
+    let companyName = null;
+    if (!companyId) {
+      const companyNameCookie = request.cookies.get('pending_company_name')?.value;
+      companyName = companyNameCookie ? decodeURIComponent(companyNameCookie) : null;
+      if (companyName) {
+        companyId = await ensureCompanyExists(companyName, 'oauth');
+        console.log(`[oauth:${platform}] Empresa '${companyName}' (cookie) mapeada para ID: ${companyId}`);
+      }
+    } else {
+      // Busca o nome da empresa pelo ID para backward compat
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const adm = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+        const { data: co } = await adm.from('companies').select('name').eq('id', companyId).single();
+        companyName = co?.name || null;
+      } catch {}
+      console.log(`[oauth:${platform}] companyId do state: ${companyId}, nome: ${companyName || 'desconhecido'}`);
     }
 
     const accountData = {

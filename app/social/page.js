@@ -278,24 +278,14 @@ function SocialPageContent() {
     }
   }
 
-  async function handleConnect(platformId, companyName = null) {
+  async function handleConnect(platformId, companyId = null) {
     const token = localStorage.getItem('auth_token');
     setConnecting(platformId);
     try {
-      if (companyName) {
-        const cookieRes = await fetch('/api/social/set-pending-company', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ companyName }),
-        });
-        if (!cookieRes.ok) {
-          const cookieData = await cookieRes.json();
-          showToast(cookieData.error || 'Erro ao guardar nome da empresa', 'error');
-          setShowCompanySelector(null);
-          return;
-        }
-      }
-      const res = await fetch(`/api/social/connect/${platformId}`, {
+      const connectUrl = companyId
+        ? `/api/social/connect/${platformId}?companyId=${encodeURIComponent(companyId)}`
+        : `/api/social/connect/${platformId}`;
+      const res = await fetch(connectUrl, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -387,7 +377,7 @@ function SocialPageContent() {
               className="btn-connect"
               style={{ background: color }}
               disabled={isConnecting}
-              onClick={e => { e.stopPropagation(); handleConnect(id, company.name); }}
+              onClick={e => { e.stopPropagation(); handleConnect(id, company.id); }}
             >
               {isConnecting ? <span className="loader" style={{ width: 11, height: 11 }} /> : 'Conectar'}
             </button>

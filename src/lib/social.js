@@ -373,15 +373,15 @@ export async function removeAccountsByPlatform(platform) {
 
 // ─── Estado OAuth (JWT stateless — funciona em qualquer instância Vercel) ───
 
-export function createState(platform) {
+export function createState(platform, companyId = null) {
   const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
-  return jwt.sign({ platform, nonce }, STATE_SECRET, { expiresIn: '15m' });
+  return jwt.sign({ platform, nonce, companyId: companyId || null }, STATE_SECRET, { expiresIn: '15m' });
 }
 
 export function consumeState(state) {
   try {
     const data = jwt.verify(state, STATE_SECRET);
-    return { platform: data.platform };
+    return { platform: data.platform, companyId: data.companyId || null };
   } catch {
     return null;
   }
