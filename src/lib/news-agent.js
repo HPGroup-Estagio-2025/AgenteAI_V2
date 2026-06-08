@@ -609,28 +609,38 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         } catch { return ''; }
       }
 
+      // Conjunto de URLs exactos dos feeds deste setor e de outros setores
+      const thisSectorFeedUrls = new Set(feeds.map(f => f.toLowerCase()));
+      const otherSectorFeedUrls = new Set(
+        Object.entries(activeSectorFeeds)
+          .filter(([k]) => k !== sectorKey)
+          .flatMap(([, fs]) => fs.map(f => f.toLowerCase()))
+      );
+      // Domínios para fontes sem _feedUrl (fallback)
       const sectorDomains = feeds.map(baseDomain).filter(Boolean);
       const allOtherDomains = Object.entries(SECTOR_FEEDS)
         .filter(([k]) => k !== sectorKey)
         .flatMap(([, fs]) => fs.map(baseDomain).filter(Boolean));
 
       const sectorRaw = filteredArticles.filter(a => {
-        // Usa o domínio do FEED (não do artigo) para identificar a fonte
-        // Ex: artigo do Flipboard tem URL do site original mas feedUrl = flipboard.com
-        const feedDomain = a._feedUrl ? baseDomain(a._feedUrl) : '';
-        const articleDomain = a.url ? baseDomain(a.url) : '';
-        const checkDomain = feedDomain || articleDomain;
         const text = `${a.title} ${a.description} ${a.content}`.toLowerCase();
 
-        // Artigo vem de um feed dedicado a ESTE setor → aceita sempre
-        const fromThisSectorFeed = sectorDomains.some(d => checkDomain === d || checkDomain.endsWith(`.${d}`));
+        if (a._feedUrl) {
+          const feedUrlLower = a._feedUrl.toLowerCase();
+          // URL exacto do feed está neste setor → aceita sempre
+          if (thisSectorFeedUrls.has(feedUrlLower)) return true;
+          // URL exacto do feed está noutro setor → rejeita
+          if (otherSectorFeedUrls.has(feedUrlLower)) return false;
+          // Feed não está em nenhum setor → aceita por termos
+          return terms.some(t => text.includes(t));
+        }
+
+        // Sem _feedUrl: usa domínio (comportamento legado)
+        const articleDomain = a.url ? baseDomain(a.url) : '';
+        const fromThisSectorFeed = sectorDomains.some(d => articleDomain === d || articleDomain.endsWith(`.${d}`));
         if (fromThisSectorFeed) return true;
-
-        // Artigo vem de um feed dedicado a OUTRO setor → rejeita
-        const fromOtherSectorFeed = allOtherDomains.some(d => checkDomain === d || checkDomain.endsWith(`.${d}`));
+        const fromOtherSectorFeed = allOtherDomains.some(d => articleDomain === d || articleDomain.endsWith(`.${d}`));
         if (fromOtherSectorFeed) return false;
-
-        // Fonte genérica → aceita só se corresponde aos termos do setor
         return terms.some(t => text.includes(t));
       });
 
