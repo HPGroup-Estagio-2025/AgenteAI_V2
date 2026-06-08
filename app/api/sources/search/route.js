@@ -43,7 +43,7 @@ const KNOWN_SOURCES = [
   { name: 'Parabolic Arc',          url: 'https://www.parabolicarc.com/feed/', sector: 'aeroespacial' },
 
   // Flipboard por tópico
-  { name: 'Flipboard — Defense',    url: 'https://flipboard.com/topic/defense.rss',    sector: 'defesa-militar' },
+  { name: 'Flipboard — Military',   url: 'https://flipboard.com/topic/military.rss',   sector: 'defesa-militar' },
   { name: 'Flipboard — Maritime',   url: 'https://flipboard.com/topic/maritime.rss',   sector: 'maritimo' },
   { name: 'Flipboard — Aerospace',  url: 'https://flipboard.com/topic/aerospace.rss',  sector: 'aeroespacial' },
   { name: 'Flipboard — Technology', url: 'https://flipboard.com/topic/technology.rss', sector: 'tecnologia' },
