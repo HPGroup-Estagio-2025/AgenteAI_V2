@@ -602,6 +602,13 @@ textarea { resize: vertical; }
     min-height: unset;
   }
   .news-list::-webkit-scrollbar { display: none; }
+  /* Empty state dentro da news-list no mobile */
+  .news-list .empty-state {
+    flex: 1 !important; flex-direction: column !important;
+    min-width: 80vw !important; padding: 48px 24px !important;
+    align-items: center !important; justify-content: center !important;
+    text-align: center !important;
+  }
 
   /* ── News card — reset grid, passa a flex coluna ── */
   .news-card {
