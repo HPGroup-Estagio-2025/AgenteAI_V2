@@ -42,6 +42,13 @@ const KNOWN_SOURCES = [
   { name: 'Space.com',              url: 'https://www.space.com/feeds/all', sector: 'aeroespacial' },
   { name: 'Parabolic Arc',          url: 'https://www.parabolicarc.com/feed/', sector: 'aeroespacial' },
 
+  // Flipboard por tópico
+  { name: 'Flipboard — Defense',    url: 'https://flipboard.com/topic/defense.rss',    sector: 'defesa-militar' },
+  { name: 'Flipboard — Maritime',   url: 'https://flipboard.com/topic/maritime.rss',   sector: 'maritimo' },
+  { name: 'Flipboard — Aerospace',  url: 'https://flipboard.com/topic/aerospace.rss',  sector: 'aeroespacial' },
+  { name: 'Flipboard — Technology', url: 'https://flipboard.com/topic/technology.rss', sector: 'tecnologia' },
+  { name: 'Flipboard — Science',    url: 'https://flipboard.com/topic/science.rss',    sector: 'tecnologia' },
+
   // Ferroviário
   { name: 'Railway Technology',     url: 'https://www.railway-technology.com/feed/', sector: 'ferroviario' },
   { name: 'Rail Journal',           url: 'https://www.railjournal.com/feed/', sector: 'ferroviario' },
@@ -59,11 +66,11 @@ const KNOWN_SOURCES = [
 
 // Palavras-chave que mapeiam para sectores
 const SECTOR_KEYWORDS = {
-  'maritimo':       ['maritimo', 'maritimo', 'marítimo', 'naval', 'shipping', 'marine', 'marinha', 'navio', 'porto', 'offshore', 'ocean'],
-  'defesa-militar': ['defesa', 'militar', 'military', 'defense', 'defence', 'army', 'exercito', 'força armada', 'forcas armadas', 'guerra', 'weapon'],
-  'aeroespacial':   ['aeroespacial', 'aerospace', 'aviacao', 'aviação', 'aviation', 'espaco', 'espaço', 'space', 'rocket', 'satellite', 'drone'],
+  'maritimo':       ['maritimo', 'marítimo', 'naval', 'shipping', 'marine', 'marinha', 'navio', 'porto', 'offshore', 'ocean', 'flipboard maritime'],
+  'defesa-militar': ['defesa', 'militar', 'military', 'defense', 'defence', 'army', 'exercito', 'força armada', 'forcas armadas', 'guerra', 'weapon', 'flipboard defense'],
+  'aeroespacial':   ['aeroespacial', 'aerospace', 'aviacao', 'aviação', 'aviation', 'espaco', 'espaço', 'space', 'rocket', 'satellite', 'drone', 'flipboard aerospace'],
   'ferroviario':    ['ferroviario', 'ferroviário', 'railway', 'comboio', 'rail', 'train', 'metro', 'tram'],
-  'tecnologia':     ['tecnologia', 'technology', 'tech', 'software', 'digital', 'inovacao', 'inovação', 'innovation'],
+  'tecnologia':     ['tecnologia', 'technology', 'tech', 'software', 'digital', 'inovacao', 'inovação', 'innovation', 'flipboard technology'],
 };
 
 function normalize(str) {
