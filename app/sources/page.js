@@ -355,7 +355,9 @@ export default function SourcesPage() {
               {validation.valid ? (
                 <>
                   <div style={{ fontWeight: 700, marginBottom: 4 }}>✓ Fonte válida: {validation.name}</div>
-                  <div style={{ fontSize: '.82rem', opacity: .8 }}>{validation.itemCount} artigos encontrados{validation.note ? ` · ${validation.note}` : ''}</div>
+                  {validation.itemCount && validation.itemCount !== '?' && (
+                    <div style={{ fontSize: '.82rem', opacity: .8 }}>{validation.itemCount} artigos encontrados{validation.note ? ` · ${validation.note}` : ''}</div>
+                  )}
                 </>
               ) : (
                 <>
