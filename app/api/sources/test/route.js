@@ -13,6 +13,18 @@ function isRssXml(text) {
 function countItems(xml) {
   return (xml.match(/<item[\s>]/gi) || []).length + (xml.match(/<entry[\s>]/gi) || []).length;
 }
+function parseItems(xml) {
+  const items = [...String(xml).matchAll(/<item[\s\S]*?<\/item>/gi)].map(m => m[0])
+    .concat([...String(xml).matchAll(/<entry[\s\S]*?<\/entry>/gi)].map(m => m[0]));
+  return items.slice(0, 3).map(item => {
+    const title = item.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/i)?.[1]?.trim().slice(0, 60) || '';
+    const linkText = item.match(/<link[^>]*>(.*?)<\/link>/i)?.[1]?.trim() || '';
+    const linkHref = item.match(/<link[^>]+href=["']([^"']+)["']/i)?.[1] || '';
+    const guid = item.match(/<guid[^>]*>(.*?)<\/guid>/i)?.[1]?.trim() || '';
+    const url = linkText || linkHref || guid;
+    return { title, url: url.slice(0, 80) };
+  });
+}
 
 export async function GET(request) {
   const { data: sources } = await supabaseAdmin
@@ -38,7 +50,7 @@ export async function GET(request) {
       result.isRss = isRssXml(text);
       result.itemCount = countItems(text);
       result.contentLength = text.length;
-      result.firstItem = text.match(/<title[^>]*>(.*?)<\/title>/i)?.[1]?.slice(0, 80) || null;
+      result.sampleItems = parseItems(text);
     } catch (e) {
       result.error = e.message;
     }
