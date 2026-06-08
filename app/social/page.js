@@ -341,20 +341,20 @@ function SocialPageContent() {
         return (
           acc.companyId === companyId ||
           (acc.companyName && company?.name === acc.companyName) ||
-          (shouldUseUnassignedAccounts && !hasCompanyBinding)
+          !hasCompanyBinding // contas partilhadas (sem empresa) aparecem em todas
         );
       });
     }
     return grouped;
   }
 
-  async function handleReuseAccount(sourceAccountId, targetCompanyId) {
+  async function handleReuseAccount(sourceAccountId) {
     const token = localStorage.getItem('auth_token');
     try {
       const res = await fetch('/api/social/reuse-account', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceAccountId, targetCompanyId }),
+        body: JSON.stringify({ sourceAccountId }),
       });
       const data = await res.json();
       if (!res.ok) { showToast(data.error || 'Erro ao reutilizar conta', 'error'); return; }
@@ -402,7 +402,7 @@ function SocialPageContent() {
                   className="btn-connect"
                   style={{ background: '#6b7280', fontSize: '.7rem', whiteSpace: 'nowrap' }}
                   title={`Usar conta: ${acc.name}`}
-                  onClick={() => handleReuseAccount(acc.id, company.id)}
+                  onClick={() => handleReuseAccount(acc.id)}
                 >
                   Usar {acc.name}
                 </button>

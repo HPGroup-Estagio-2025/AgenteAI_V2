@@ -380,6 +380,21 @@ export async function removeAccount(id) {
   }
 }
 
+// Remove a ligação a uma empresa específica — a conta fica partilhada (visível em todas as empresas)
+export async function shareAccount(id) {
+  const idx = g._socialAccounts.findIndex(a => a.id === id);
+  if (idx >= 0) {
+    g._socialAccounts[idx] = { ...g._socialAccounts[idx], companyId: null, companyName: null };
+  }
+  if (USE_SUPABASE) {
+    const { error } = await supabaseAdmin
+      .from(SOCIAL_TABLE)
+      .update({ company_id: null, company_name: null })
+      .eq('id', id);
+    if (error) console.error('[social] Erro ao partilhar conta:', error.message);
+  }
+}
+
 export async function removeAccountsByPlatform(platform) {
   g._socialAccounts = g._socialAccounts.filter(a => a.platform !== platform);
   if (USE_SUPABASE) {
