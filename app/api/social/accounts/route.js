@@ -1,5 +1,5 @@
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
-import { getAccounts, removeAccount, removeAccountsByPlatform, waitForAccounts } from '@/src/lib/social';
+import { getAccounts, removeAccount, removeAccountsByPlatform, waitForAccounts, refreshAccountsFromSupabase } from '@/src/lib/social';
 import { listCompanies } from '@/src/lib/companies';
 
 export async function GET(request) {
@@ -7,7 +7,8 @@ export async function GET(request) {
   try { if (!token) throw new Error(); verifyToken(token); } catch {
     return Response.json({ error: 'Não autenticado' }, { status: 401 });
   }
-  await waitForAccounts();
+  // Sempre vai buscar dados frescos ao Supabase (evita cache stale entre instâncias Vercel)
+  await refreshAccountsFromSupabase();
   const accounts = getAccounts();
   const companies = await listCompanies().catch(() => []);
   const singleCompany = companies.length === 1 ? companies[0] : null;
