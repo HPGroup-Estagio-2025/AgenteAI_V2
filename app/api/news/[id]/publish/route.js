@@ -724,11 +724,10 @@ export async function POST(request, { params }) {
     console.log('[publish] Processando publicação:', {
       platforms: socialPlatforms,
       selectedAccounts,
+      companyId: bodyCompanyId,
+      companyName: company?.name || null,
+      linkedinOrgId: company?.linkedin_org_id || null,
       companyUrl,
-      cacheCounts: {
-        facebook: getAccount('facebook') ? 1 : 0,
-        instagram: getAccount('instagram') ? 1 : 0,
-      }
     });
 
     const socialResults = [];

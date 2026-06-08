@@ -322,14 +322,29 @@ export async function updateCompanySettings(companyId, settings) {
     .single();
 
   if (error) {
-    console.error('[companies] Erro ao atualizar configurações:', error.message);
-    // Coluna pode não existir ainda — remove logo_url e tenta de novo
-    if ((error.message?.includes('logo_url') || error.code === '42703') && 'logo_url' in updates) {
-      delete updates.logo_url;
-      if (Object.keys(updates).length === 0) return { id: companyId };
+    console.error('[companies] Erro ao atualizar configurações:', error.message, 'code:', error.code);
+    // Coluna pode não existir — tenta sem as colunas problemáticas
+    if (error.code === '42703' || error.message?.includes('column')) {
+      const retryUpdates = { ...updates };
+      // Remove colunas que podem não existir e tenta de novo
+      for (const col of ['logo_url', 'linkedin_org_id']) {
+        if (col in retryUpdates) delete retryUpdates[col];
+      }
+      if (Object.keys(retryUpdates).length === 0) return { id: companyId };
       const { data: retry, error: retryErr } = await supabaseAdmin
-        .from(COMPANIES_TABLE).update(updates).eq('id', companyId).select().single();
+        .from(COMPANIES_TABLE).update(retryUpdates).eq('id', companyId).select().single();
       if (retryErr) throw retryErr;
+      // Tenta criar coluna linkedin_org_id via SQL se estava em updates
+      if ('linkedin_org_id' in updates) {
+        await supabaseAdmin.rpc('exec_sql', {
+          sql: `ALTER TABLE ${COMPANIES_TABLE} ADD COLUMN IF NOT EXISTS linkedin_org_id text`
+        }).catch(() => {});
+        // Re-tenta guardar só o linkedin_org_id
+        await supabaseAdmin.from(COMPANIES_TABLE)
+          .update({ linkedin_org_id: updates.linkedin_org_id })
+          .eq('id', companyId)
+          .catch(() => {});
+      }
       return retry;
     }
     throw error;
