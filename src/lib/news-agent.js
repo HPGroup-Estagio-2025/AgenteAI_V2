@@ -253,7 +253,7 @@ function parseRss(xml, feedUrl) {
       content,
       url,
       image,
-      source: tagValue(itemXml, 'source') || sourceFromUrl(feedUrl),
+      source: cleanSourceName(tagValue(itemXml, 'source'), feedUrl),
       publishedAt: tagValue(itemXml, 'pubDate') || tagValue(itemXml, 'dc:date') || tagValue(itemXml, 'updated') || new Date().toISOString(),
       rawProvider: 'RSS',
     };
@@ -305,15 +305,35 @@ async function enrichWithImages(articles) {
 
 function sourceFromUrl(url) {
   try {
-    const host = new URL(url).hostname.replace(/^www\./, '');
+    const host = new URL(url).hostname.replace(/^www\./, '').replace(/^feeds\./, '');
     if (host.includes('defensenews')) return 'Defense News';
     if (host.includes('spacenews')) return 'SpaceNews';
     if (host.includes('railway-technology')) return 'Railway Technology';
+    if (host.includes('naval-technology')) return 'Naval Technology';
+    if (host.includes('gcaptain')) return 'gCaptain';
+    if (host.includes('breakingdefense')) return 'Breaking Defense';
+    if (host.includes('simpleflying')) return 'Simple Flying';
+    if (host.includes('railjournal')) return 'Rail Journal';
+    if (host.includes('flipboard')) return 'Flipboard';
+    if (host.includes('arstechnica')) return 'Ars Technica';
+    if (host.includes('theverge')) return 'The Verge';
     if (host.includes('news.google')) return 'Google News';
-    return host;
+    // Capitaliza o domínio para ficar mais legível
+    const parts = host.split('.');
+    return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
   } catch {
     return 'RSS';
   }
+}
+
+function cleanSourceName(raw, feedUrl) {
+  if (!raw) return sourceFromUrl(feedUrl);
+  // Rejeita valores que parecem URLs, query strings ou IDs numéricos
+  if (/^https?:\/\//.test(raw)) return sourceFromUrl(feedUrl);
+  if (/[?&=]/.test(raw)) return sourceFromUrl(feedUrl);
+  if (/^\d+$/.test(raw.trim())) return sourceFromUrl(feedUrl);
+  if (raw.trim().length < 2 || raw.trim().length > 80) return sourceFromUrl(feedUrl);
+  return raw.trim();
 }
 
 async function fetchAllRss(sectorFeeds = SECTOR_FEEDS) {
