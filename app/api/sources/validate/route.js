@@ -81,14 +81,13 @@ export async function POST(request) {
     if (isRssXml(text) || /rss|atom|xml/i.test(contentType)) {
       const title = extractRssTitle(text);
       const items = countRssItems(text);
-      if (items === 0) {
-        return NextResponse.json({ valid: false, error: 'O feed RSS não contém artigos' });
-      }
+      // Feed válido mesmo sem artigos (pode estar temporariamente vazio)
       return NextResponse.json({
         valid: true,
         feedUrl: targetUrl,
         name: title || new URL(targetUrl).hostname,
-        itemCount: items,
+        itemCount: items > 0 ? items : null,
+        note: items === 0 ? 'Feed válido mas sem artigos de momento' : null,
         type: 'rss',
       });
     }
