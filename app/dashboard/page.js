@@ -44,103 +44,46 @@ const SOCIAL_PLATFORMS = [
   { id: 'wordpress', label: 'Website' },
 ];
 
-// Constrói lista de empresas a partir das contas ligadas.
-// Meta (Facebook + Instagram) partilham a mesma entrada; LinkedIn é separado.
-// companiesData: lista de empresas do Supabase (com campos wordpress_*)
+// Constrói lista de empresas a partir de companiesData (fonte de verdade).
+// Contas sociais são associadas às empresas — nunca criam entradas próprias.
+// Contas partilhadas (companyId = null) ficam disponíveis em todas as empresas.
 function buildCompanies(connectedAccounts, companiesData = []) {
   const fbAccs = connectedAccounts.facebook  || [];
   const igAccs = connectedAccounts.instagram || [];
   const liAccs = connectedAccounts.linkedin  || [];
 
-  const metaCompanies = new Map();
-  const getMetaKey = acc => acc.companyId || acc.companyName || 'unassigned-meta';
-
-  // Helper: resolve o nome real da empresa a partir de companiesData
-  function resolveCompanyName(acc) {
-    if (acc.companyId) {
-      const dbCompany = companiesData.find(c => c.id === acc.companyId);
-      if (dbCompany?.name) return dbCompany.name;
-    }
-    return acc.companyName || null;
+  // Helper: encontra a conta de uma plataforma para uma empresa
+  // Aceita contas ligadas à empresa (companyId match) OU contas partilhadas (companyId = null)
+  function findAccount(accs, companyId) {
+    return accs.find(a => a.companyId === companyId)
+      || accs.find(a => !a.companyId && !a.companyName)
+      || null;
   }
 
-  function upsertMetaAccount(acc, platform) {
-    const key = getMetaKey(acc);
-    const current = metaCompanies.get(key) || {
-      id:         `meta-${key}`,
-      companyId:  acc.companyId || null,
-      name:       resolveCompanyName(acc) || 'Conta Meta',
-      picture:    acc.picture,
-      platforms:  [],
-      accountIds: {},
-    };
-    // Atualiza o nome se ainda não foi resolvido (caso companiesData carregue depois)
-    if (current.name === 'Conta Meta') {
-      const resolved = resolveCompanyName(acc);
-      if (resolved) current.name = resolved;
-    }
-    if (!current.platforms.includes(platform)) current.platforms.push(platform);
-    current.accountIds[platform] = acc.id;
-    if (!current.picture && acc.picture) current.picture = acc.picture;
-    metaCompanies.set(key, current);
-  }
+  const companies = companiesData.map(dbCompany => {
+    const fbAcc = findAccount(fbAccs, dbCompany.id);
+    const igAcc = findAccount(igAccs, dbCompany.id);
+    const liAcc = findAccount(liAccs, dbCompany.id);
 
-  fbAccs.forEach(acc => upsertMetaAccount(acc, 'facebook'));
-  igAccs.forEach(acc => upsertMetaAccount(acc, 'instagram'));
-
-  const companies = [...metaCompanies.values()];
-
-  // Adiciona WordPress se a empresa tiver WordPress configurado
-  for (const company of companies) {
-    if (company.companyId) {
-      const dbCompany = companiesData.find(c => c.id === company.companyId);
-      if (dbCompany?.name) company.name = dbCompany.name; // garante nome atualizado
-      if (dbCompany?.wordpress_url && dbCompany?.wordpress_username && dbCompany?.wordpress_app_password) {
-        if (!company.platforms.includes('wordpress')) company.platforms.push('wordpress');
-      }
-    }
-  }
-
-  // LinkedIn: agrupa na empresa existente se tiver o mesmo companyId, senão cria entrada nova
-  for (const acc of liAccs) {
-    const existingCompany = acc.companyId
-      ? companies.find(c => c.companyId === acc.companyId)
-      : null;
-
-    if (existingCompany) {
-      // Adiciona LinkedIn à empresa já existente (ex: Partyard Marine)
-      if (!existingCompany.platforms.includes('linkedin')) existingCompany.platforms.push('linkedin');
-      existingCompany.accountIds.linkedin = acc.id;
-    } else {
-      const dbCompany = acc.companyId ? companiesData.find(c => c.id === acc.companyId) : null;
-      companies.push({
-        id:         `linkedin-${acc.id}`,
-        companyId:  acc.companyId || null,
-        name:       dbCompany?.name || acc.companyName || acc.name,
-        picture:    acc.picture,
-        platforms:  ['linkedin'],
-        accountIds: { linkedin: acc.id },
-      });
-    }
-  }
-
-  // Adiciona empresas do Supabase que ainda não estão representadas por nenhuma conta social
-  const representedCompanyIds = new Set(companies.map(c => c.companyId).filter(Boolean));
-  for (const dbCompany of companiesData) {
-    if (representedCompanyIds.has(dbCompany.id)) continue;
     const platforms = [];
+    const accountIds = {};
+
+    if (fbAcc) { platforms.push('facebook'); accountIds.facebook = fbAcc.id; }
+    if (igAcc) { platforms.push('instagram'); accountIds.instagram = igAcc.id; }
+    if (liAcc) { platforms.push('linkedin'); accountIds.linkedin = liAcc.id; }
     if (dbCompany.wordpress_url && dbCompany.wordpress_username && dbCompany.wordpress_app_password) {
       platforms.push('wordpress');
     }
-    companies.push({
-      id:         `db-${dbCompany.id}`,
-      companyId:  dbCompany.id,
-      name:       dbCompany.name,
-      picture:    null,
+
+    return {
+      id:        `db-${dbCompany.id}`,
+      companyId: dbCompany.id,
+      name:      dbCompany.name,
+      picture:   fbAcc?.picture || igAcc?.picture || liAcc?.picture || null,
       platforms,
-      accountIds: {},
-    });
-  }
+      accountIds,
+    };
+  });
 
   return companies;
 }
