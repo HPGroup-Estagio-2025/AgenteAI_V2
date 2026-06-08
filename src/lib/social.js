@@ -403,7 +403,7 @@ export async function shareAccount(id) {
   if (USE_SUPABASE) {
     const { error } = await supabaseAdmin
       .from(SOCIAL_TABLE)
-      .update({ company_id: null, company_name: null })
+      .update({ company_id: null })
       .eq('id', id);
     if (error) {
       console.error('[social] Erro ao partilhar conta:', error.message);
