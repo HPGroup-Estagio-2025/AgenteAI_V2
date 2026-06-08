@@ -357,7 +357,9 @@ function SocialPageContent() {
       const data = await res.json();
       if (!res.ok) { showToast(data.error || 'Erro ao reutilizar conta', 'error'); return; }
       showToast('Conta ligada com sucesso!', 'success');
+      // Aguarda Supabase propagar e faz dois refreshes para garantir
       await loadAccounts();
+      setTimeout(() => loadAccounts(), 800);
     } catch {
       showToast('Erro de ligação. Tenta novamente.', 'error');
     }

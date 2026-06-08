@@ -405,7 +405,10 @@ export async function shareAccount(id) {
       .from(SOCIAL_TABLE)
       .update({ company_id: null, company_name: null })
       .eq('id', id);
-    if (error) console.error('[social] Erro ao partilhar conta:', error.message);
+    if (error) {
+      console.error('[social] Erro ao partilhar conta:', error.message);
+      throw error; // propaga o erro para a rota poder responder com falha
+    }
   }
 }
 
