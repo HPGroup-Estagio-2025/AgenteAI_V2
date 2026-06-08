@@ -542,21 +542,35 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Inicializa seleção por empresa para novos artigos
+  // Inicializa seleção por empresa para novos artigos — usa categoria para auto-atribuir
   useEffect(() => {
     if (pendingArticles.length === 0) return;
-    const companies = buildCompanies(connectedAccounts, companiesData); // fallback local
-    const firstCompany = companies[0];
+    const companies = buildCompanies(connectedAccounts, companiesData);
+    if (companies.length === 0) return;
+
+    const CATEGORY_COMPANY_MAP = {
+      'defesa-militar': (cs) => cs.find(c => /defense|defesa|militar|military/i.test(c.name)),
+      'maritimo':       (cs) => cs.find(c => /marine|marinha|naval|maritime/i.test(c.name)),
+      'ferroviario':    (cs) => cs.find(c => /rail|ferroviario/i.test(c.name)),
+      'aeroespacial':   (cs) => cs.find(c => /aerospace|aeroespacial|aviation/i.test(c.name))
+                             || cs.find(c => /defense|defesa/i.test(c.name)),
+    };
+
     setArticleSelections(prev => {
       const updated = { ...prev };
       for (const article of pendingArticles) {
-        // Re-avalia plataformas mesmo para artigos já existentes (ex: WordPress adicionado)
         const existing = updated[article.id];
-        const company = existing?.companyId
-          ? companies.find(c => c.id === existing.companyId) || firstCompany
-          : firstCompany;
+        // Se já tem empresa atribuída manualmente, só atualiza plataformas
+        let company;
+        if (existing?.companyId) {
+          company = companies.find(c => c.id === existing.companyId) || companies[0];
+        } else {
+          // Auto-atribui por categoria
+          const guessFn = CATEGORY_COMPANY_MAP[article.category];
+          company = (guessFn ? guessFn(companies) : null) || companies[0];
+        }
         updated[article.id] = {
-          companyId: existing?.companyId || company?.id || null,
+          companyId: company?.id || null,
           platforms: company ? [...company.platforms] : [],
           accounts:  company ? { ...company.accountIds } : {},
         };
@@ -688,6 +702,25 @@ export default function DashboardPage() {
     });
   }
 
+  // Devolve a empresa mais adequada para uma categoria de artigo
+  function guessCompanyForCategory(category) {
+    const companies = buildCompanies(connectedAccounts, companiesData);
+    if (!companies.length) return null;
+    const name = (c) => (c.name || '').toLowerCase();
+    const DEFENSE_KEYS  = ['defense', 'defesa', 'militar', 'military'];
+    const MARINE_KEYS   = ['marine', 'marinha', 'naval', 'maritime'];
+    const RAIL_KEYS     = ['rail', 'ferroviario', 'comboio'];
+    const AERO_KEYS     = ['aerospace', 'aeroespacial', 'aviation'];
+
+    const match = (keys) => companies.find(c => keys.some(k => name(c).includes(k)));
+
+    if (category === 'defesa-militar') return match(DEFENSE_KEYS) || companies[0];
+    if (category === 'maritimo')       return match(MARINE_KEYS)  || companies[0];
+    if (category === 'ferroviario')    return match(RAIL_KEYS)    || companies[0];
+    if (category === 'aeroespacial')   return match(AERO_KEYS)    || match(DEFENSE_KEYS) || companies[0];
+    return companies[0];
+  }
+
   // Muda a empresa selecionada: atualiza companyId, platforms e accounts
   function setArticleCompany(articleId, companyId) {
     const companies = buildCompanies(connectedAccounts, companiesData); // fallback local
@@ -738,6 +771,21 @@ export default function DashboardPage() {
         savePending(merged);
         setPendingArticles(merged);
         setCounts(prev => ({ ...prev, pending: merged.length }));
+        // Auto-atribui empresa com base na categoria de cada artigo novo
+        const autoSelections = {};
+        for (const a of newArticles) {
+          const company = guessCompanyForCategory(a.category);
+          if (company) {
+            autoSelections[a.id] = {
+              companyId: company.id,
+              platforms: [...company.platforms],
+              accounts: { ...company.accountIds },
+            };
+          }
+        }
+        if (Object.keys(autoSelections).length > 0) {
+          setArticleSelections(prev => ({ ...autoSelections, ...prev }));
+        }
         const msg = newArticles.length > 0
           ? `${newArticles.length} nova(s) notícia(s) carregadas para revisão`
           : 'Agente concluído: sem notícias novas (duplicados ignorados)';
