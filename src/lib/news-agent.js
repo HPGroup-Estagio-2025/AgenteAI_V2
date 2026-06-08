@@ -522,11 +522,11 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
 
     // Termos de correspondência por setor (expandidos)
     const SECTOR_TERMS = {
-      'maritimo':       ['marine', 'maritime', 'naval', 'shipping', 'vessel', 'port', 'ship', 'offshore', 'fleet', 'tanker', 'cargo ship', 'freighter', 'tugboat', 'harbor', 'dock'],
-      'defesa-militar': ['defense', 'defence', 'military', 'army', 'navy', 'air force', 'weapon', 'missile', 'warship', 'combat', 'pentagon', 'nato', 'troops', 'warfare'],
-      'aeroespacial':   ['aerospace', 'aviation', 'aircraft', 'airline', 'space', 'satellite', 'rocket', 'launch', 'orbit', 'drone', 'uav', 'airport', 'flight', 'astronaut'],
-      'ferroviario':    ['railway', 'railroad', 'rail ', 'train', 'rolling stock', 'metro', 'locomotive', 'tram', 'high-speed rail', 'transit'],
-      'tecnologia':     ['technology', 'tech', 'software', 'hardware', 'ai ', 'artificial intelligence', 'digital', 'cyber', 'innovation', 'startup', 'silicon', 'semiconductor', 'cloud', 'data', 'robotics'],
+      'maritimo':       ['maritime', 'naval', 'shipping lane', 'vessel', 'shipbuilding', 'offshore', 'fleet', 'tanker', 'cargo ship', 'freighter', 'tugboat', 'harbor', 'seaport', 'seafarer', 'nautical', 'marine engineering', 'port authority'],
+      'defesa-militar': ['defense', 'defence', 'military', 'armed forces', 'weapon system', 'missile', 'warship', 'combat', 'pentagon', 'nato', 'troops', 'warfare', 'munitions', 'air force', 'army'],
+      'aeroespacial':   ['aerospace', 'aviation', 'aircraft', 'airline', 'satellite', 'rocket launch', 'orbit', 'uav', 'airport', 'spaceflight', 'astronaut', 'spacecraft'],
+      'ferroviario':    ['railway', 'railroad', 'rolling stock', 'locomotive', 'tram', 'high-speed rail', 'rail freight', 'metro system'],
+      'tecnologia':     ['technology', 'software', 'hardware', 'artificial intelligence', 'digital', 'cybersecurity', 'semiconductor', 'cloud computing', 'robotics', 'startup'],
     };
 
     // Busca os feeds de cada setor e garante 5 artigos por setor
@@ -537,26 +537,32 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
     for (const [sectorKey, feeds] of Object.entries(SECTOR_FEEDS)) {
       const terms = SECTOR_TERMS[sectorKey] || [];
 
-      // Domínios das fontes dedicadas a este setor
-      const sectorDomains = feeds.map(f => { try { return new URL(f).hostname.replace('www.',''); } catch { return ''; } });
+      // Extrai domínio base (sem subdomínios como "feeds.", "www.")
+      function baseDomain(url) {
+        try {
+          const host = new URL(url).hostname.replace(/^www\./, '').replace(/^feeds\./, '');
+          return host;
+        } catch { return ''; }
+      }
 
-      // Filtra artigos desta categoria
+      const sectorDomains = feeds.map(baseDomain).filter(Boolean);
+      const allOtherDomains = Object.entries(SECTOR_FEEDS)
+        .filter(([k]) => k !== sectorKey)
+        .flatMap(([, fs]) => fs.map(baseDomain).filter(Boolean));
+
       const sectorRaw = filteredArticles.filter(a => {
-        const articleDomain = a.url ? (() => { try { return new URL(a.url).hostname.replace('www.',''); } catch { return ''; } })() : '';
+        const articleDomain = a.url ? baseDomain(a.url) : '';
         const text = `${a.title} ${a.description} ${a.content}`.toLowerCase();
 
         // Artigo vem de uma fonte dedicada a ESTE setor → aceita sempre
-        const fromThisSectorFeed = sectorDomains.some(d => d && articleDomain.includes(d));
+        const fromThisSectorFeed = sectorDomains.some(d => articleDomain === d || articleDomain.endsWith(`.${d}`));
         if (fromThisSectorFeed) return true;
 
-        // Artigo vem de uma fonte dedicada a OUTRO setor → rejeita (evita cross-contamination)
-        const allOtherDomains = Object.entries(SECTOR_FEEDS)
-          .filter(([k]) => k !== sectorKey)
-          .flatMap(([, fs]) => fs.map(f => { try { return new URL(f).hostname.replace('www.',''); } catch { return ''; } }));
-        const fromOtherSectorFeed = allOtherDomains.some(d => d && articleDomain.includes(d));
+        // Artigo vem de uma fonte dedicada a OUTRO setor → rejeita
+        const fromOtherSectorFeed = allOtherDomains.some(d => articleDomain === d || articleDomain.endsWith(`.${d}`));
         if (fromOtherSectorFeed) return false;
 
-        // Fonte genérica (Google News etc.) → aceita só se corresponde aos termos
+        // Fonte genérica → aceita só se corresponde aos termos do setor
         return terms.some(t => text.includes(t));
       });
 
