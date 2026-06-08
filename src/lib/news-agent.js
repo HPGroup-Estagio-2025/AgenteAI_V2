@@ -487,6 +487,21 @@ async function finishRun(id, updates) {
   if (error) console.error('[agent_runs] erro ao atualizar execução:', error.message);
 }
 
+async function loadSectors() {
+  try {
+    const { data } = await supabase.from('news_sectors').select('id,label,keywords').eq('active', true);
+    if (data?.length) return data;
+  } catch {}
+  // Fallback para setores predefinidos hardcoded
+  return [
+    { id: 'maritimo',       keywords: ['maritime', 'naval', 'shipping lane', 'vessel', 'shipbuilding', 'offshore', 'fleet', 'tanker', 'cargo ship', 'freighter', 'tugboat', 'harbor', 'seaport', 'seafarer', 'nautical', 'marine engineering', 'port authority'] },
+    { id: 'defesa-militar', keywords: ['defense', 'defence', 'military', 'armed forces', 'weapon system', 'missile', 'warship', 'combat', 'pentagon', 'nato', 'troops', 'warfare', 'munitions', 'air force', 'army'] },
+    { id: 'aeroespacial',   keywords: ['aerospace', 'aviation', 'aircraft', 'airline', 'satellite', 'rocket launch', 'orbit', 'uav', 'airport', 'spaceflight', 'astronaut', 'spacecraft'] },
+    { id: 'ferroviario',    keywords: ['railway', 'railroad', 'rolling stock', 'locomotive', 'tram', 'high-speed rail', 'rail freight', 'metro system'] },
+    { id: 'tecnologia',     keywords: ['technology', 'software', 'hardware', 'artificial intelligence', 'digital', 'cybersecurity', 'semiconductor', 'cloud computing', 'robotics', 'startup'] },
+  ];
+}
+
 async function loadCustomSources() {
   try {
     const { data } = await supabase
@@ -544,14 +559,9 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
 
     console.log(`[agent] ${rawArticles.length} artigos brutos, ${filteredArticles.length} após filtrar publicados`);
 
-    // Termos de correspondência por setor (expandidos)
-    const SECTOR_TERMS = {
-      'maritimo':       ['maritime', 'naval', 'shipping lane', 'vessel', 'shipbuilding', 'offshore', 'fleet', 'tanker', 'cargo ship', 'freighter', 'tugboat', 'harbor', 'seaport', 'seafarer', 'nautical', 'marine engineering', 'port authority'],
-      'defesa-militar': ['defense', 'defence', 'military', 'armed forces', 'weapon system', 'missile', 'warship', 'combat', 'pentagon', 'nato', 'troops', 'warfare', 'munitions', 'air force', 'army'],
-      'aeroespacial':   ['aerospace', 'aviation', 'aircraft', 'airline', 'satellite', 'rocket launch', 'orbit', 'uav', 'airport', 'spaceflight', 'astronaut', 'spacecraft'],
-      'ferroviario':    ['railway', 'railroad', 'rolling stock', 'locomotive', 'tram', 'high-speed rail', 'rail freight', 'metro system'],
-      'tecnologia':     ['technology', 'software', 'hardware', 'artificial intelligence', 'digital', 'cybersecurity', 'semiconductor', 'cloud computing', 'robotics', 'startup'],
-    };
+    // Carrega termos de correspondência por setor do Supabase (escalável)
+    const dynamicSectors = await loadSectors();
+    const SECTOR_TERMS = Object.fromEntries(dynamicSectors.map(s => [s.id, s.keywords || []]));
 
     // Busca os feeds de cada setor e garante 5 artigos por setor
     const ARTICLES_PER_SECTOR = 5;

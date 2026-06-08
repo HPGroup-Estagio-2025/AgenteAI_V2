@@ -23,12 +23,14 @@ function migrateAuthToken() {
   }
 }
 
-const SECTOR_MAP = {
-  'maritimo':       { label: 'Marítimo',      cls: 'badge-sector-maritimo' },
-  'defesa-militar': { label: 'Defesa Militar', cls: 'badge-sector-defesa' },
-  'aeroespacial':   { label: 'Aeroespacial',   cls: 'badge-sector-aeroespacial' },
-  'ferroviario':    { label: 'Ferroviário',    cls: 'badge-sector-ferroviario' },
-  'tecnologia':     { label: 'Tecnologia',     cls: 'badge-sector-tecnologia' },
+// SECTOR_MAP é agora dinâmico — carregado do Supabase via estado
+// Mapa estático apenas para badges CSS dos setores predefinidos
+const STATIC_SECTOR_BADGES = {
+  'maritimo':       'badge-sector-maritimo',
+  'defesa-militar': 'badge-sector-defesa',
+  'aeroespacial':   'badge-sector-aeroespacial',
+  'ferroviario':    'badge-sector-ferroviario',
+  'tecnologia':     'badge-sector-tecnologia',
 };
 
 const STATUS_LABELS = {
@@ -155,11 +157,12 @@ function cleanContent(item) {
   return summary.length > 220 ? summary.slice(0, 217) + '...' : summary;
 }
 
-function SectorBadge({ category }) {
+function SectorBadge({ category, sectorsMap }) {
   if (!category) return null;
-  const sector = SECTOR_MAP[category.toLowerCase()];
-  if (sector) return <span className={`badge ${sector.cls}`}>{sector.label}</span>;
-  return <span className="badge badge-category">{category}</span>;
+  const cls = STATIC_SECTOR_BADGES[category.toLowerCase()];
+  const label = sectorsMap?.[category.toLowerCase()] || category;
+  if (cls) return <span className={`badge ${cls}`}>{label}</span>;
+  return <span className="badge badge-category">{label}</span>;
 }
 
 // ── Modal: sem redes sociais conectadas ────────────────────────────
@@ -233,7 +236,7 @@ function ImagePlaceholder() {
 }
 
 // ── Card para artigos do agente ─────────────────────────────────────
-function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetCompany, onPublish, onSave, isSelected, onToggleSelect, bulkStatus, isPublishing }) {
+function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetCompany, onPublish, onSave, isSelected, onToggleSelect, bulkStatus, isPublishing, sectorsMap }) {
   const selectedId = selection?.companyId || companies[0]?.id;
   const selectedCompany = companies.find(c => c.id === selectedId) || companies[0];
 
@@ -270,7 +273,7 @@ function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetC
 
       <div className="news-card-content">
         <div className="news-card-meta">
-          <SectorBadge category={item.category} />
+          <SectorBadge category={item.category} sectorsMap={sectorsMap} />
           {item.source && <span className="news-meta-text">Fonte: {item.source}</span>}
         </div>
 
@@ -487,6 +490,7 @@ export default function DashboardPage() {
   // Contas sociais conectadas
   const [connectedAccounts, setConnectedAccounts] = useState({});
   const [companiesData, setCompaniesData] = useState([]);
+  const [sectorsData, setSectorsData] = useState([]);
   const [showNoSocialModal, setShowNoSocialModal] = useState(false);
   const [bulkSelected, setBulkSelected] = useState(new Set());
   const [bulkPublishing, setBulkPublishing] = useState(false);
@@ -533,6 +537,10 @@ export default function DashboardPage() {
         .then(r => r.json())
         .then(data => setCompaniesData(data.companies || []))
         .catch(() => setCompaniesData([]));
+      fetch('/api/sectors', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => setSectorsData(data.sectors || []))
+        .catch(() => {});
     };
 
     // Carrega imediatamente
@@ -996,10 +1004,13 @@ export default function DashboardPage() {
     ? pendingArticles.filter(a => (a.category || '').toLowerCase() === filterSector)
     : pendingArticles;
 
-  // Contagens por setor
+  // Mapa id→label para todos os setores (dinâmico)
+  const sectorsMap = Object.fromEntries(sectorsData.map(s => [s.id, s.label]));
+
+  // Contagens por setor — usa todos os setores dinâmicos
   const sectorCounts = filterStatus === 'pending'
-    ? Object.fromEntries(Object.keys(SECTOR_MAP).map(s => [s, pendingArticles.filter(a => (a.category || '').toLowerCase() === s).length]))
-    : Object.fromEntries(Object.keys(SECTOR_MAP).map(s => [s, news.filter(a => (a.category || '').toLowerCase() === s).length]));
+    ? Object.fromEntries(sectorsData.map(s => [s.id, pendingArticles.filter(a => (a.category || '').toLowerCase() === s.id).length]))
+    : Object.fromEntries(sectorsData.map(s => [s.id, news.filter(a => (a.category || '').toLowerCase() === s.id).length]));
 
   // Total para o badge "Todos"
   const sectorTotalCount = filterStatus === 'pending' ? pendingArticles.length : totalNews;
@@ -1162,7 +1173,7 @@ export default function DashboardPage() {
               Todos
               <span className="sector-count">{sectorTotalCount}</span>
             </button>
-            {Object.entries(SECTOR_MAP).map(([key, { label }]) =>
+            {sectorsData.map(({ id: key, label }) =>
               sectorCounts[key] > 0 || filterSector === key ? (
                 <button
                   key={key}
@@ -1217,6 +1228,7 @@ export default function DashboardPage() {
                   return next;
                 })}
                 bulkStatus={bulkProgress[item.id]}
+                sectorsMap={sectorsMap}
               />
             ))
           ) : (

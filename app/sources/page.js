@@ -2,14 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
-const SECTORS = [
-  { id: 'maritimo',       label: 'Marítimo' },
-  { id: 'defesa-militar', label: 'Defesa Militar' },
-  { id: 'aeroespacial',   label: 'Aeroespacial' },
-  { id: 'ferroviario',    label: 'Ferroviário' },
-  { id: 'tecnologia',     label: 'Tecnologia' },
-];
-
+// Cores para setores predefinidos; setores custom recebem cor gerada
 const SECTOR_COLORS = {
   'maritimo':       '#0369A1',
   'defesa-militar': '#4a5320',
@@ -18,6 +11,16 @@ const SECTOR_COLORS = {
   'tecnologia':     '#15803D',
 };
 
+const DEFAULT_SECTOR_IDS = ['maritimo', 'defesa-militar', 'aeroespacial', 'ferroviario', 'tecnologia'];
+
+function sectorColor(id) {
+  if (SECTOR_COLORS[id]) return SECTOR_COLORS[id];
+  // Cor determinística para setores custom
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return `hsl(${Math.abs(hash) % 360}, 55%, 38%)`;
+}
+
 function isUrl(str) {
   return /^https?:\/\//i.test(str) || /\.[a-z]{2,}(\/|$)/i.test(str);
 }
@@ -25,8 +28,9 @@ function isUrl(str) {
 export default function SourcesPage() {
   const router = useRouter();
   const [sources, setSources] = useState([]);
+  const [sectors, setSectors] = useState([]);
   const [url, setUrl] = useState('');
-  const [sector, setSector] = useState('maritimo');
+  const [sector, setSector] = useState('');
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState(null);
   const [adding, setAdding] = useState(false);
@@ -37,6 +41,11 @@ export default function SourcesPage() {
   const [notFound, setNotFound] = useState(false);
   const [sectorMatch, setSectorMatch] = useState(null);
   const searchTimer = useState(null);
+  // Novo setor
+  const [showNewSector, setShowNewSector] = useState(false);
+  const [newSectorLabel, setNewSectorLabel] = useState('');
+  const [newSectorKeywords, setNewSectorKeywords] = useState('');
+  const [creatingSector, setCreatingSector] = useState(false);
 
   function showToast(message, type = 'info') {
     setToast({ message, type });
@@ -47,6 +56,17 @@ export default function SourcesPage() {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('token_expiry');
   }
+
+  const loadSectors = useCallback(async () => {
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch('/api/sectors', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      const list = data.sectors || [];
+      setSectors(list);
+      if (list.length > 0 && !sector) setSector(list[0].id);
+    } catch {}
+  }, [sector]);
 
   const loadSources = useCallback(async () => {
     const token = localStorage.getItem('auth_token');
@@ -64,8 +84,47 @@ export default function SourcesPage() {
     const token = localStorage.getItem('auth_token');
     const expiry = parseInt(localStorage.getItem('token_expiry') || '0', 10);
     if (!token || Date.now() > expiry) { clearAuth(); router.replace('/'); return; }
+    loadSectors();
     loadSources();
-  }, [loadSources]);
+  }, [loadSectors, loadSources]);
+
+  async function handleCreateSector() {
+    if (!newSectorLabel.trim()) return;
+    setCreatingSector(true);
+    const token = localStorage.getItem('auth_token');
+    const keywords = newSectorKeywords.split(',').map(k => k.trim()).filter(Boolean);
+    try {
+      const res = await fetch('/api/sectors', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: newSectorLabel.trim(), keywords }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Erro ao criar setor', 'error'); return; }
+      showToast(`Setor "${newSectorLabel}" criado!`, 'success');
+      setNewSectorLabel('');
+      setNewSectorKeywords('');
+      setShowNewSector(false);
+      await loadSectors();
+      setSector(data.sector.id);
+    } catch { showToast('Erro de ligação', 'error'); }
+    setCreatingSector(false);
+  }
+
+  async function handleDeleteSector(id) {
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch('/api/sectors', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error, 'error'); return; }
+      showToast('Setor removido', 'info');
+      await loadSectors();
+    } catch {}
+  }
 
   async function handleInputChange(value) {
     setUrl(value);
@@ -156,8 +215,10 @@ export default function SourcesPage() {
     } catch {}
   }
 
-  const groupedSources = SECTORS.map(s => ({
+  const groupedSources = sectors.map(s => ({
     ...s,
+    color: sectorColor(s.id),
+    isCustom: !DEFAULT_SECTOR_IDS.includes(s.id),
     items: sources.filter(src => src.sector === s.id),
   })).filter(s => s.items.length > 0);
 
@@ -307,7 +368,7 @@ export default function SourcesPage() {
 
           {/* Seletor de setor + botão adicionar */}
           {validation?.valid && (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 180 }}>
                 <label style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--gray-600)', display: 'block', marginBottom: 5 }}>Setor</label>
                 <select
@@ -315,19 +376,54 @@ export default function SourcesPage() {
                   onChange={e => setSector(e.target.value)}
                   style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-sm)', fontSize: '.875rem', color: 'var(--gray-800)', background: 'var(--white)', outline: 'none' }}
                 >
-                  {SECTORS.map(s => (
+                  {sectors.map(s => (
                     <option key={s.id} value={s.id}>{s.label}</option>
                   ))}
                 </select>
               </div>
               <button
+                className="btn btn-ghost"
+                style={{ whiteSpace: 'nowrap', fontSize: '.8rem' }}
+                onClick={() => setShowNewSector(v => !v)}
+              >
+                + Novo setor
+              </button>
+              <button
                 className="btn btn-primary"
-                style={{ marginTop: 20 }}
                 onClick={handleAdd}
                 disabled={adding}
               >
                 {adding ? <><span className="loader" style={{ width: 13, height: 13 }} /> A adicionar...</> : '+ Adicionar fonte'}
               </button>
+            </div>
+          )}
+
+          {/* Formulário de novo setor */}
+          {showNewSector && (
+            <div style={{ marginTop: 14, padding: 16, background: 'var(--blue-50)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(124,58,237,.15)' }}>
+              <div style={{ fontWeight: 700, fontSize: '.85rem', color: 'var(--blue-700)', marginBottom: 10 }}>Criar novo setor</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                <input
+                  type="text"
+                  placeholder="Nome do setor (ex: Desporto, Saúde, Finanças)"
+                  value={newSectorLabel}
+                  onChange={e => setNewSectorLabel(e.target.value)}
+                  style={{ flex: 1, minWidth: 180 }}
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Palavras-chave separadas por vírgula (ex: football, soccer, sports, athlete)"
+                value={newSectorKeywords}
+                onChange={e => setNewSectorKeywords(e.target.value)}
+                style={{ width: '100%', marginBottom: 10 }}
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-primary" onClick={handleCreateSector} disabled={creatingSector || !newSectorLabel.trim()}>
+                  {creatingSector ? <><span className="loader" style={{ width: 13, height: 13 }} /> A criar...</> : 'Criar setor'}
+                </button>
+                <button className="btn btn-ghost" onClick={() => setShowNewSector(false)}>Cancelar</button>
+              </div>
             </div>
           )}
         </div>
@@ -346,9 +442,17 @@ export default function SourcesPage() {
             {groupedSources.map(group => (
               <div key={group.id} style={{ background: 'var(--white)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--gray-200)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
                 <div style={{ padding: '10px 18px', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: SECTOR_COLORS[group.id], display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: group.color, display: 'inline-block', flexShrink: 0 }} />
                   <span style={{ fontWeight: 700, fontSize: '.85rem', color: 'var(--gray-700)' }}>{group.label}</span>
+                  {group.isCustom && <span style={{ fontSize: '.65rem', padding: '1px 6px', borderRadius: 8, background: 'var(--blue-50)', color: 'var(--blue-600)', fontWeight: 700 }}>Custom</span>}
                   <span style={{ marginLeft: 'auto', fontSize: '.75rem', color: 'var(--gray-400)' }}>{group.items.length} fonte{group.items.length !== 1 ? 's' : ''}</span>
+                  {group.isCustom && (
+                    <button
+                      onClick={() => handleDeleteSector(group.id)}
+                      style={{ background: 'none', border: 'none', color: 'var(--red-600)', fontSize: '.72rem', cursor: 'pointer', padding: '2px 6px' }}
+                      title="Remover setor"
+                    >✕ Setor</button>
+                  )}
                 </div>
                 {group.items.map(src => (
                   <div key={src.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid var(--gray-100)' }}>
