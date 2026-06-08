@@ -104,38 +104,45 @@ const CONFIGS = {
     clientSecretEnv: 'LINKEDIN_CLIENT_SECRET',
     longLived: false,
     async getProfile(token) {
-      // Tenta userinfo (OpenID Connect)
       const res = await fetch('https://api.linkedin.com/v2/userinfo', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const d = await res.json();
-      console.log('[linkedin] userinfo:', JSON.stringify(d));
-
-      // Tenta também /v2/me para nome localizado
-      let meData = {};
-      try {
-        const meRes = await fetch(
-          'https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName)',
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        meData = await meRes.json().catch(() => ({}));
-        console.log('[linkedin] me:', JSON.stringify(meData));
-      } catch {}
-
       const fullName =
         d.name?.trim() ||
         [d.given_name, d.family_name].filter(Boolean).join(' ').trim() ||
-        [meData.localizedFirstName, meData.localizedLastName].filter(Boolean).join(' ').trim() ||
-        [d.localizedFirstName, d.localizedLastName].filter(Boolean).join(' ').trim() ||
-        d.email?.split('@')[0] ||
-        d.sub ||
-        null;
-
+        d.email?.split('@')[0] || d.sub || null;
       return {
-        accountId: d.sub || d.id || meData.id || null,
+        accountId: d.sub || d.id || null,
         name: fullName || 'Conta LinkedIn',
         email: d.email || null,
         picture: d.picture || null,
+      };
+    },
+  },
+  'linkedin-org': {
+    tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
+    clientIdEnv: 'LINKEDIN_ORG_CLIENT_ID',
+    clientSecretEnv: 'LINKEDIN_ORG_CLIENT_SECRET',
+    longLived: false,
+    async getProfile(token) {
+      // Com Community Management API obtemos as organizações administradas
+      const orgRes = await fetch(
+        'https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR',
+        { headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' } }
+      );
+      const orgData = await orgRes.json().catch(() => ({}));
+      console.log('[linkedin-org] organizationAcls:', JSON.stringify(orgData).slice(0, 300));
+      const firstOrg = orgData?.elements?.[0];
+      const orgUrn = firstOrg?.organization; // ex: "urn:li:organization:12345"
+      const orgId = orgUrn?.split(':').pop() || null;
+      return {
+        accountId: orgUrn || 'linkedin-org-token',
+        name: `Org Token (${orgId || 'desconhecido'})`,
+        email: null,
+        picture: null,
+        isOrgToken: true,
+        orgUrn,
       };
     },
   },

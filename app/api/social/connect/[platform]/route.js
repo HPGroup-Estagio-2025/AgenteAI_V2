@@ -17,6 +17,12 @@ const CONFIGS = {
     scope: 'openid profile w_member_social',
     clientIdEnv: 'LINKEDIN_CLIENT_ID',
   },
+  'linkedin-org': {
+    authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
+    scope: 'w_organization_social r_organization_social',
+    clientIdEnv: 'LINKEDIN_ORG_CLIENT_ID',
+    clientSecretEnv: 'LINKEDIN_ORG_CLIENT_SECRET',
+  },
 };
 
 function isConfiguredValue(value) {

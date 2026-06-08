@@ -410,6 +410,22 @@ function SocialPageContent() {
             </svg>
           )}
         </div>
+        {/* Botão para conectar token org (linkedin-org) se for LinkedIn e ainda não estiver ligado */}
+        {id === 'linkedin' && !accounts['linkedin-org']?.length && (
+          <div className="social-account-panel" onClick={e => e.stopPropagation()}>
+            <div className="social-account-panel-info">
+              <span className="social-account-panel-name">Publicação como Página de Empresa</span>
+              <span className="social-account-panel-sub">Necessário para publicar na página da empresa</span>
+            </div>
+            <button
+              className="btn-connect"
+              style={{ background: '#0A66C2', padding: '4px 12px', fontSize: '.72rem', height: 'auto', whiteSpace: 'nowrap' }}
+              onClick={() => handleConnect('linkedin-org', company.id)}
+            >
+              Ligar Organização
+            </button>
+          </div>
+        )}
         {!hasAccounts && reusableAccounts.map(acc => (
           <div key={acc.id} className="social-account-panel" onClick={e => e.stopPropagation()}>
             <div className="social-account-panel-info">

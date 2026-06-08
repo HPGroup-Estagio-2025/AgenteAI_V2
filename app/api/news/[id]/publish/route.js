@@ -384,40 +384,45 @@ async function publishToWordPress(item, company) {
 }
 
 async function publishToLinkedIn(item, accountId = null, linkUrl = null, company = null) {
-  const account = accountId ? getAccountById(accountId) : getAccount('linkedin');
-  if (!account) throw Object.assign(new Error('LinkedIn não conectado'), { code: 'linkedin_not_connected' });
+  // Prefere token org (linkedin-org com w_organization_social) sobre token membro
+  const orgAccount = getAccount('linkedin-org');
+  const memberAccount = accountId ? getAccountById(accountId) : getAccount('linkedin');
 
-  const token = account.accessToken;
-  let authorUrn;
-
-  // 1. Usa o LinkedIn Organization ID guardado nas definições da empresa (mais fiável)
-  if (company?.linkedin_org_id) {
-    authorUrn = `urn:li:organization:${company.linkedin_org_id}`;
-    console.log('[linkedin] A publicar como organização (ID manual):', company.linkedin_org_id);
+  if (!orgAccount && !memberAccount) {
+    throw Object.assign(new Error('LinkedIn não conectado'), { code: 'linkedin_not_connected' });
   }
 
-  // 2. Tenta detetar automaticamente via API (sem projecção para maior compatibilidade)
-  if (!authorUrn) {
-    try {
-      const orgRes = await fetch(
-        'https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR',
-        { headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' } }
-      );
-      const orgData = await orgRes.json().catch(() => ({}));
-      console.log('[linkedin] organizationAcls raw:', JSON.stringify(orgData).slice(0, 500));
-      const firstElement = orgData?.elements?.[0];
-      const orgUrn = firstElement?.organization;
-      if (orgUrn) {
-        // orgUrn é do tipo "urn:li:organization:12345"
-        authorUrn = orgUrn;
-        console.log('[linkedin] A publicar como organização (auto):', authorUrn);
-      }
-    } catch (e) {
-      console.warn('[linkedin] Não foi possível obter organização:', e.message);
+  let token;
+  let authorUrn;
+
+  if (orgAccount) {
+    token = orgAccount.accessToken;
+    if (company?.linkedin_org_id) {
+      authorUrn = `urn:li:organization:${company.linkedin_org_id}`;
+    } else if (orgAccount.accountId?.startsWith('urn:li:organization:')) {
+      authorUrn = orgAccount.accountId;
+    }
+    console.log('[linkedin] Usando token org, authorUrn:', authorUrn);
+  }
+
+  if (!authorUrn && memberAccount) {
+    token = memberAccount.accessToken;
+    if (company?.linkedin_org_id) {
+      authorUrn = `urn:li:organization:${company.linkedin_org_id}`;
+      console.log('[linkedin] Usando token membro, authorUrn:', authorUrn);
+    } else {
+      try {
+        const orgRes = await fetch(
+          'https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR',
+          { headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' } }
+        );
+        const orgData = await orgRes.json().catch(() => ({}));
+        const orgUrn = orgData?.elements?.[0]?.organization;
+        if (orgUrn) { authorUrn = orgUrn; console.log('[linkedin] org via ACLs:', authorUrn); }
+      } catch (e) { console.warn('[linkedin] organizationAcls falhou:', e.message); }
     }
   }
 
-  // Sem organização identificada — não publica como pessoa, lança erro claro
   if (!authorUrn) {
     throw Object.assign(
       new Error('LinkedIn Organization ID não configurado. Vai a Redes Sociais → editar empresa → preenche o LinkedIn Organization ID.'),

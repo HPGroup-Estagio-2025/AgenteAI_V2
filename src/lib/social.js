@@ -68,7 +68,7 @@ function toDbRow(account) {
     pages: account.pages || [],
     instagram_user_id: account.instagramUserId || null,
     company_id: account.companyId || null,
-    company_name: account.companyName || null, // backward compat
+    company_name: account.companyName || null,
     expires_at: account.expiresAt || null,
     connected_at: account.connectedAt || new Date().toISOString(),
     active: true,
