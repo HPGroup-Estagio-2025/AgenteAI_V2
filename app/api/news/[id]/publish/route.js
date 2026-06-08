@@ -465,19 +465,12 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
 
   let result = await tryPost(authorUrn);
 
-  // Só cai para membro pessoal se organização falhar
-  if (!result.ok && authorUrn.includes('organization')) {
-    console.warn('[linkedin] Org post falhou:', result.data?.message, '— a tentar membro pessoal');
-    const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', { headers: { Authorization: `Bearer ${token}` } });
-    const profile = await profileRes.json().catch(() => ({}));
-    if (profile.sub) {
-      result = await tryPost(`urn:li:person:${profile.sub}`);
-    }
-  }
-
+  // Se publicação como organização falhou, lança erro (não faz fallback silencioso para conta pessoal)
   if (!result.ok) {
+    const errMsg = result.data?.message || result.data?.serviceErrorCode || 'Falha ao publicar no LinkedIn';
+    console.error('[linkedin] Post falhou:', errMsg, 'author:', authorUrn, 'details:', JSON.stringify(result.data));
     throw Object.assign(
-      new Error(result.data?.message || result.data?.serviceErrorCode || 'Falha ao publicar no LinkedIn'),
+      new Error(errMsg),
       { code: 'linkedin_publish_failed', details: result.data }
     );
   }
