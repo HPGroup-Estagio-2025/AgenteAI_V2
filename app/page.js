@@ -110,6 +110,16 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
+      {/* Robô 3D no background */}
+      <div className="login-robot-bg">
+        <div>
+          <div className="login-robot-scene">
+            <img src="/robot-logo.svg" alt="" aria-hidden="true" />
+          </div>
+          <div className="login-robot-shadow" />
+        </div>
+      </div>
+
       <div className="login-container">
         <div className="login-card">
           <div className="login-header">
