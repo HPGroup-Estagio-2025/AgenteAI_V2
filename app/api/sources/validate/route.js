@@ -49,7 +49,15 @@ export async function POST(request) {
   if (!url) return NextResponse.json({ error: 'URL obrigatório' }, { status: 400 });
 
   let targetUrl = url.trim();
+
+  // Valida se parece um URL antes de tentar aceder
   if (!/^https?:\/\//i.test(targetUrl)) targetUrl = `https://${targetUrl}`;
+  try { new URL(targetUrl); } catch {
+    return NextResponse.json({ valid: false, error: 'URL inválido. Escreve um endereço completo (ex: https://exemplo.com/feed) ou pesquisa pelo nome da fonte.' });
+  }
+  if (!targetUrl.includes('.')) {
+    return NextResponse.json({ valid: false, error: 'URL inválido. Escreve um endereço completo (ex: https://exemplo.com/feed) ou pesquisa pelo nome da fonte.' });
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
@@ -124,7 +132,7 @@ export async function POST(request) {
     return NextResponse.json({ valid: false, error: 'Formato não reconhecido como fonte de notícias' });
   } catch (err) {
     clearTimeout(timeout);
-    if (err.name === 'AbortError') return NextResponse.json({ valid: false, error: 'Tempo limite excedido ao aceder ao URL' });
-    return NextResponse.json({ valid: false, error: `Erro ao aceder ao URL: ${err.message}` });
+    if (err.name === 'AbortError') return NextResponse.json({ valid: false, error: 'Tempo limite excedido. O site demorou demasiado a responder.' });
+    return NextResponse.json({ valid: false, error: 'Não foi possível aceder ao URL. Verifica se o endereço está correcto.' });
   }
 }
