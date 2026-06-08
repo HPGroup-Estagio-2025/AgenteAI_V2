@@ -316,9 +316,10 @@ function sourceFromUrl(url) {
   }
 }
 
-async function fetchAllRss() {
+async function fetchAllRss(sectorFeeds = SECTOR_FEEDS) {
+  const allFeeds = [...new Set(Object.values(sectorFeeds).flat())];
   const results = await Promise.allSettled(
-    RSS_FEEDS.map(async feedUrl => {
+    allFeeds.map(async feedUrl => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
       try {
@@ -486,6 +487,16 @@ async function finishRun(id, updates) {
   if (error) console.error('[agent_runs] erro ao atualizar execução:', error.message);
 }
 
+async function loadCustomSources() {
+  try {
+    const { data } = await supabase
+      .from('news_sources')
+      .select('url, sector')
+      .eq('active', true);
+    return data || [];
+  } catch { return []; }
+}
+
 export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admin' } = {}) {
   let run;
   try {
@@ -495,7 +506,20 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
   }
 
   try {
-    const rawArticles = await fetchAllRss();
+    // Carrega fontes personalizadas do Supabase e mistura com as predefinidas
+    const customSources = await loadCustomSources();
+    const activeSectorFeeds = { ...SECTOR_FEEDS };
+    for (const src of customSources) {
+      if (src.sector && src.url) {
+        if (!activeSectorFeeds[src.sector]) activeSectorFeeds[src.sector] = [];
+        if (!activeSectorFeeds[src.sector].includes(src.url)) {
+          activeSectorFeeds[src.sector].push(src.url);
+        }
+      }
+    }
+    console.log('[agent] Fontes activas por setor:', Object.fromEntries(Object.entries(activeSectorFeeds).map(([k, v]) => [k, v.length])));
+
+    const rawArticles = await fetchAllRss(activeSectorFeeds);
 
     // Só filtra artigos JÁ PUBLICADOS — rejeitados e on_hold podem reaparecer
     let seenUrls = new Set();
@@ -534,7 +558,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
     const sectorArticles = [];
     const usedUrls = new Set();
 
-    for (const [sectorKey, feeds] of Object.entries(SECTOR_FEEDS)) {
+    for (const [sectorKey, feeds] of Object.entries(activeSectorFeeds)) {
       const terms = SECTOR_TERMS[sectorKey] || [];
 
       // Extrai domínio base (sem subdomínios como "feeds.", "www.")

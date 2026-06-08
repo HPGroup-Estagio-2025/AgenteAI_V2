@@ -1,0 +1,288 @@
+'use client';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+
+const SECTORS = [
+  { id: 'maritimo',       label: 'Marítimo' },
+  { id: 'defesa-militar', label: 'Defesa Militar' },
+  { id: 'aeroespacial',   label: 'Aeroespacial' },
+  { id: 'ferroviario',    label: 'Ferroviário' },
+  { id: 'tecnologia',     label: 'Tecnologia' },
+];
+
+const SECTOR_COLORS = {
+  'maritimo':       '#0369A1',
+  'defesa-militar': '#4a5320',
+  'aeroespacial':   '#6D28D9',
+  'ferroviario':    '#92400E',
+  'tecnologia':     '#15803D',
+};
+
+export default function SourcesPage() {
+  const router = useRouter();
+  const [sources, setSources] = useState([]);
+  const [url, setUrl] = useState('');
+  const [sector, setSector] = useState('maritimo');
+  const [validating, setValidating] = useState(false);
+  const [validation, setValidation] = useState(null); // { valid, feedUrl, name, itemCount, error, note }
+  const [adding, setAdding] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  function showToast(message, type = 'info') {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  }
+
+  function clearAuth() {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('token_expiry');
+  }
+
+  const loadSources = useCallback(async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) { router.replace('/'); return; }
+    try {
+      const res = await fetch('/api/sources', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401) { clearAuth(); router.replace('/'); return; }
+      const data = await res.json();
+      setSources(data.sources || []);
+    } catch {}
+    setLoading(false);
+  }, [router]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    const expiry = parseInt(localStorage.getItem('token_expiry') || '0', 10);
+    if (!token || Date.now() > expiry) { clearAuth(); router.replace('/'); return; }
+    loadSources();
+  }, [loadSources]);
+
+  async function handleValidate() {
+    if (!url.trim()) return;
+    setValidating(true);
+    setValidation(null);
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch('/api/sources/validate', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+      const data = await res.json();
+      setValidation(data);
+      if (data.feedUrl && data.feedUrl !== url.trim()) setUrl(data.feedUrl);
+    } catch {
+      setValidation({ valid: false, error: 'Erro ao validar URL' });
+    }
+    setValidating(false);
+  }
+
+  async function handleAdd() {
+    if (!validation?.valid) return;
+    setAdding(true);
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch('/api/sources', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: validation.feedUrl || url, name: validation.name, sector }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Erro ao adicionar fonte', 'error'); return; }
+      showToast('Fonte adicionada com sucesso!', 'success');
+      setUrl('');
+      setValidation(null);
+      await loadSources();
+    } catch {
+      showToast('Erro de ligação', 'error');
+    }
+    setAdding(false);
+  }
+
+  async function handleDelete(id) {
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch('/api/sources', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) { showToast('Fonte removida', 'info'); await loadSources(); }
+    } catch {}
+  }
+
+  const groupedSources = SECTORS.map(s => ({
+    ...s,
+    items: sources.filter(src => src.sector === s.id),
+  })).filter(s => s.items.length > 0);
+
+  return (
+    <div className="dashboard-page">
+      <header className="header">
+        <div className="header-inner">
+          <div className="header-brand">
+            <img src="/robot-logo.svg" width="36" height="36" alt="Publixy" style={{ borderRadius: 8 }} />
+            <span>Publixy</span>
+          </div>
+          <nav className="header-nav">
+            <button className="header-nav-item" onClick={() => router.push('/dashboard')}>Notícias</button>
+            <button className="header-nav-item" onClick={() => router.push('/social')}>Redes Sociais</button>
+            <button className="header-nav-item active">Fontes</button>
+          </nav>
+          <div className="header-actions">
+            <button className="btn-logout" onClick={() => { clearAuth(); router.replace('/'); }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>
+              </svg>
+              Sair
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="main" style={{ maxWidth: 800 }}>
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--gray-900)', marginBottom: 6 }}>Fontes de Notícias</h1>
+          <p style={{ color: 'var(--gray-500)', fontSize: '.9375rem' }}>Adiciona feeds RSS de sites que queres monitorizar. O agente vai incluí-los na próxima pesquisa.</p>
+        </div>
+
+        {/* Formulário de adição */}
+        <div style={{ background: 'var(--white)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--gray-200)', padding: 24, marginBottom: 28, boxShadow: 'var(--shadow-sm)' }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 16, color: 'var(--gray-800)' }}>Adicionar nova fonte</h2>
+
+          <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+            <input
+              type="url"
+              placeholder="https://exemplo.com/feed/ ou URL do site"
+              value={url}
+              onChange={e => { setUrl(e.target.value); setValidation(null); }}
+              onKeyDown={e => e.key === 'Enter' && handleValidate()}
+              style={{ flex: 1, minWidth: 200 }}
+            />
+            <button
+              className="btn btn-ghost"
+              onClick={handleValidate}
+              disabled={validating || !url.trim()}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              {validating
+                ? <><span className="loader" style={{ width: 13, height: 13, borderColor: 'rgba(0,0,0,.15)', borderTopColor: 'var(--gray-600)' }} /> A verificar...</>
+                : '🔍 Verificar'}
+            </button>
+          </div>
+
+          {/* Resultado da validação */}
+          {validation && (
+            <div style={{
+              padding: '12px 16px', borderRadius: 'var(--radius-sm)', marginBottom: 14,
+              background: validation.valid ? 'var(--green-50)' : 'var(--red-50)',
+              border: `1px solid ${validation.valid ? 'var(--green-100)' : 'var(--red-100)'}`,
+              color: validation.valid ? 'var(--green-600)' : 'var(--red-600)',
+            }}>
+              {validation.valid ? (
+                <>
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>✓ Fonte válida: {validation.name}</div>
+                  <div style={{ fontSize: '.82rem', opacity: .8 }}>{validation.itemCount} artigos encontrados{validation.note ? ` · ${validation.note}` : ''}</div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontWeight: 700, marginBottom: 2 }}>✗ Fonte inválida</div>
+                  <div style={{ fontSize: '.82rem' }}>{validation.error}</div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Seletor de setor + botão adicionar */}
+          {validation?.valid && (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <label style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--gray-600)', display: 'block', marginBottom: 5 }}>Setor</label>
+                <select
+                  value={sector}
+                  onChange={e => setSector(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-sm)', fontSize: '.875rem', color: 'var(--gray-800)', background: 'var(--white)', outline: 'none' }}
+                >
+                  {SECTORS.map(s => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                className="btn btn-primary"
+                style={{ marginTop: 20 }}
+                onClick={handleAdd}
+                disabled={adding}
+              >
+                {adding ? <><span className="loader" style={{ width: 13, height: 13 }} /> A adicionar...</> : '+ Adicionar fonte'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Lista de fontes */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--gray-400)' }}>A carregar fontes...</div>
+        ) : sources.length === 0 ? (
+          <div className="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+            <p>Nenhuma fonte personalizada</p>
+            <span>As fontes predefinidas do sistema continuam activas</span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {groupedSources.map(group => (
+              <div key={group.id} style={{ background: 'var(--white)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--gray-200)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ padding: '10px 18px', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: SECTOR_COLORS[group.id], display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ fontWeight: 700, fontSize: '.85rem', color: 'var(--gray-700)' }}>{group.label}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '.75rem', color: 'var(--gray-400)' }}>{group.items.length} fonte{group.items.length !== 1 ? 's' : ''}</span>
+                </div>
+                {group.items.map(src => (
+                  <div key={src.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid var(--gray-100)' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '.875rem', color: 'var(--gray-800)', marginBottom: 2 }}>{src.name}</div>
+                      <div style={{ fontSize: '.75rem', color: 'var(--gray-400)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{src.url}</div>
+                    </div>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ color: 'var(--red-600)', borderColor: 'transparent', padding: '5px 10px', fontSize: '.78rem', flexShrink: 0 }}
+                      onClick={() => handleDelete(src.id)}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Bottom nav mobile */}
+      <nav className="mobile-bottom-nav">
+        <button onClick={() => router.push('/dashboard')}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Notícias
+        </button>
+        <button onClick={() => router.push('/social')}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          Redes Sociais
+        </button>
+        <button className="active">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+          Fontes
+        </button>
+        <button onClick={() => { clearAuth(); router.replace('/'); }}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sair
+        </button>
+      </nav>
+
+      {toast && (
+        <div className={`toast toast-${toast.type}`}>{toast.message}</div>
+      )}
+    </div>
+  );
+}
