@@ -66,11 +66,11 @@ const KNOWN_SOURCES = [
 
 // Palavras-chave que mapeiam para sectores
 const SECTOR_KEYWORDS = {
-  'maritimo':       ['maritimo', 'marítimo', 'naval', 'shipping', 'marine', 'marinha', 'navio', 'porto', 'offshore', 'ocean', 'flipboard maritime'],
-  'defesa-militar': ['defesa', 'militar', 'military', 'defense', 'defence', 'army', 'exercito', 'força armada', 'forcas armadas', 'guerra', 'weapon', 'flipboard defense'],
-  'aeroespacial':   ['aeroespacial', 'aerospace', 'aviacao', 'aviação', 'aviation', 'espaco', 'espaço', 'space', 'rocket', 'satellite', 'drone', 'flipboard aerospace'],
+  'maritimo':       ['maritimo', 'marítimo', 'naval', 'shipping', 'marine', 'marinha', 'navio', 'porto', 'offshore', 'ocean'],
+  'defesa-militar': ['defesa', 'militar', 'military', 'defense', 'defence', 'army', 'exercito', 'força armada', 'forcas armadas', 'guerra', 'weapon'],
+  'aeroespacial':   ['aeroespacial', 'aerospace', 'aviacao', 'aviação', 'aviation', 'espaco', 'espaço', 'space', 'rocket', 'satellite', 'drone'],
   'ferroviario':    ['ferroviario', 'ferroviário', 'railway', 'comboio', 'rail', 'train', 'metro', 'tram'],
-  'tecnologia':     ['tecnologia', 'technology', 'tech', 'software', 'digital', 'inovacao', 'inovação', 'innovation', 'flipboard technology'],
+  'tecnologia':     ['tecnologia', 'technology', 'tech', 'software', 'digital', 'inovacao', 'inovação', 'innovation'],
 };
 
 function normalize(str) {
@@ -163,24 +163,24 @@ export async function POST(request) {
 
   const q = query.trim();
 
-  // 1a. Verifica se é um setor — devolve todas as fontes desse setor
+  // 1a. Pesquisa por nome primeiro — tem prioridade sobre setor
+  const scored = KNOWN_SOURCES
+    .map(src => ({ ...src, score: score(src, q) }))
+    .filter(src => src.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+
+  if (scored.length > 0) {
+    return NextResponse.json({ results: scored, notFound: false });
+  }
+
+  // 1b. Sem resultados por nome — verifica se é um setor
   const matchedSector = matchesSector(q);
   if (matchedSector) {
     const sectorSources = KNOWN_SOURCES
       .filter(src => src.sector === matchedSector)
       .map(src => ({ ...src, score: 90, isSectorSuggestion: true }));
     return NextResponse.json({ results: sectorSources, notFound: false, sectorMatch: matchedSector });
-  }
-
-  // 1b. Pesquisa por nome na base de fontes conhecidas
-  const scored = KNOWN_SOURCES
-    .map(src => ({ ...src, score: score(src, q) }))
-    .filter(src => src.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 6);
-
-  if (scored.length > 0) {
-    return NextResponse.json({ results: scored, notFound: false });
   }
 
   // 2. Pesquisa na web para encontrar o site
