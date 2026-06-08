@@ -647,10 +647,24 @@ textarea { resize: vertical; }
   .news-card-body { -webkit-line-clamp: 2 !important; font-size: .8rem !important; }
   .news-card-footer { font-size: .68rem !important; }
 
-  /* Plataformas */
-  .card-platform-item { flex-wrap: wrap !important; gap: 6px !important; padding: 8px 10px !important; }
-  .card-platform-item select { width: 100% !important; max-width: unset !important; font-size: .8rem !important; }
-  .card-platform-check { font-size: .74rem !important; padding: 4px 7px !important; }
+  /* Plataformas — empresa em cima, checkboxes em baixo */
+  .card-platform-item {
+    flex-direction: column !important; align-items: stretch !important;
+    gap: 8px !important; padding: 10px !important;
+  }
+  .card-platform-item select {
+    width: 100% !important; max-width: unset !important;
+    font-size: .85rem !important; padding: 8px 10px !important;
+  }
+  /* Checkboxes em grelha 2 colunas */
+  .card-platform-item .card-platform-checks-row {
+    display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px !important;
+  }
+  .card-platform-check {
+    font-size: .78rem !important; padding: 7px 8px !important;
+    justify-content: center !important; text-align: center !important;
+    border-radius: var(--radius-sm) !important;
+  }
 
   /* Acções — linha horizontal, width 100% */
   .news-card-actions {

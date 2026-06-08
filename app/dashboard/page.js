@@ -295,21 +295,23 @@ function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetC
               {selectedCompany?.picture && (
                 <img src={selectedCompany.picture} alt="" className="card-platform-avatar" />
               )}
-              {/* Checkboxes apenas das redes dessa empresa */}
-              {(selectedCompany?.platforms || []).map(pid => {
-                const platform = SOCIAL_PLATFORMS.find(p => p.id === pid);
-                const isOn = selection?.platforms?.includes(pid) ?? true;
-                return (
-                  <label key={pid} className="card-platform-check">
-                    <input
-                      type="checkbox"
-                      checked={isOn}
-                      onChange={() => onTogglePlatform(pid)}
-                    />
-                    <span>{platform?.label}</span>
-                  </label>
-                );
-              })}
+              {/* Checkboxes em wrapper para grid no mobile */}
+              <div className="card-platform-checks-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {(selectedCompany?.platforms || []).map(pid => {
+                  const platform = SOCIAL_PLATFORMS.find(p => p.id === pid);
+                  const isOn = selection?.platforms?.includes(pid) ?? true;
+                  return (
+                    <label key={pid} className="card-platform-check">
+                      <input
+                        type="checkbox"
+                        checked={isOn}
+                        onChange={() => onTogglePlatform(pid)}
+                      />
+                      <span>{platform?.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
