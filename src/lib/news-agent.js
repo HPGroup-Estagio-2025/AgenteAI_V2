@@ -527,15 +527,21 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
   }
 
   try {
-    // Carrega fontes personalizadas do Supabase e mistura com as predefinidas
+    // Carrega fontes personalizadas do Supabase
     const customSources = await loadCustomSources();
-    const activeSectorFeeds = { ...SECTOR_FEEDS };
+    const customUrls = new Set(customSources.map(s => s.url));
+
+    // Fontes custom ficam no início de cada setor (prioridade máxima)
+    const activeSectorFeeds = {};
+    for (const [sector, feeds] of Object.entries(SECTOR_FEEDS)) {
+      const custom = customSources.filter(s => s.sector === sector).map(s => s.url);
+      const defaults = feeds.filter(u => !customUrls.has(u));
+      activeSectorFeeds[sector] = [...custom, ...defaults]; // custom primeiro
+    }
+    // Adiciona setores novos que só existem em fontes custom
     for (const src of customSources) {
-      if (src.sector && src.url) {
-        if (!activeSectorFeeds[src.sector]) activeSectorFeeds[src.sector] = [];
-        if (!activeSectorFeeds[src.sector].includes(src.url)) {
-          activeSectorFeeds[src.sector].push(src.url);
-        }
+      if (src.sector && src.url && !activeSectorFeeds[src.sector]) {
+        activeSectorFeeds[src.sector] = [src.url];
       }
     }
     console.log('[agent] Fontes activas por setor:', Object.fromEntries(Object.entries(activeSectorFeeds).map(([k, v]) => [k, v.length])));
@@ -610,8 +616,19 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         return terms.some(t => text.includes(t));
       });
 
-      // Score e seleciona os 5 melhores deste setor
+      // Score e seleciona os melhores deste setor
+      // Artigos de fontes custom recebem bónus de score para aparecerem primeiro
       const scored = scoreArticles(sectorRaw, ARTICLES_PER_SECTOR * 3)
+        .map(a => {
+          try {
+            const domain = new URL(a.url).hostname.replace(/^www\./, '').replace(/^feeds\./, '');
+            if (customUrls.size > 0 && [...customUrls].some(u => { try { return new URL(u).hostname.replace(/^www\./, '').replace(/^feeds\./, '') === domain; } catch { return false; } })) {
+              return { ...a, finalScore: (a.finalScore || 0) + 20, _isCustomSource: true };
+            }
+          } catch {}
+          return a;
+        })
+        .sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0))
         .filter(a => {
           const key = a.url || a.title;
           if (usedUrls.has(key)) return false;
