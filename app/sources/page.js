@@ -306,7 +306,7 @@ export default function SourcesPage() {
               }}>
                 {sectorMatch && (
                   <div style={{ padding: '8px 14px', background: 'var(--blue-50)', borderBottom: '1px solid var(--blue-100)', fontSize: '.75rem', fontWeight: 700, color: 'var(--blue-700)' }}>
-                    📂 Fontes sugeridas para o setor · {SECTORS.find(s => s.id === sectorMatch)?.label}
+                    📂 Fontes sugeridas para o setor · {sectors.find(s => s.id === sectorMatch)?.label}
                   </div>
                 )}
                 {suggestions.map((s, i) => (
@@ -332,7 +332,7 @@ export default function SourcesPage() {
                         borderRadius: 10, background: 'var(--blue-50)', color: 'var(--blue-600)',
                         flexShrink: 0, whiteSpace: 'nowrap',
                       }}>
-                        {SECTORS.find(sec => sec.id === s.sector)?.label || s.sector}
+                        {sectors.find(sec => sec.id === s.sector)?.label || s.sector}
                       </span>
                     )}
                   </button>
