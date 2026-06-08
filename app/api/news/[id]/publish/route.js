@@ -396,34 +396,33 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
     console.log('[linkedin] A publicar como organização (ID manual):', company.linkedin_org_id);
   }
 
-  // 2. Tenta detetar automaticamente via API
+  // 2. Tenta detetar automaticamente via API (sem projecção para maior compatibilidade)
   if (!authorUrn) {
     try {
       const orgRes = await fetch(
-        'https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organization~(id,localizedName)))',
+        'https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR',
         { headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' } }
       );
       const orgData = await orgRes.json().catch(() => ({}));
-      const org = orgData?.elements?.[0]?.['organization~'];
-      if (org?.id) {
-        authorUrn = `urn:li:organization:${org.id}`;
-        console.log('[linkedin] A publicar como organização (auto):', org.localizedName, authorUrn);
+      console.log('[linkedin] organizationAcls raw:', JSON.stringify(orgData).slice(0, 500));
+      const firstElement = orgData?.elements?.[0];
+      const orgUrn = firstElement?.organization;
+      if (orgUrn) {
+        // orgUrn é do tipo "urn:li:organization:12345"
+        authorUrn = orgUrn;
+        console.log('[linkedin] A publicar como organização (auto):', authorUrn);
       }
     } catch (e) {
       console.warn('[linkedin] Não foi possível obter organização:', e.message);
     }
   }
 
-  // 3. Fallback: publica como membro pessoal
+  // Sem organização identificada — não publica como pessoa, lança erro claro
   if (!authorUrn) {
-    const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const profile = await profileRes.json().catch(() => ({}));
-    const memberId = profile.sub;
-    if (!memberId) throw Object.assign(new Error('Não foi possível obter ID do membro LinkedIn'), { code: 'linkedin_publish_failed' });
-    authorUrn = `urn:li:person:${memberId}`;
-    console.log('[linkedin] A publicar como membro (fallback):', profile.name, authorUrn);
+    throw Object.assign(
+      new Error('LinkedIn Organization ID não configurado. Vai a Redes Sociais → editar empresa → preenche o LinkedIn Organization ID.'),
+      { code: 'linkedin_publish_failed' }
+    );
   }
 
   const summary = buildSocialSummary(item);
