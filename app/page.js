@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [step, setStep] = useState(1); // 1 = credentials, 2 = OTP
   const [otp, setOtp] = useState('');
   const [otpToken, setOtpToken] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
     // Migra token antigo do sessionStorage para localStorage (utilizadores com sessão antiga)
@@ -31,6 +32,15 @@ export default function LoginPage() {
       .then(r => { if (r.ok) router.replace('/dashboard'); })
       .catch(() => {});
   }, [router]);
+
+  function saveSession(token, expiresIn) {
+    // Remember me: 30 dias; normal: duração do token (4h)
+    const duration = rememberMe ? 30 * 24 * 60 * 60 * 1000 : expiresIn * 1000;
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('token_expiry', String(Date.now() + duration));
+    if (rememberMe) localStorage.setItem('remember_me', '1');
+    else localStorage.removeItem('remember_me');
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -66,8 +76,7 @@ export default function LoginPage() {
           setStep(2);
           return;
         }
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('token_expiry', String(Date.now() + data.expiresIn * 1000));
+        saveSession(data.token, data.expiresIn);
         router.replace('/dashboard');
       } catch {
         setError('Não foi possível ligar ao servidor. Verifica a tua ligação.');
@@ -89,8 +98,7 @@ export default function LoginPage() {
           setOtp('');
           return;
         }
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('token_expiry', String(Date.now() + data.expiresIn * 1000));
+        saveSession(data.token, data.expiresIn);
         router.replace('/dashboard');
       } catch {
         setError('Não foi possível ligar ao servidor.');
@@ -168,6 +176,18 @@ export default function LoginPage() {
                   ← Voltar
                 </button>
               </div>
+            )}
+
+            {step === 1 && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 4, fontSize: '.875rem', color: 'var(--gray-600)' }}>
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={e => setRememberMe(e.target.checked)}
+                  style={{ width: 15, height: 15, accentColor: 'var(--blue-600)', cursor: 'pointer' }}
+                />
+                Manter sessão por 30 dias
+              </label>
             )}
 
             {error && <div className="alert alert-error">{error}</div>}
