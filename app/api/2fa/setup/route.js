@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authenticator } from 'otplib';
+import otplib from 'otplib';
+const { authenticator } = otplib;
 import QRCode from 'qrcode';
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
 
