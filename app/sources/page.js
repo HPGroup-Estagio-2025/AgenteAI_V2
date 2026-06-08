@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 // Cores para setores predefinidos; setores custom recebem cor gerada
@@ -40,7 +40,7 @@ export default function SourcesPage() {
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [sectorMatch, setSectorMatch] = useState(null);
-  const searchTimer = useState(null);
+  const searchTimer = useRef(null);
   // Novo setor
   const [showNewSector, setShowNewSector] = useState(false);
   const [newSectorLabel, setNewSectorLabel] = useState('');
@@ -64,9 +64,9 @@ export default function SourcesPage() {
       const data = await res.json();
       const list = data.sectors || [];
       setSectors(list);
-      if (list.length > 0 && !sector) setSector(list[0].id);
+      setSector(prev => prev || (list[0]?.id || ''));
     } catch {}
-  }, [sector]);
+  }, []);
 
   const loadSources = useCallback(async () => {
     const token = localStorage.getItem('auth_token');
@@ -134,8 +134,8 @@ export default function SourcesPage() {
     setSectorMatch(null);
     if (!value.trim() || value.trim().length < 2) return;
     if (isUrl(value.trim())) return;
-    clearTimeout(searchTimer[0]);
-    searchTimer[0] = setTimeout(async () => {
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(async () => {
       setSearching(true);
       const token = localStorage.getItem('auth_token');
       try {
