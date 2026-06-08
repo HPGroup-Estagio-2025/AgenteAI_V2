@@ -299,6 +299,8 @@ function SocialPageContent() {
     }
   }
 
+  const [confirmDisconnect, setConfirmDisconnect] = useState(null); // { id, name }
+
   async function handleDisconnect(accountId) {
     const token = localStorage.getItem('auth_token');
     try {
@@ -464,7 +466,7 @@ function SocialPageContent() {
             <button
               className="btn btn-danger"
               style={{ padding: '4px 10px', fontSize: '.72rem', height: 'auto' }}
-              onClick={() => handleDisconnect(account.id)}
+              onClick={() => setConfirmDisconnect({ id: account.id, name: account.name || account.email })}
             >
               Desconectar
             </button>
@@ -774,6 +776,24 @@ function SocialPageContent() {
               >
                 {deletingCompany ? <span className="loader" style={{ width: 12, height: 12 }} /> : 'Excluir'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDisconnect && (
+        <div className="modal-overlay" onClick={() => setConfirmDisconnect(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Desconectar conta</h2>
+            </div>
+            <div className="modal-body">
+              Tens a certeza que queres desconectar <strong>"{confirmDisconnect.name}"</strong>?
+              <br /><span style={{ fontSize: '.85rem', color: 'var(--gray-400)', marginTop: 6, display: 'block' }}>Precisarás de voltar a ligar a conta para publicar.</span>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setConfirmDisconnect(null)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={() => { handleDisconnect(confirmDisconnect.id); setConfirmDisconnect(null); }}>Desconectar</button>
             </div>
           </div>
         </div>

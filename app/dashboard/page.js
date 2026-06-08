@@ -957,6 +957,9 @@ export default function DashboardPage() {
     }
   }
 
+  // ── Confirmação de remoção ────────────────────────────────────────
+  const [confirmRemove, setConfirmRemove] = useState(null); // item a remover
+
   // ── Remover artigo guardado (on_hold → rejected) ─────────────────
   async function handleRemoveSaved(item) {
     const token = localStorage.getItem('auth_token');
@@ -1239,7 +1242,7 @@ export default function DashboardPage() {
                 companies={companies}
                 isPublishing={publishingId === item.id}
                 onPublish={filterStatus === 'on_hold' ? handlePublishSaved : null}
-                onRemove={filterStatus === 'on_hold' ? handleRemoveSaved : null}
+                onRemove={filterStatus === 'on_hold' ? (item) => setConfirmRemove(item) : null}
               />
             ))
           )}
@@ -1379,6 +1382,24 @@ export default function DashboardPage() {
           {toast.type === 'error'   && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>}
           {toast.type === 'info'    && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>}
           {toast.message}
+        </div>
+      )}
+
+      {confirmRemove && (
+        <div className="modal-overlay" onClick={() => setConfirmRemove(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Apagar notícia guardada</h2>
+            </div>
+            <div className="modal-body">
+              Tens a certeza que queres apagar <strong>"{confirmRemove.title?.slice(0, 60)}{confirmRemove.title?.length > 60 ? '…' : ''}"</strong>?
+              <br /><span style={{ fontSize: '.85rem', color: 'var(--gray-400)', marginTop: 6, display: 'block' }}>Esta acção não pode ser desfeita.</span>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setConfirmRemove(null)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={() => { handleRemoveSaved(confirmRemove); setConfirmRemove(null); }}>Apagar</button>
+            </div>
+          </div>
         </div>
       )}
 
