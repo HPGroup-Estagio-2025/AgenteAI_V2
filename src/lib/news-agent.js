@@ -239,7 +239,10 @@ function parseRss(xml, feedUrl) {
   const items = [...String(xml).matchAll(/<item[\s\S]*?<\/item>/gi)].map(match => match[0]);
   return items.map(itemXml => {
     const content = tagValue(itemXml, 'content:encoded') || tagValue(itemXml, 'description');
-    const url = tagValue(itemXml, 'link') || tagValue(itemXml, 'guid');
+    const url = tagValue(itemXml, 'link')
+      || attrValue(itemXml, 'link', 'href')   // Atom: <link href="..."/>
+      || tagValue(itemXml, 'guid')
+      || attrValue(itemXml, 'guid', 'isPermaLink');
     const image =
       attrValue(itemXml, 'enclosure', 'url') ||
       attrValue(itemXml, 'media:content', 'url') ||
