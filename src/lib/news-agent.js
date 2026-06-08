@@ -256,6 +256,7 @@ function parseRss(xml, feedUrl) {
       source: cleanSourceName(tagValue(itemXml, 'source'), feedUrl),
       publishedAt: tagValue(itemXml, 'pubDate') || tagValue(itemXml, 'dc:date') || tagValue(itemXml, 'updated') || new Date().toISOString(),
       rawProvider: 'RSS',
+      _feedUrl: feedUrl, // domínio do feed de origem (usado para filtro de setor)
     };
   });
 }
@@ -611,15 +612,19 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         .flatMap(([, fs]) => fs.map(baseDomain).filter(Boolean));
 
       const sectorRaw = filteredArticles.filter(a => {
+        // Usa o domínio do FEED (não do artigo) para identificar a fonte
+        // Ex: artigo do Flipboard tem URL do site original mas feedUrl = flipboard.com
+        const feedDomain = a._feedUrl ? baseDomain(a._feedUrl) : '';
         const articleDomain = a.url ? baseDomain(a.url) : '';
+        const checkDomain = feedDomain || articleDomain;
         const text = `${a.title} ${a.description} ${a.content}`.toLowerCase();
 
-        // Artigo vem de uma fonte dedicada a ESTE setor → aceita sempre
-        const fromThisSectorFeed = sectorDomains.some(d => articleDomain === d || articleDomain.endsWith(`.${d}`));
+        // Artigo vem de um feed dedicado a ESTE setor → aceita sempre
+        const fromThisSectorFeed = sectorDomains.some(d => checkDomain === d || checkDomain.endsWith(`.${d}`));
         if (fromThisSectorFeed) return true;
 
-        // Artigo vem de uma fonte dedicada a OUTRO setor → rejeita
-        const fromOtherSectorFeed = allOtherDomains.some(d => articleDomain === d || articleDomain.endsWith(`.${d}`));
+        // Artigo vem de um feed dedicado a OUTRO setor → rejeita
+        const fromOtherSectorFeed = allOtherDomains.some(d => checkDomain === d || checkDomain.endsWith(`.${d}`));
         if (fromOtherSectorFeed) return false;
 
         // Fonte genérica → aceita só se corresponde aos termos do setor
