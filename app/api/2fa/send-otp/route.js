@@ -26,8 +26,14 @@ async function sendOtpEmail(otp) {
       pass: process.env.SMTP_PASS,
     },
     tls: {
-      rejectUnauthorized: false, // cPanel usa certificados auto-assinados
+      rejectUnauthorized: false,
+      ciphers: 'SSLv3',
     },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    logger: false,
+    debug: false,
   });
 
   await transporter.sendMail({
