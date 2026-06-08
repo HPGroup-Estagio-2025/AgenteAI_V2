@@ -57,8 +57,29 @@ const KNOWN_SOURCES = [
   { name: 'MIT Technology Review',  url: 'https://www.technologyreview.com/feed/', sector: 'tecnologia' },
 ];
 
+// Palavras-chave que mapeiam para sectores
+const SECTOR_KEYWORDS = {
+  'maritimo':       ['maritimo', 'maritimo', 'marítimo', 'naval', 'shipping', 'marine', 'marinha', 'navio', 'porto', 'offshore', 'ocean'],
+  'defesa-militar': ['defesa', 'militar', 'military', 'defense', 'defence', 'army', 'exercito', 'força armada', 'forcas armadas', 'guerra', 'weapon'],
+  'aeroespacial':   ['aeroespacial', 'aerospace', 'aviacao', 'aviação', 'aviation', 'espaco', 'espaço', 'space', 'rocket', 'satellite', 'drone'],
+  'ferroviario':    ['ferroviario', 'ferroviário', 'railway', 'comboio', 'rail', 'train', 'metro', 'tram'],
+  'tecnologia':     ['tecnologia', 'technology', 'tech', 'software', 'digital', 'inovacao', 'inovação', 'innovation'],
+};
+
 function normalize(str) {
-  return str.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+  return str.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
+    .replace(/[^a-z0-9 ]/g, '').trim();
+}
+
+function matchesSector(query) {
+  const q = normalize(query);
+  for (const [sector, keywords] of Object.entries(SECTOR_KEYWORDS)) {
+    if (keywords.some(k => normalize(k) === q || q.includes(normalize(k)) || normalize(k).includes(q))) {
+      return sector;
+    }
+  }
+  return null;
 }
 
 function score(source, query) {
@@ -69,7 +90,6 @@ function score(source, query) {
   if (name.startsWith(q)) return 80;
   if (name.includes(q)) return 60;
   if (url.includes(q.replace(/ /g, ''))) return 40;
-  // Correspondência por palavras
   const words = q.split(' ').filter(w => w.length > 2);
   const matches = words.filter(w => name.includes(w)).length;
   return matches > 0 ? matches * 20 : 0;
@@ -136,7 +156,16 @@ export async function POST(request) {
 
   const q = query.trim();
 
-  // 1. Pesquisa na base de fontes conhecidas
+  // 1a. Verifica se é um setor — devolve todas as fontes desse setor
+  const matchedSector = matchesSector(q);
+  if (matchedSector) {
+    const sectorSources = KNOWN_SOURCES
+      .filter(src => src.sector === matchedSector)
+      .map(src => ({ ...src, score: 90, isSectorSuggestion: true }));
+    return NextResponse.json({ results: sectorSources, notFound: false, sectorMatch: matchedSector });
+  }
+
+  // 1b. Pesquisa por nome na base de fontes conhecidas
   const scored = KNOWN_SOURCES
     .map(src => ({ ...src, score: score(src, q) }))
     .filter(src => src.score > 0)

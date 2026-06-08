@@ -35,6 +35,7 @@ export default function SourcesPage() {
   const [suggestions, setSuggestions] = useState([]);
   const [searching, setSearching] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [sectorMatch, setSectorMatch] = useState(null);
   const searchTimer = useState(null);
 
   function showToast(message, type = 'info') {
@@ -71,6 +72,7 @@ export default function SourcesPage() {
     setValidation(null);
     setSuggestions([]);
     setNotFound(false);
+    setSectorMatch(null);
     if (!value.trim() || value.trim().length < 2) return;
     if (isUrl(value.trim())) return;
     clearTimeout(searchTimer[0]);
@@ -86,6 +88,7 @@ export default function SourcesPage() {
         const data = await res.json();
         setSuggestions(data.results || []);
         setNotFound(data.notFound === true && (data.results || []).length === 0);
+        setSectorMatch(data.sectorMatch || null);
       } catch {}
       setSearching(false);
     }, 500);
@@ -240,6 +243,11 @@ export default function SourcesPage() {
                 borderRadius: 'var(--radius-sm)', boxShadow: 'var(--shadow-md)',
                 marginTop: 4, overflow: 'hidden',
               }}>
+                {sectorMatch && (
+                  <div style={{ padding: '8px 14px', background: 'var(--blue-50)', borderBottom: '1px solid var(--blue-100)', fontSize: '.75rem', fontWeight: 700, color: 'var(--blue-700)' }}>
+                    📂 Fontes sugeridas para o setor · {SECTORS.find(s => s.id === sectorMatch)?.label}
+                  </div>
+                )}
                 {suggestions.map((s, i) => (
                   <button
                     key={i}
