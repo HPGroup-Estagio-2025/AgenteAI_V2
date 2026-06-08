@@ -75,35 +75,105 @@ function score(source, query) {
   return matches > 0 ? matches * 20 : 0;
 }
 
+function isRssXml(text) {
+  return /<rss|<feed|<channel|<atom/i.test(text.slice(0, 2000));
+}
+
+function countItems(xml) {
+  return (xml.match(/<item[\s>]/gi) || []).length + (xml.match(/<entry[\s>]/gi) || []).length;
+}
+
+function extractTitle(xml) {
+  const m = xml.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/i);
+  return m?.[1]?.trim().replace(/<[^>]+>/g, '').slice(0, 80) || null;
+}
+
+// Tenta vários padrões de feed RSS comuns para um domínio
+async function tryFeedPatterns(domain) {
+  const patterns = ['/feed/', '/feed', '/rss/', '/rss', '/rss.xml', '/atom.xml', '/feed.xml', '/feeds/all'];
+  const base = domain.startsWith('http') ? domain.replace(/\/$/, '') : `https://${domain}`;
+  for (const path of patterns) {
+    try {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`${base}${path}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; publixy-validator/1.0)' },
+        signal: controller.signal,
+      });
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (isRssXml(text) && countItems(text) > 0) {
+        return { url: `${base}${path}`, name: extractTitle(text) || domain, itemCount: countItems(text) };
+      }
+    } catch { continue; }
+  }
+  return null;
+}
+
+// Pesquisa DuckDuckGo para encontrar o site da fonte
+async function searchWeb(query) {
+  try {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(query + ' news RSS feed')}&format=json&no_html=1&skip_disambig=1`,
+      { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; publixy-validator/1.0)' }, signal: controller.signal }
+    );
+    const data = await res.json().catch(() => ({}));
+    const urls = [];
+    if (data.AbstractURL) urls.push(data.AbstractURL);
+    if (Array.isArray(data.Results)) data.Results.slice(0, 3).forEach(r => r.FirstURL && urls.push(r.FirstURL));
+    if (Array.isArray(data.RelatedTopics)) data.RelatedTopics.slice(0, 2).forEach(r => r.FirstURL && urls.push(r.FirstURL));
+    return [...new Set(urls)].filter(u => /^https?:\/\//i.test(u));
+  } catch { return []; }
+}
+
 export async function POST(request) {
   if (!auth(request)) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   const { query } = await request.json().catch(() => ({}));
-  if (!query || query.trim().length < 2) return NextResponse.json({ results: [] });
+  if (!query || query.trim().length < 2) return NextResponse.json({ results: [], notFound: false });
 
   const q = query.trim();
 
-  // Pesquisa na base de fontes conhecidas
+  // 1. Pesquisa na base de fontes conhecidas
   const scored = KNOWN_SOURCES
     .map(src => ({ ...src, score: score(src, q) }))
     .filter(src => src.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 6);
 
-  // Se encontrou resultados na base conhecida, devolve
   if (scored.length > 0) {
-    return NextResponse.json({ results: scored });
+    return NextResponse.json({ results: scored, notFound: false });
   }
 
-  // Fallback: gera feed do Google News para o termo pesquisado
-  const googleFeedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en&gl=US&ceid=US:en`;
-  return NextResponse.json({
-    results: [{
-      name: `Google News: "${q}"`,
-      url: googleFeedUrl,
-      sector: null, // utilizador escolhe
-      score: 50,
-      isGoogleNews: true,
-    }],
-  });
+  // 2. Pesquisa na web para encontrar o site
+  const webUrls = await searchWeb(q);
+  for (const webUrl of webUrls.slice(0, 3)) {
+    try {
+      const domain = new URL(webUrl).origin;
+      const feed = await tryFeedPatterns(domain);
+      if (feed) {
+        return NextResponse.json({
+          results: [{ name: feed.name || q, url: feed.url, sector: null, score: 70, itemCount: feed.itemCount }],
+          notFound: false,
+        });
+      }
+    } catch { continue; }
+  }
+
+  // 3. Tenta construir URL directamente a partir do nome (ex: "Naval Times" → naval-times.com)
+  const domainGuess = q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  for (const tld of ['.com', '.org', '.net']) {
+    const feed = await tryFeedPatterns(`${domainGuess}${tld}`);
+    if (feed) {
+      return NextResponse.json({
+        results: [{ name: feed.name || q, url: feed.url, sector: null, score: 50, itemCount: feed.itemCount }],
+        notFound: false,
+      });
+    }
+  }
+
+  // 4. Não encontrado
+  return NextResponse.json({ results: [], notFound: true });
 }

@@ -34,6 +34,7 @@ export default function SourcesPage() {
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [notFound, setNotFound] = useState(false);
   const searchTimer = useState(null);
 
   function showToast(message, type = 'info') {
@@ -69,10 +70,9 @@ export default function SourcesPage() {
     setUrl(value);
     setValidation(null);
     setSuggestions([]);
+    setNotFound(false);
     if (!value.trim() || value.trim().length < 2) return;
-    // Se parece URL, não faz pesquisa por nome
     if (isUrl(value.trim())) return;
-    // Pesquisa por nome com debounce
     clearTimeout(searchTimer[0]);
     searchTimer[0] = setTimeout(async () => {
       setSearching(true);
@@ -85,9 +85,10 @@ export default function SourcesPage() {
         });
         const data = await res.json();
         setSuggestions(data.results || []);
+        setNotFound(data.notFound === true && (data.results || []).length === 0);
       } catch {}
       setSearching(false);
-    }, 350);
+    }, 500);
   }
 
   function handleSelectSuggestion(suggestion) {
@@ -220,6 +221,17 @@ export default function SourcesPage() {
               </button>
             </div>
 
+            {/* Fonte não encontrada */}
+            {notFound && !searching && (
+              <div style={{
+                marginTop: 6, padding: '10px 14px', borderRadius: 'var(--radius-sm)',
+                background: 'var(--red-50)', border: '1px solid var(--red-100)',
+                color: 'var(--red-600)', fontSize: '.85rem', fontWeight: 500,
+              }}>
+                ✗ Fonte não encontrada — verifica o nome ou cola o URL directamente
+              </div>
+            )}
+
             {/* Dropdown de sugestões */}
             {suggestions.length > 0 && (
               <div style={{
@@ -257,7 +269,7 @@ export default function SourcesPage() {
                   </button>
                 ))}
                 <div style={{ padding: '6px 14px', fontSize: '.72rem', color: 'var(--gray-400)', background: 'var(--gray-50)' }}>
-                  Clica para selecionar · também podes colar um URL directamente
+                  Clica para selecionar · podes também colar um URL directamente
                 </div>
               </div>
             )}
