@@ -44,7 +44,7 @@ const KNOWN_SOURCES = [
 
   // Flipboard por tópico
   { name: 'Flipboard — Military',   url: 'https://flipboard.com/topic/military.rss',   sector: 'defesa-militar' },
-  { name: 'Flipboard — Shipping',   url: 'https://flipboard.com/topic/shipping.rss',   sector: 'maritimo' },
+  { name: 'Flipboard — Shipping Companies', url: 'https://flipboard.com/topic/shippingcompanies.rss', sector: 'maritimo' },
   { name: 'Flipboard — Aerospace',  url: 'https://flipboard.com/topic/aerospace.rss',  sector: 'aeroespacial' },
   { name: 'Flipboard — Technology', url: 'https://flipboard.com/topic/technology.rss', sector: 'tecnologia' },
   { name: 'Flipboard — Science',    url: 'https://flipboard.com/topic/science.rss',    sector: 'tecnologia' },
