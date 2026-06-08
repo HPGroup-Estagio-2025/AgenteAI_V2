@@ -153,11 +153,29 @@ export default function SourcesPage() {
     }, 500);
   }
 
-  function handleSelectSuggestion(suggestion) {
+  async function handleSelectSuggestion(suggestion) {
     setUrl(suggestion.url);
     if (suggestion.sector) setSector(suggestion.sector);
     setSuggestions([]);
-    setValidation({ valid: true, feedUrl: suggestion.url, name: suggestion.name, itemCount: '?', fromSuggestion: true });
+    // Valida automaticamente para obter o número real de artigos
+    setValidating(true);
+    setValidation(null);
+    const token = localStorage.getItem('auth_token');
+    try {
+      const res = await fetch('/api/sources/validate', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: suggestion.url }),
+      });
+      const data = await res.json();
+      // Usa o nome da sugestão se o feed não tiver um nome melhor
+      if (data.valid && (!data.name || data.name === suggestion.url)) data.name = suggestion.name;
+      setValidation(data);
+    } catch {
+      // Fallback sem contagem
+      setValidation({ valid: true, feedUrl: suggestion.url, name: suggestion.name });
+    }
+    setValidating(false);
   }
 
   async function handleValidate() {
@@ -355,7 +373,7 @@ export default function SourcesPage() {
               {validation.valid ? (
                 <>
                   <div style={{ fontWeight: 700, marginBottom: 4 }}>✓ Fonte válida: {validation.name}</div>
-                  {validation.itemCount && validation.itemCount !== '?' && (
+                  {validation.itemCount && (
                     <div style={{ fontSize: '.82rem', opacity: .8 }}>{validation.itemCount} artigos encontrados{validation.note ? ` · ${validation.note}` : ''}</div>
                   )}
                 </>
