@@ -1140,6 +1140,22 @@ export default function DashboardPage() {
             )}
           </div>
           {/* Direita */}
+          {pendingArticles.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ fontSize: '.8rem', color: 'var(--red-600)', borderColor: 'var(--red-100)' }}
+              onClick={() => {
+                savePending([]);
+                setPendingArticles([]);
+                setCounts(prev => ({ ...prev, pending: 0 }));
+                showToast('Cache de notícias limpa', 'info');
+              }}
+              title="Limpar notícias pendentes do browser"
+            >
+              🗑 Limpar cache
+            </button>
+          )}
           <button type="button" className={`btn-agent${agentRunning ? ' btn-agent--running' : ''}`} onClick={runAgentManually} disabled={agentRunning}>
             {agentRunning ? (
               <>

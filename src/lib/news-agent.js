@@ -531,12 +531,21 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
     const customSources = await loadCustomSources();
     const customUrls = new Set(customSources.map(s => s.url));
 
-    // Fontes custom ficam no início de cada setor (prioridade máxima)
+    // Se o user tem fontes custom: custom primeiro, predefinidas a seguir
+    // Se não tem fontes custom: usa só as predefinidas
     const activeSectorFeeds = {};
+    const hasAnySources = customSources.length > 0;
+
     for (const [sector, feeds] of Object.entries(SECTOR_FEEDS)) {
       const custom = customSources.filter(s => s.sector === sector).map(s => s.url);
-      const defaults = feeds.filter(u => !customUrls.has(u));
-      activeSectorFeeds[sector] = [...custom, ...defaults]; // custom primeiro
+      if (custom.length > 0) {
+        // Setor tem fontes custom — custom primeiro, depois as predefinidas
+        const defaults = feeds.filter(u => !customUrls.has(u));
+        activeSectorFeeds[sector] = [...custom, ...defaults];
+      } else {
+        // Sem fontes custom neste setor — usa só as predefinidas
+        activeSectorFeeds[sector] = [...feeds];
+      }
     }
     // Adiciona setores novos que só existem em fontes custom
     for (const src of customSources) {
@@ -544,6 +553,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         activeSectorFeeds[src.sector] = [src.url];
       }
     }
+    console.log('[agent] Modo fontes:', hasAnySources ? 'custom + predefinidas' : 'só predefinidas');
     console.log('[agent] Fontes activas por setor:', Object.fromEntries(Object.entries(activeSectorFeeds).map(([k, v]) => [k, v.length])));
 
     const rawArticles = await fetchAllRss(activeSectorFeeds);
