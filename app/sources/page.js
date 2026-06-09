@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
 // Cores para setores predefinidos; setores custom recebem cor gerada
@@ -41,6 +41,8 @@ export default function SourcesPage() {
   const [notFound, setNotFound] = useState(false);
   const [sectorMatch, setSectorMatch] = useState(null);
   const searchTimer = useRef(null);
+  const [dragId, setDragId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
   // Novo setor
   const [showNewSector, setShowNewSector] = useState(false);
   const [newSectorLabel, setNewSectorLabel] = useState('');
@@ -233,12 +235,45 @@ export default function SourcesPage() {
     } catch {}
   }
 
-  const groupedSources = sectors.map(s => ({
+  async function handleReorder(sectorId, fromId, toId) {
+    if (fromId === toId) return;
+    const sectorItems = sources.filter(s => s.sector === sectorId);
+    const otherItems = sources.filter(s => s.sector !== sectorId);
+    const fromIdx = sectorItems.findIndex(s => s.id === fromId);
+    const toIdx = sectorItems.findIndex(s => s.id === toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const reordered = [...sectorItems];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+
+    // Atribuir prioridades globais: otherItems mantêm as suas, sectorItems recebem valores intercalados
+    const otherPriorities = otherItems.map(s => s.priority ?? 0).sort((a, b) => a - b);
+    const minOther = otherPriorities.length ? Math.min(...otherPriorities) : 1000;
+    const newItems = reordered.map((s, i) => ({ ...s, priority: i + 1 }));
+    // Ajusta os outros items para não colidir
+    const offset = reordered.length + 1;
+    const adjustedOthers = otherItems.map((s, i) => ({ ...s, priority: offset + i }));
+
+    const allUpdated = [...newItems, ...adjustedOthers];
+    setSources(allUpdated);
+
+    const token = localStorage.getItem('auth_token');
+    try {
+      await fetch('/api/sources', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: allUpdated.map(s => ({ id: s.id, priority: s.priority })) }),
+      });
+    } catch { showToast('Erro ao guardar ordem', 'error'); }
+  }
+
+  const groupedSources = useMemo(() => sectors.map(s => ({
     ...s,
     color: sectorColor(s.id),
     isCustom: !DEFAULT_SECTOR_IDS.includes(s.id),
     items: sources.filter(src => src.sector === s.id),
-  })).filter(s => s.items.length > 0);
+  })).filter(s => s.items.length > 0), [sectors, sources]);
 
   return (
     <div className="dashboard-page">
@@ -458,40 +493,72 @@ export default function SourcesPage() {
             <span>As fontes predefinidas do sistema continuam activas</span>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {groupedSources.map(group => (
-              <div key={group.id} style={{ background: 'var(--white)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--gray-200)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-                <div style={{ padding: '10px 18px', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: group.color, display: 'inline-block', flexShrink: 0 }} />
-                  <span style={{ fontWeight: 700, fontSize: '.85rem', color: 'var(--gray-700)' }}>{group.label}</span>
-                  {group.isCustom && <span style={{ fontSize: '.65rem', padding: '1px 6px', borderRadius: 8, background: 'var(--blue-50)', color: 'var(--blue-600)', fontWeight: 700 }}>Custom</span>}
-                  <span style={{ marginLeft: 'auto', fontSize: '.75rem', color: 'var(--gray-400)' }}>{group.items.length} fonte{group.items.length !== 1 ? 's' : ''}</span>
-                  {group.isCustom && (
-                    <button
-                      onClick={() => handleDeleteSector(group.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--red-600)', fontSize: '.72rem', cursor: 'pointer', padding: '2px 6px' }}
-                      title="Remover setor"
-                    >✕ Setor</button>
-                  )}
-                </div>
-                {group.items.map(src => (
-                  <div key={src.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid var(--gray-100)' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: '.875rem', color: 'var(--gray-800)', marginBottom: 2 }}>{src.name}</div>
-                      <div style={{ fontSize: '.75rem', color: 'var(--gray-400)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{src.url}</div>
-                    </div>
-                    <button
-                      className="btn btn-ghost"
-                      style={{ color: 'var(--red-600)', borderColor: 'transparent', padding: '5px 10px', fontSize: '.78rem', flexShrink: 0 }}
-                      onClick={() => handleDelete(src.id)}
-                    >
-                      Remover
-                    </button>
+          <>
+            <p style={{ fontSize: '.8rem', color: 'var(--gray-400)', marginBottom: 12 }}>
+              ☰ Arrasta as fontes para definir a ordem de prioridade — as primeiras recebem mais slots no agente.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {groupedSources.map(group => (
+                <div key={group.id} style={{ background: 'var(--white)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--gray-200)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ padding: '10px 18px', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: group.color, display: 'inline-block', flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700, fontSize: '.85rem', color: 'var(--gray-700)' }}>{group.label}</span>
+                    {group.isCustom && <span style={{ fontSize: '.65rem', padding: '1px 6px', borderRadius: 8, background: 'var(--blue-50)', color: 'var(--blue-600)', fontWeight: 700 }}>Custom</span>}
+                    <span style={{ marginLeft: 'auto', fontSize: '.75rem', color: 'var(--gray-400)' }}>{group.items.length} fonte{group.items.length !== 1 ? 's' : ''}</span>
+                    {group.isCustom && (
+                      <button
+                        onClick={() => handleDeleteSector(group.id)}
+                        style={{ background: 'none', border: 'none', color: 'var(--red-600)', fontSize: '.72rem', cursor: 'pointer', padding: '2px 6px' }}
+                        title="Remover setor"
+                      >✕ Setor</button>
+                    )}
                   </div>
-                ))}
-              </div>
-            ))}
-          </div>
+                  {group.items.map((src, idx) => (
+                    <div
+                      key={src.id}
+                      draggable
+                      onDragStart={() => setDragId(src.id)}
+                      onDragEnd={() => { setDragId(null); setDragOverId(null); }}
+                      onDragOver={e => { e.preventDefault(); setDragOverId(src.id); }}
+                      onDrop={e => { e.preventDefault(); if (dragId) handleReorder(group.id, dragId, src.id); setDragId(null); setDragOverId(null); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px',
+                        borderBottom: '1px solid var(--gray-100)',
+                        background: dragOverId === src.id && dragId !== src.id ? 'var(--blue-50)' : dragId === src.id ? 'var(--gray-50)' : 'var(--white)',
+                        opacity: dragId === src.id ? 0.5 : 1,
+                        transition: 'background .12s',
+                        cursor: 'grab',
+                      }}
+                    >
+                      {/* Drag handle */}
+                      <span style={{ color: 'var(--gray-300)', fontSize: '1rem', userSelect: 'none', flexShrink: 0, lineHeight: 1 }}>
+                        ⠿
+                      </span>
+                      {/* Prioridade */}
+                      <span style={{
+                        minWidth: 22, height: 22, borderRadius: '50%', background: idx === 0 ? 'var(--blue-600)' : 'var(--gray-100)',
+                        color: idx === 0 ? '#fff' : 'var(--gray-500)',
+                        fontSize: '.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      }}>
+                        {idx + 1}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '.875rem', color: 'var(--gray-800)', marginBottom: 2 }}>{src.name}</div>
+                        <div style={{ fontSize: '.75rem', color: 'var(--gray-400)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{src.url}</div>
+                      </div>
+                      <button
+                        className="btn btn-ghost"
+                        style={{ color: 'var(--red-600)', borderColor: 'transparent', padding: '5px 10px', fontSize: '.78rem', flexShrink: 0 }}
+                        onClick={() => handleDelete(src.id)}
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </main>
 

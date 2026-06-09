@@ -516,8 +516,10 @@ async function loadCustomSources() {
   try {
     const { data } = await supabase
       .from('news_sources')
-      .select('url, sector')
-      .eq('active', true);
+      .select('url, sector, priority')
+      .eq('active', true)
+      .order('priority', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true });
     return data || [];
   } catch { return []; }
 }
@@ -531,9 +533,11 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
   }
 
   try {
-    // Carrega fontes personalizadas do Supabase
+    // Carrega fontes personalizadas do Supabase (já ordenadas por priority ASC)
     const customSources = await loadCustomSources();
     const customUrls = new Set(customSources.map(s => s.url));
+    // Mapa url → priority para usar no sorting de artigos
+    const customPriorityMap = new Map(customSources.map(s => [s.url.toLowerCase(), s.priority ?? 9999]));
 
     // Se o user tem fontes custom: custom primeiro, predefinidas a seguir
     // Se não tem fontes custom: usa só as predefinidas
@@ -654,10 +658,15 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         !a._feedUrl || !customFeedUrlsLower.has(a._feedUrl.toLowerCase())
       );
 
-      // Artigos custom: ordenar por recência, gerar postDescription, marcar como custom
+      // Artigos custom: ordenar por prioridade da fonte, depois por recência dentro da mesma fonte
       const customScored = customSectorRaw
         .filter(a => (a.url || a.title) && !usedUrls.has(a.url || a.title))
-        .sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
+        .sort((a, b) => {
+          const pa = customPriorityMap.get(a._feedUrl?.toLowerCase()) ?? 9999;
+          const pb = customPriorityMap.get(b._feedUrl?.toLowerCase()) ?? 9999;
+          if (pa !== pb) return pa - pb;
+          return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+        })
         .slice(0, ARTICLES_PER_SECTOR)
         .map(a => ({ ...a, _isCustomSource: true, finalScore: 80, postDescription: generatePostDescription(a) }));
 
