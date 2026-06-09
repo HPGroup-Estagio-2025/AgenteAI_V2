@@ -458,11 +458,40 @@ function SavedArticleCard({ item, companies, onPublish, onRemove, isPublishing }
 
 // ── localStorage helpers ────────────────────────────────────────────
 const LS_KEY = 'pending_articles';
+const LS_SEEN_KEY = 'seen_article_keys'; // histórico de URLs/títulos já vistos
+const MAX_SEEN = 1000; // limite para não crescer infinitamente
+
 function loadPending() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; }
 }
 function savePending(articles) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(articles)); } catch {}
+}
+function loadSeen() {
+  try { return new Set(JSON.parse(localStorage.getItem(LS_SEEN_KEY) || '[]')); } catch { return new Set(); }
+}
+function addToSeen(articles) {
+  try {
+    const seen = loadSeen();
+    for (const a of articles) {
+      if (a.url) seen.add(a.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase());
+      if (a.title) seen.add('t:' + a.title.toLowerCase().trim());
+    }
+    // Mantém só os últimos MAX_SEEN para não crescer sem limite
+    const trimmed = [...seen].slice(-MAX_SEEN);
+    localStorage.setItem(LS_SEEN_KEY, JSON.stringify(trimmed));
+  } catch {}
+}
+function isAlreadySeen(article) {
+  const seen = loadSeen();
+  if (article.url) {
+    const normUrl = article.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
+    if (seen.has(normUrl)) return true;
+  }
+  if (article.title) {
+    if (seen.has('t:' + article.title.toLowerCase().trim())) return true;
+  }
+  return false;
 }
 
 // ── Página principal ────────────────────────────────────────────────
@@ -772,12 +801,10 @@ export default function DashboardPage() {
       setLastAgentRun(data);
       if (Array.isArray(data.articles) && data.articles.length > 0) {
         const existing = loadPending();
-        const existingUrls = new Set(existing.map(a => a.url).filter(Boolean));
-        const existingTitles = new Set(existing.map(a => a.title?.toLowerCase().trim()).filter(Boolean));
-        const newArticles = data.articles.filter(a =>
-          !(a.url && existingUrls.has(a.url)) &&
-          !(a.title && existingTitles.has(a.title?.toLowerCase().trim()))
-        );
+        // Filtra contra o histórico completo (pendentes + já publicados/rejeitados/trimados)
+        const newArticles = data.articles.filter(a => !isAlreadySeen(a));
+        // Regista os novos artigos no histórico para não voltarem a aparecer
+        addToSeen(newArticles);
         const raw = [...existing, ...newArticles];
 
         // Por setor: mantém apenas as 10 mais recentes, apaga as mais antigas
