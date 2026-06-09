@@ -1008,6 +1008,7 @@ export default function DashboardPage() {
       const data = await res.json();
       if (!res.ok) { showToast(data.error || 'Erro ao guardar', 'error'); return; }
       removePending(item.id);
+      setCounts(prev => ({ ...prev, on_hold: (prev.on_hold || 0) + 1 }));
       showToast('Notícia guardada!', 'success');
     } catch {
       showToast('Erro de ligação. Tenta novamente.', 'error');
