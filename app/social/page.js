@@ -573,54 +573,6 @@ function SocialPageContent() {
           </div>
         ) : (
           <div className="social-grid">
-            {/* ── Create Company Card ── */}
-            <div className="social-create-card">
-              <span className="social-create-card-label">Nova Empresa</span>
-              <input
-                type="text"
-                placeholder="Nome da empresa"
-                value={newCompanyInput}
-                onChange={e => setNewCompanyInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleCreateCompany()}
-              />
-              {/* Logo field with preview */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                  Logotipo <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional)</span>
-                </label>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {newCompanyLogo && (
-                    <img
-                      src={newCompanyLogo}
-                      alt="preview"
-                      onError={e => e.target.style.display = 'none'}
-                      style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fff', border: '1.5px solid var(--gray-200)', flexShrink: 0, padding: 2 }}
-                    />
-                  )}
-                  <input
-                    type="url"
-                    placeholder="https://exemplo.com/logo.png"
-                    value={newCompanyLogo}
-                    onChange={e => setNewCompanyLogo(e.target.value)}
-                    style={{ flex: 1 }}
-                  />
-                </div>
-              </div>
-              <button
-                className="btn btn-primary btn-full"
-                onClick={handleCreateCompany}
-                disabled={!newCompanyInput.trim()}
-              >
-                Criar Empresa
-              </button>
-
-              {companies.length === 0 && (
-                <p style={{ fontSize: '.78rem', color: 'var(--gray-400)', marginTop: 4, lineHeight: 1.5 }}>
-                  Cria uma empresa para organizar as tuas contas de redes sociais.
-                </p>
-              )}
-            </div>
-
             {/* ── Company Cards ── */}
             {companies.map(company => {
               const companyAccounts = getAccountsByCompany(company.id);
@@ -687,6 +639,54 @@ function SocialPageContent() {
                 </div>
               );
             })}
+
+            {/* ── Create Company Card ── */}
+            <div className="social-create-card">
+              <span className="social-create-card-label">Nova Empresa</span>
+              <input
+                type="text"
+                placeholder="Nome da empresa"
+                value={newCompanyInput}
+                onChange={e => setNewCompanyInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCreateCompany()}
+              />
+              {/* Logo field with preview */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                  Logotipo <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional)</span>
+                </label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {newCompanyLogo && (
+                    <img
+                      src={newCompanyLogo}
+                      alt="preview"
+                      onError={e => e.target.style.display = 'none'}
+                      style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fff', border: '1.5px solid var(--gray-200)', flexShrink: 0, padding: 2 }}
+                    />
+                  )}
+                  <input
+                    type="url"
+                    placeholder="https://exemplo.com/logo.png"
+                    value={newCompanyLogo}
+                    onChange={e => setNewCompanyLogo(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                </div>
+              </div>
+              <button
+                className="btn btn-primary btn-full"
+                onClick={handleCreateCompany}
+                disabled={!newCompanyInput.trim()}
+              >
+                Criar Empresa
+              </button>
+
+              {companies.length === 0 && (
+                <p style={{ fontSize: '.78rem', color: 'var(--gray-400)', marginTop: 4, lineHeight: 1.5 }}>
+                  Cria uma empresa para organizar as tuas contas de redes sociais.
+                </p>
+              )}
+            </div>
           </div>
         )}
 
