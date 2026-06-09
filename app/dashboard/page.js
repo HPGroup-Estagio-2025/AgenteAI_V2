@@ -777,7 +777,22 @@ export default function DashboardPage() {
           !(a.url && existingUrls.has(a.url)) &&
           !(a.title && existingTitles.has(a.title?.toLowerCase().trim()))
         );
-        const merged = [...existing, ...newArticles];
+        const raw = [...existing, ...newArticles];
+
+        // Por setor: mantém apenas as 10 mais recentes, apaga as mais antigas
+        const MAX_PER_SECTOR = 10;
+        const bySector = {};
+        for (const a of raw) {
+          const key = a.category || 'outros';
+          if (!bySector[key]) bySector[key] = [];
+          bySector[key].push(a);
+        }
+        const merged = Object.values(bySector).flatMap(articles =>
+          articles
+            .sort((a, b) => new Date(b.receivedAt || b.publishedAt || 0) - new Date(a.receivedAt || a.publishedAt || 0))
+            .slice(0, MAX_PER_SECTOR)
+        );
+
         savePending(merged);
         setPendingArticles(merged);
         setCounts(prev => ({ ...prev, pending: merged.length }));
