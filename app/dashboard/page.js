@@ -997,7 +997,6 @@ export default function DashboardPage() {
 
   // ── Guardar artigo (on_hold) ──────────────────────────────────────
   async function handleSave(item) {
-    if (!hasConnectedAccounts()) { setShowNoSocialModal(true); return; }
     const token = localStorage.getItem('auth_token');
     try {
       const res = await fetch(`/api/news/${encodeURIComponent(item.id)}/save`, {
