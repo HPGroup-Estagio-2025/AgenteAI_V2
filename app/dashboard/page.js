@@ -31,6 +31,7 @@ const STATIC_SECTOR_BADGES = {
   'aeroespacial':   'badge-sector-aeroespacial',
   'ferroviario':    'badge-sector-ferroviario',
   'tecnologia':     'badge-sector-tecnologia',
+  'fitness':        'badge-sector-fitness',
 };
 
 const STATUS_LABELS = {
