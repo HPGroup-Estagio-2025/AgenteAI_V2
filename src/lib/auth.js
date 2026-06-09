@@ -12,8 +12,8 @@ if (!g._jwtSecret) {
 }
 const JWT_SECRET = g._jwtSecret;
 
-export function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '4h', issuer: 'dashboard-news' });
+export function signToken(payload, expiresInSeconds = 14400) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: expiresInSeconds, issuer: 'dashboard-news' });
 }
 
 export function verifyToken(token) {

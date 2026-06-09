@@ -56,7 +56,7 @@ export default function LoginPage() {
         const res = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: username.trim(), password }),
+          body: JSON.stringify({ username: username.trim(), password, rememberMe }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -90,7 +90,7 @@ export default function LoginPage() {
         const res = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: username.trim(), password, otp: otp.trim(), otpToken }),
+          body: JSON.stringify({ username: username.trim(), password, otp: otp.trim(), otpToken, rememberMe }),
         });
         const data = await res.json();
         if (!res.ok) {

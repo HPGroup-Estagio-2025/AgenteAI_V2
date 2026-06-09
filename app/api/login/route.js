@@ -25,7 +25,7 @@ export async function GET() {
 
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
-  const { username, password, otp, otpToken } = body;
+  const { username, password, otp, otpToken, rememberMe } = body;
 
   if (!username || !password || typeof username !== 'string' || typeof password !== 'string') {
     return NextResponse.json({ error: 'Username e password são obrigatórios' }, { status: 400 });
@@ -58,6 +58,7 @@ export async function POST(request) {
     }
   }
 
-  const token = signToken({ username: ADMIN_USERNAME, role: 'admin' });
-  return NextResponse.json({ token, expiresIn: 14400 });
+  const expiresIn = rememberMe ? 30 * 24 * 60 * 60 : 14400;
+  const token = signToken({ username: ADMIN_USERNAME, role: 'admin' }, expiresIn);
+  return NextResponse.json({ token, expiresIn });
 }
