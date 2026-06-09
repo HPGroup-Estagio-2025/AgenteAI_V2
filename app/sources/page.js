@@ -513,7 +513,9 @@ export default function SourcesPage() {
                       >✕ Setor</button>
                     )}
                   </div>
-                  {group.items.map((src, idx) => (
+                  {group.items.map((src) => {
+                    const globalRank = sources.findIndex(s => s.id === src.id) + 1;
+                    return (
                     <div
                       key={src.id}
                       draggable
@@ -534,13 +536,13 @@ export default function SourcesPage() {
                       <span style={{ color: 'var(--gray-300)', fontSize: '1rem', userSelect: 'none', flexShrink: 0, lineHeight: 1 }}>
                         ⠿
                       </span>
-                      {/* Prioridade */}
+                      {/* Prioridade global */}
                       <span style={{
-                        minWidth: 22, height: 22, borderRadius: '50%', background: idx === 0 ? 'var(--blue-600)' : 'var(--gray-100)',
-                        color: idx === 0 ? '#fff' : 'var(--gray-500)',
+                        minWidth: 22, height: 22, borderRadius: '50%', background: globalRank === 1 ? 'var(--blue-600)' : 'var(--gray-100)',
+                        color: globalRank === 1 ? '#fff' : 'var(--gray-500)',
                         fontSize: '.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                       }}>
-                        {idx + 1}
+                        {globalRank}
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: '.875rem', color: 'var(--gray-800)', marginBottom: 2 }}>{src.name}</div>
@@ -554,7 +556,8 @@ export default function SourcesPage() {
                         Remover
                       </button>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ))}
             </div>
