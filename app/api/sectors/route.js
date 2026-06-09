@@ -33,12 +33,16 @@ export async function GET(request) {
       .order('created_at', { ascending: true });
 
     if (error?.code === '42P01') {
-      // Tabela não existe ainda — devolve os predefinidos
       return NextResponse.json({ sectors: DEFAULT_SECTORS, isDefault: true });
     }
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const sectors = data?.length ? data : DEFAULT_SECTORS;
+    // Predefinidos sempre presentes (usa dados da DB se existirem, senão o hardcoded)
+    // Setores custom (não predefinidos) aparecem a seguir
+    const dbMap = Object.fromEntries((data || []).map(s => [s.id, s]));
+    const defaults = DEFAULT_SECTORS.map(s => dbMap[s.id] || s);
+    const customs = (data || []).filter(s => !DEFAULT_SECTORS.find(d => d.id === s.id));
+    const sectors = [...defaults, ...customs];
     return NextResponse.json({ sectors });
   } catch {
     return NextResponse.json({ sectors: DEFAULT_SECTORS, isDefault: true });
