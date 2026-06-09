@@ -197,7 +197,8 @@ function buildWordPressContent(item, company) {
   const rawDesc = item.description || item.summary || item.excerpt || item.content || '';
   const description = cleanDescription(rawDesc) || title;
   const sourceUrl = item.url || '';
-  const imageUrl = getItemImage(item);
+  const rawImageUrl = getItemImage(item);
+  const imageUrl = `https://wsrv.nl/?url=${encodeURIComponent(rawImageUrl)}&w=1200&h=630&fit=cover&output=jpg`;
   const sector = item.category || '';
   const publishedAt = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
   const companyName = company?.name || '';
@@ -333,30 +334,35 @@ async function publishToWordPress(item, company) {
     tags: [],
   };
 
-  // Sempre faz upload de imagem como featured media (usa fallback se necessário)
+  // Sempre faz upload de imagem como featured media (usa proxy wsrv.nl para contornar bloqueios)
   const wpImageUrl = getItemImage(item);
+  const proxyImageUrl = `https://wsrv.nl/?url=${encodeURIComponent(wpImageUrl)}&w=1200&h=630&fit=cover&output=jpg`;
   let featuredMediaId = null;
-  try {
-    const imgRes = await fetch(wpImageUrl, { signal: AbortSignal.timeout(8000) });
-      if (imgRes.ok) {
-        const imgBuffer = await imgRes.arrayBuffer();
-        const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
-        const ext = contentType.includes('png') ? 'png' : contentType.includes('gif') ? 'gif' : 'jpg';
-        const uploadRes = await fetch(`${wpBase}/wp-json/wp/v2/media`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Basic ${credentials}`,
-            'Content-Disposition': `attachment; filename="news-${Date.now()}.${ext}"`,
-            'Content-Type': contentType,
-          },
-          body: imgBuffer,
-          signal: AbortSignal.timeout(15000),
-        });
-        const uploadData = await uploadRes.json().catch(() => ({}));
-        if (uploadRes.ok && uploadData.id) featuredMediaId = uploadData.id;
-      }
-  } catch (err) {
-    console.warn('[wordpress] Falha ao fazer upload de imagem:', err.message);
+  for (const tryUrl of [wpImageUrl, proxyImageUrl]) {
+    try {
+      const imgRes = await fetch(tryUrl, {
+        signal: AbortSignal.timeout(10000),
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; dashboard-news/1.0)' },
+      });
+      if (!imgRes.ok) continue;
+      const imgBuffer = await imgRes.arrayBuffer();
+      const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+      const ext = contentType.includes('png') ? 'png' : contentType.includes('gif') ? 'gif' : 'jpg';
+      const uploadRes = await fetch(`${wpBase}/wp-json/wp/v2/media`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          'Content-Disposition': `attachment; filename="news-${Date.now()}.${ext}"`,
+          'Content-Type': contentType,
+        },
+        body: imgBuffer,
+        signal: AbortSignal.timeout(20000),
+      });
+      const uploadData = await uploadRes.json().catch(() => ({}));
+      if (uploadRes.ok && uploadData.id) { featuredMediaId = uploadData.id; break; }
+    } catch (err) {
+      console.warn(`[wordpress] Falha ao fazer upload de imagem (${tryUrl}):`, err.message);
+    }
   }
 
   if (featuredMediaId) postData.featured_media = featuredMediaId;
