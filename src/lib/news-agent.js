@@ -644,25 +644,36 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         return terms.some(t => text.includes(t));
       });
 
-      // Score e seleciona os melhores deste setor
-      // Artigos de fontes custom recebem bónus de score para aparecerem primeiro
-      const scored = scoreArticles(sectorRaw, ARTICLES_PER_SECTOR * 3)
-        .map(a => {
-          try {
-            const domain = new URL(a.url).hostname.replace(/^www\./, '').replace(/^feeds\./, '');
-            if (customUrls.size > 0 && [...customUrls].some(u => { try { return new URL(u).hostname.replace(/^www\./, '').replace(/^feeds\./, '') === domain; } catch { return false; } })) {
-              return { ...a, finalScore: (a.finalScore || 0) + 20, _isCustomSource: true };
-            }
-          } catch {}
-          return a;
-        })
-        .sort((a, b) => (b.finalScore || 0) - (a.finalScore || 0))
-        .filter(a => {
-          const key = a.url || a.title;
-          if (usedUrls.has(key)) return false;
-          return true;
-        })
-        .slice(0, ARTICLES_PER_SECTOR);
+      // Prioridade: artigos de fontes custom entram primeiro (sem filtro de keywords),
+      // depois preenchem-se as slots restantes com artigos das fontes predefinidas.
+      const customFeedUrlsLower = new Set([...customUrls].map(u => u.toLowerCase()));
+      const customSectorRaw = sectorRaw.filter(a =>
+        a._feedUrl && customFeedUrlsLower.has(a._feedUrl.toLowerCase())
+      );
+      const defaultSectorRaw = sectorRaw.filter(a =>
+        !a._feedUrl || !customFeedUrlsLower.has(a._feedUrl.toLowerCase())
+      );
+
+      // Artigos custom: ordenar por recência, gerar postDescription, marcar como custom
+      const customScored = customSectorRaw
+        .filter(a => (a.url || a.title) && !usedUrls.has(a.url || a.title))
+        .sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
+        .slice(0, ARTICLES_PER_SECTOR)
+        .map(a => ({ ...a, _isCustomSource: true, finalScore: 80, postDescription: generatePostDescription(a) }));
+
+      // Slots restantes: fontes predefinidas passam pelo scoring normal
+      const customUsedKeys = new Set(customScored.map(a => a.url || a.title));
+      const slotsLeft = ARTICLES_PER_SECTOR - customScored.length;
+      const defaultScored = slotsLeft > 0
+        ? scoreArticles(defaultSectorRaw, slotsLeft * 3)
+            .filter(a => {
+              const key = a.url || a.title;
+              return !usedUrls.has(key) && !customUsedKeys.has(key);
+            })
+            .slice(0, slotsLeft)
+        : [];
+
+      const scored = [...customScored, ...defaultScored];
 
       scored.forEach(a => {
         a._forcedCategory = sectorKey;
