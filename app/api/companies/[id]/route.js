@@ -46,9 +46,6 @@ export async function DELETE(request, { params }) {
     if (err.code === 'not_found') {
       return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
     }
-    if (err.code === 'already_deleted') {
-      return NextResponse.json({ error: 'Empresa já foi apagada' }, { status: 409 });
-    }
     console.error('[companies] DELETE error:', err.message);
     return NextResponse.json({ error: 'Erro ao apagar empresa' }, { status: 500 });
   }

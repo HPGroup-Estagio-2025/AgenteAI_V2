@@ -195,32 +195,25 @@ export async function deleteCompany(companyId) {
       throw err;
     }
 
-    if (!existing.active) {
-      const err = new Error('Empresa já foi apagada');
-      err.code = 'already_deleted';
-      throw err;
-    }
-
-    // Soft delete: set active = false
-    const { error: deleteError } = await supabaseAdmin
-      .from(COMPANIES_TABLE)
-      .update({ active: false })
-      .eq('id', companyId);
-
-    if (deleteError) {
-      console.error('[companies] Erro ao apagar empresa:', deleteError.message);
-      throw deleteError;
-    }
-
-    // Orphan all accounts by setting company_id to NULL
+    // Desliga as contas associadas antes de apagar a empresa
     const { error: orphanError } = await supabaseAdmin
       .from('social_accounts')
       .update({ company_id: null })
       .eq('company_id', companyId);
 
     if (orphanError) {
-      console.error('[companies] Erro ao orphanar contas:', orphanError.message);
-      // Don't throw — company is already deleted, just log the orphaning issue
+      console.error('[companies] Erro ao desligar contas:', orphanError.message);
+    }
+
+    // Hard delete: apaga o registo da tabela
+    const { error: deleteError } = await supabaseAdmin
+      .from(COMPANIES_TABLE)
+      .delete()
+      .eq('id', companyId);
+
+    if (deleteError) {
+      console.error('[companies] Erro ao apagar empresa:', deleteError.message);
+      throw deleteError;
     }
 
     return { success: true };
