@@ -49,6 +49,10 @@ const SECTOR_FEEDS = {
     'https://feeds.arstechnica.com/arstechnica/index',
     'https://www.theverge.com/rss/index.xml',
   ],
+  'fitness': [
+    'https://www.menshealth.com/rss/all.xml/',
+    'https://www.womenshealthmag.com/rss/all.xml/',
+  ],
 };
 
 const RSS_FEEDS = Object.values(SECTOR_FEEDS).flat();
@@ -77,6 +81,11 @@ const FALLBACK_POOLS = {
     'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800&q=80',
     'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80',
     'https://images.unsplash.com/photo-1508361001413-7a9dca21d08a?w=800&q=80',
+  ],
+  'fitness': [
+    'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80',
+    'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80',
+    'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&q=80',
   ],
   'default': [
     'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&q=80',
@@ -112,6 +121,7 @@ const sectors = {
   industry: ['industry', 'industrial', 'manufacturing', 'factory', 'production'],
   automotive: ['automotive', 'vehicle', 'ev', 'battery', 'mobility', 'car'],
   engineering: ['engineering', 'infrastructure', 'systems integration', 'project'],
+  fitness: ['fitness', 'workout', 'exercise', 'gym', 'training', 'nutrition', 'health', 'muscle', 'weight loss', 'running', 'yoga', 'crossfit', 'strength', 'cardio', 'sports medicine'],
 };
 
 const trustedSources = [
@@ -595,6 +605,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
       'aeroespacial':   ['aerospace', 'aviation', 'aircraft', 'airline', 'satellite', 'rocket launch', 'orbit', 'uav', 'airport', 'spaceflight', 'astronaut', 'spacecraft'],
       'ferroviario':    ['railway', 'railroad', 'rolling stock', 'locomotive', 'tram', 'high-speed rail', 'rail freight', 'metro system'],
       'tecnologia':     ['technology', 'software', 'hardware', 'artificial intelligence', 'digital', 'cybersecurity', 'semiconductor', 'cloud computing', 'robotics', 'startup'],
+      'fitness':        ['fitness', 'workout', 'exercise', 'gym', 'training', 'nutrition', 'health', 'muscle', 'weight loss', 'running', 'yoga', 'crossfit', 'strength', 'cardio'],
     };
 
     // Busca os feeds de cada setor — mínimo 10 artigos por setor

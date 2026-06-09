@@ -9,9 +9,10 @@ const SECTOR_COLORS = {
   'aeroespacial':   '#6D28D9',
   'ferroviario':    '#92400E',
   'tecnologia':     '#15803D',
+  'fitness':        '#BE185D',
 };
 
-const DEFAULT_SECTOR_IDS = ['maritimo', 'defesa-militar', 'aeroespacial', 'ferroviario', 'tecnologia'];
+const DEFAULT_SECTOR_IDS = ['maritimo', 'defesa-militar', 'aeroespacial', 'ferroviario', 'tecnologia', 'fitness'];
 
 function sectorColor(id) {
   if (SECTOR_COLORS[id]) return SECTOR_COLORS[id];

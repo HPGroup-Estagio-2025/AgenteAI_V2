@@ -14,6 +14,7 @@ export const DEFAULT_SECTORS = [
   { id: 'aeroespacial',   label: 'Aeroespacial',   keywords: ['aerospace', 'aviation', 'aircraft', 'airline', 'satellite', 'rocket launch', 'orbit', 'uav', 'airport', 'spaceflight', 'astronaut', 'spacecraft'] },
   { id: 'ferroviario',    label: 'Ferroviário',    keywords: ['railway', 'railroad', 'rolling stock', 'locomotive', 'tram', 'high-speed rail', 'rail freight', 'metro system'] },
   { id: 'tecnologia',     label: 'Tecnologia',     keywords: ['technology', 'software', 'hardware', 'artificial intelligence', 'digital', 'cybersecurity', 'semiconductor', 'cloud computing', 'robotics', 'startup'] },
+  { id: 'fitness',        label: 'Fitness',         keywords: ['fitness', 'workout', 'exercise', 'gym', 'training', 'nutrition', 'health', 'muscle', 'weight loss', 'running', 'yoga', 'crossfit', 'strength', 'cardio'] },
 ];
 
 function auth(request) {
