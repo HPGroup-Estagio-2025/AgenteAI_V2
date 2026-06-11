@@ -17,9 +17,13 @@ export async function POST(request) {
   }
 
   try {
+    const body = await request.json().catch(() => ({}));
+    const seenKeys = Array.isArray(body.seenKeys) ? body.seenKeys : [];
+
     const result = await runNewsAgent({
       triggerType: 'manual',
       triggeredBy: user.username || 'admin',
+      seenKeys,
     });
 
     return NextResponse.json(result);

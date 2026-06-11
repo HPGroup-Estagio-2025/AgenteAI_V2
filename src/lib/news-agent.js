@@ -405,7 +405,7 @@ function scoreArticles(items, maxArticles = 5) {
       return { ...article, ageDays, combinedScore: (article.relevanceScore || 0) + recencyScore };
     })
     .sort((a, b) => b.combinedScore - a.combinedScore)
-    .slice(0, 50);
+    .slice(0, 200);
 
   const validatedItems = scoredItems.map(article => {
     const text = `${article.title || ''} ${article.description || ''} ${article.content || ''}`.toLowerCase();
@@ -534,7 +534,7 @@ async function loadCustomSources() {
   } catch { return []; }
 }
 
-export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admin' } = {}) {
+export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admin', seenKeys = [] } = {}) {
   let run;
   try {
     run = await createRun({ triggerType, triggeredBy });
@@ -576,7 +576,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
 
     const rawArticles = await fetchAllRss(activeSectorFeeds);
 
-    // Só filtra artigos JÁ PUBLICADOS — rejeitados e on_hold podem reaparecer
+    // Filtra artigos JÁ PUBLICADOS (Supabase) + artigos já vistos pelo browser (localStorage)
     let seenUrls = new Set();
     try {
       const { data: existingNews } = await supabase
@@ -589,15 +589,34 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
       if (existingNews) existingNews.forEach(n => n.url && seenUrls.add(n.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase()));
     } catch { /* ignora erros — continua sem filtro */ }
 
-    const filteredArticles = seenUrls.size > 0
-      ? rawArticles.filter(a => {
-          if (!a.url) return true;
-          const norm = a.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
-          return !seenUrls.has(norm);
-        })
-      : rawArticles;
+    // Adiciona os seenKeys enviados pelo browser (URLs normalizados + títulos com prefixo "t:")
+    const clientSeenUrls = new Set();
+    const clientSeenTitles = new Set();
+    for (const key of seenKeys) {
+      if (typeof key !== 'string') continue;
+      if (key.startsWith('t:')) clientSeenTitles.add(key.slice(2).toLowerCase().trim());
+      else clientSeenUrls.add(key.toLowerCase());
+    }
+    for (const url of clientSeenUrls) seenUrls.add(url);
 
-    console.log(`[agent] ${rawArticles.length} artigos brutos, ${filteredArticles.length} após filtrar publicados`);
+    function isClientSeen(a) {
+      if (a.url) {
+        const norm = a.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
+        if (clientSeenUrls.has(norm)) return true;
+      }
+      if (a.title && clientSeenTitles.has(a.title.toLowerCase().trim())) return true;
+      return false;
+    }
+
+    const filteredArticles = rawArticles.filter(a => {
+      if (!a.url) return true;
+      const norm = a.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
+      if (seenUrls.has(norm)) return false;
+      if (isClientSeen(a)) return false;
+      return true;
+    });
+
+    console.log(`[agent] ${rawArticles.length} artigos brutos, ${filteredArticles.length} após filtrar vistos (${seenUrls.size} DB + ${clientSeenUrls.size} browser)`);
 
     const SECTOR_TERMS = {
       'maritimo':       ['maritime', 'naval', 'shipping lane', 'vessel', 'shipbuilding', 'offshore', 'fleet', 'tanker', 'cargo ship', 'freighter', 'tugboat', 'harbor', 'seaport', 'seafarer', 'nautical', 'marine engineering', 'port authority'],
