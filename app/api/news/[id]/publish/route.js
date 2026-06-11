@@ -128,10 +128,17 @@ function buildFacebookMessage(item, readMoreUrl) {
   const summary = buildSocialSummary(item);
   const linkUrl = readMoreUrl || item.url || '';
   const hashtags = generateHashtags(item);
-  // Não repete o título — Facebook já mostra o título via Open Graph do link
+  const companyLower = (item._companyName || '').toLowerCase();
+
+  let footer = '';
+  if (companyLower.includes('setq')) {
+    footer = 'AI for Mission Critical Operations.\nContact us: info@setq.ai | setq.ai';
+  }
+
   return [
     summary,
     linkUrl ? `🔗 ${linkUrl}` : '',
+    footer,
     hashtags,
   ].filter(Boolean).join('\n\n').slice(0, 60000);
 }
@@ -165,9 +172,14 @@ function generateHashtags(item) {
   if (text.includes('space') || text.includes('satellite')) tags.push('#SpaceTech');
   if (text.includes('drone') || text.includes('uav') || text.includes('unmanned')) tags.push('#UnmannedSystems');
 
-  // Tags fixas da empresa (ajustadas por empresa se necessário — passado via item._companyName)
-  const isDefense = (item._companyName || '').toLowerCase().includes('defense') || (item._companyName || '').toLowerCase().includes('defesa');
-  if (isDefense) {
+  // Tags fixas da empresa
+  const companyLower = (item._companyName || '').toLowerCase();
+  const isSetq = companyLower.includes('setq');
+  const isDefense = companyLower.includes('defense') || companyLower.includes('defesa');
+
+  if (isSetq) {
+    return '#AIforBusiness #AutonomousAI #OperationalExcellence #GrowthHacking #SalesEnablement #NoCode #AIAgents #SETQAI';
+  } else if (isDefense) {
     tags.push('#PartYard', '#PartYardDefense', '#BeStrongTogether');
   } else {
     tags.push('#PartYard', '#PartYardMarine', '#MovingTheSeaWithUs');
@@ -204,16 +216,22 @@ function buildWordPressContent(item, company) {
   const companyName = company?.name || '';
   const companyUrl = company?.website_url || '';
   const sectorLabel = sector ? sector.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Industry';
-  const isDefense = companyName.toLowerCase().includes('defense') || companyName.toLowerCase().includes('defesa');
+  const companyNameLower = companyName.toLowerCase();
+  const isSetqCompany = companyNameLower.includes('setq');
+  const isDefense = companyNameLower.includes('defense') || companyNameLower.includes('defesa');
   const hashtags = generateHashtags({ ...item, _companyName: companyName });
 
   // CTA baseado na empresa
-  const ctaLine = isDefense
-    ? `<strong>Be Strong Together!</strong>`
-    : `<strong>Moving The Sea With Us!</strong>`;
-  const contactLine = isDefense
-    ? `Call Us Today: <a href="tel:+351265544370">+351 265544370</a><br/>Email: <a href="mailto:sales@partyardmilitary.com">sales@partyardmilitary.com</a>`
-    : `Contact us today: <a href="tel:+351265544370">+351 265 544 370</a> or go to <a href="${companyUrl}/contacts" target="_blank" rel="noopener noreferrer">Contacts Page</a><br/>Email: <a href="mailto:sales@partyard.eu">sales@partyard.eu</a>`;
+  const ctaLine = isSetqCompany
+    ? `<strong>AI for Mission Critical Operations.</strong>`
+    : isDefense
+      ? `<strong>Be Strong Together!</strong>`
+      : `<strong>Moving The Sea With Us!</strong>`;
+  const contactLine = isSetqCompany
+    ? `Contact us: <a href="mailto:info@setq.ai">info@setq.ai</a><br/><a href="https://setq.ai" target="_blank" rel="noopener noreferrer">setq.ai</a>`
+    : isDefense
+      ? `Call Us Today: <a href="tel:+351265544370">+351 265544370</a><br/>Email: <a href="mailto:sales@partyardmilitary.com">sales@partyardmilitary.com</a>`
+      : `Contact us today: <a href="tel:+351265544370">+351 265 544 370</a> or go to <a href="${companyUrl}/contacts" target="_blank" rel="noopener noreferrer">Contacts Page</a><br/>Email: <a href="mailto:sales@partyard.eu">sales@partyard.eu</a>`;
 
   // Subtítulos e contexto expandido por setor
   const sectorContent = {
@@ -241,12 +259,17 @@ function buildWordPressContent(item, company) {
       sub2: 'Supply Chain and Maintenance Considerations',
       p2: `The shift towards electrified and high-speed rail networks introduces new technical requirements for components and maintenance. Organisations that invest early in understanding these specifications and building robust supply chains will be best placed to win and deliver on major contracts. ${companyName || 'PartYard'} follows these developments closely to ensure our clients are always a step ahead.`,
     },
-  }[sector] || {
+  }[sector] || (isSetqCompany ? {
+    sub1: 'The Rise of Autonomous AI Operations',
+    p1: `Organisations across every sector are under pressure to do more with less. The proliferation of AI workers — autonomous agents capable of managing inboxes, qualifying leads, tracking projects, and generating insights — is fundamentally changing how businesses scale. What once required entire teams can now be automated, deployed, and optimised in minutes.`,
+    sub2: 'How SETQ.AI Is Redefining Operations',
+    p2: `SETQ.AI deploys autonomous AI workers across four core areas: Assistant, Operations, Growth, and Insights. With 50+ integrations and a 60-second deployment process, SETQ enables businesses to scale their operations without growing headcount. Whether the goal is automating admin tasks, accelerating sales outreach, or surfacing real-time KPI data, SETQ's AI workers are built for mission critical performance. Discover how SETQ.AI can transform your operations at <a href="https://setq.ai" target="_blank" rel="noopener noreferrer">setq.ai</a>.`,
+  } : {
     sub1: 'Broader Industry Context',
     p1: `The industrial and engineering sectors continue to navigate a period of structural change — driven by digitalisation, sustainability imperatives, and supply chain reconfiguration. Companies across manufacturing, logistics, and technical services are adapting to new demands while maintaining the quality and reliability their customers depend on.`,
     sub2: 'Staying Ahead of the Curve',
     p2: `In this environment, access to timely and accurate industry intelligence is a genuine competitive advantage. Organisations that monitor market developments closely, and act decisively, are better positioned to manage risk and capitalise on emerging opportunities. At ${companyName || 'PartYard'}, we are committed to keeping our clients informed and supported.`,
-  };
+  });
 
   // Intro reescrita (evita plágio — reformula em vez de copiar)
   const introRewritten = description
@@ -731,6 +754,9 @@ export async function POST(request, { params }) {
       company = await getCompanyForAccount(primaryAccountId);
     }
     const companyUrl = company?.website_url || null;
+
+    // Enriquece o item com o nome da empresa para que as funções de publicação usem o template correto
+    if (company?.name) item = { ...item, _companyName: company.name };
 
     console.log('[publish] Processando publicação:', {
       platforms: socialPlatforms,
