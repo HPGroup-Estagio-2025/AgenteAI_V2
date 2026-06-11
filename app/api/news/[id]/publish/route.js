@@ -132,7 +132,7 @@ function buildFacebookMessage(item, readMoreUrl) {
 
   let footer = '';
   if (companyLower.includes('setq')) {
-    footer = 'AI for Mission Critical Operations.\nContact us: info@setq.ai | setq.ai';
+    footer = 'AI for Mission Critical Operations.\nContact us today: info@setq.ai | setq.ai/contact';
   }
 
   return [
@@ -228,7 +228,7 @@ function buildWordPressContent(item, company) {
       ? `<strong>Be Strong Together!</strong>`
       : `<strong>Moving The Sea With Us!</strong>`;
   const contactLine = isSetqCompany
-    ? `Contact us: <a href="mailto:info@setq.ai">info@setq.ai</a><br/><a href="https://setq.ai" target="_blank" rel="noopener noreferrer">setq.ai</a>`
+    ? `Contact us today: <a href="mailto:info@setq.ai">info@setq.ai</a> or visit our <a href="https://setq.ai/contact/" target="_blank" rel="noopener noreferrer">Contacts Page</a>`
     : isDefense
       ? `Call Us Today: <a href="tel:+351265544370">+351 265544370</a><br/>Email: <a href="mailto:sales@partyardmilitary.com">sales@partyardmilitary.com</a>`
       : `Contact us today: <a href="tel:+351265544370">+351 265 544 370</a> or go to <a href="${companyUrl}/contacts" target="_blank" rel="noopener noreferrer">Contacts Page</a><br/>Email: <a href="mailto:sales@partyard.eu">sales@partyard.eu</a>`;
