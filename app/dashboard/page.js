@@ -856,7 +856,9 @@ export default function DashboardPage() {
   }
 
   function hasConnectedAccounts() {
-    return Object.values(connectedAccounts).some(arr => Array.isArray(arr) && arr.length > 0);
+    const hasSocial = Object.values(connectedAccounts).some(arr => Array.isArray(arr) && arr.length > 0);
+    const hasWordpress = companiesData.some(c => c.wordpress_url && c.wordpress_username && c.wordpress_app_password);
+    return hasSocial || hasWordpress;
   }
 
   // ── Publicar múltiplos artigos em sequência ───────────────────────
