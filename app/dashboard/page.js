@@ -794,23 +794,19 @@ export default function DashboardPage() {
     const token = localStorage.getItem('auth_token');
     if (!token) { setAgentRunning(false); clearAuth(); router.replace('/'); return; }
     try {
-      const seenKeys = [...loadSeen()];
-      const res = await fetch('/api/agent/run', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seenKeys }),
-      });
+      const res = await fetch('/api/agent/run', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { showToast(data.error || 'Erro ao executar agente', 'error'); return; }
       setLastAgentRun(data);
       if (Array.isArray(data.articles) && data.articles.length > 0) {
-        // O agente já filtrou os vistos server-side — regista todos no histórico local
-        addToSeen(data.articles);
-        // Junta os novos aos pendentes existentes, sem duplicados por URL/título
         const existing = loadPending();
+        // Filtra artigos já vistos (histórico local)
+        const newArticles = data.articles.filter(a => !isAlreadySeen(a));
+        addToSeen(newArticles);
+        // Junta os novos aos pendentes existentes, sem duplicados por URL/título
         const existingKeys = new Set(existing.map(a => a.url || a.title));
-        const fresh = data.articles.filter(a => !existingKeys.has(a.url || a.title));
+        const fresh = newArticles.filter(a => !existingKeys.has(a.url || a.title));
         const merged = [...existing, ...fresh];
 
         savePending(merged);
@@ -818,7 +814,7 @@ export default function DashboardPage() {
         setCounts(prev => ({ ...prev, pending: merged.length }));
         // Auto-atribui empresa com base na categoria de cada artigo
         const autoSelections = {};
-        for (const a of merged) {
+        for (const a of fresh) {
           const company = guessCompanyForCategory(a.category);
           if (company) {
             autoSelections[a.id] = {
@@ -831,7 +827,10 @@ export default function DashboardPage() {
         if (Object.keys(autoSelections).length > 0) {
           setArticleSelections(prev => ({ ...autoSelections, ...prev }));
         }
-        showToast(`${merged.length} nova(s) notícia(s) carregadas para revisão`, 'success');
+        const msg = fresh.length > 0
+          ? `${fresh.length} nova(s) notícia(s) carregadas para revisão`
+          : 'Agente concluído: sem notícias novas (duplicados ignorados)';
+        showToast(msg, fresh.length > 0 ? 'success' : 'info');
         setFilterStatus('pending');
         setPage(1);
       } else {
