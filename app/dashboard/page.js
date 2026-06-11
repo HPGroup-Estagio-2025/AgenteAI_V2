@@ -800,18 +800,33 @@ export default function DashboardPage() {
       if (!res.ok) { showToast(data.error || 'Erro ao executar agente', 'error'); return; }
       setLastAgentRun(data);
       if (Array.isArray(data.articles) && data.articles.length > 0) {
-        // Substitui os pendentes pelos 60 artigos novos do agente (10 por setor)
-        // Limpa o histórico visto para que a próxima execução não bloqueie artigos dos feeds
-        localStorage.removeItem(LS_SEEN_KEY);
-        addToSeen(data.articles);
-        const merged = data.articles;
+        const existing = loadPending();
+        // Filtra contra o histórico completo (pendentes + já publicados/rejeitados/trimados)
+        const newArticles = data.articles.filter(a => !isAlreadySeen(a));
+        // Regista os novos artigos no histórico para não voltarem a aparecer
+        addToSeen(newArticles);
+        const raw = [...existing, ...newArticles];
+
+        // Por setor: mantém apenas as 10 mais recentes, apaga as mais antigas
+        const MAX_PER_SECTOR = 10;
+        const bySector = {};
+        for (const a of raw) {
+          const key = a.category || 'outros';
+          if (!bySector[key]) bySector[key] = [];
+          bySector[key].push(a);
+        }
+        const merged = Object.values(bySector).flatMap(articles =>
+          articles
+            .sort((a, b) => new Date(b.receivedAt || b.publishedAt || 0) - new Date(a.receivedAt || a.publishedAt || 0))
+            .slice(0, MAX_PER_SECTOR)
+        );
 
         savePending(merged);
         setPendingArticles(merged);
         setCounts(prev => ({ ...prev, pending: merged.length }));
-        // Auto-atribui empresa com base na categoria de cada artigo
+        // Auto-atribui empresa com base na categoria de cada artigo novo
         const autoSelections = {};
-        for (const a of merged) {
+        for (const a of newArticles) {
           const company = guessCompanyForCategory(a.category);
           if (company) {
             autoSelections[a.id] = {
@@ -824,7 +839,10 @@ export default function DashboardPage() {
         if (Object.keys(autoSelections).length > 0) {
           setArticleSelections(prev => ({ ...autoSelections, ...prev }));
         }
-        showToast(`${merged.length} notícia(s) carregadas para revisão`, 'success');
+        const msg = newArticles.length > 0
+          ? `${newArticles.length} nova(s) notícia(s) carregadas para revisão`
+          : 'Agente concluído: sem notícias novas (duplicados ignorados)';
+        showToast(msg, newArticles.length > 0 ? 'success' : 'info');
         setFilterStatus('pending');
         setPage(1);
       } else {
