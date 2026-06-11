@@ -534,7 +534,7 @@ async function loadCustomSources() {
   } catch { return []; }
 }
 
-export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admin' } = {}) {
+export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admin', excludeUrls = [] } = {}) {
   let run;
   try {
     run = await createRun({ triggerType, triggeredBy });
@@ -589,15 +589,20 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
       if (existingNews) existingNews.forEach(n => n.url && seenUrls.add(n.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase()));
     } catch { /* ignora erros — continua sem filtro */ }
 
-    const filteredArticles = seenUrls.size > 0
-      ? rawArticles.filter(a => {
-          if (!a.url) return true;
-          const norm = a.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
-          return !seenUrls.has(norm);
-        })
-      : rawArticles;
+    // Também exclui URLs actualmente visíveis no dashboard (para entregar artigos diferentes a cada run)
+    const excludeSet = new Set(
+      excludeUrls.map(u => u.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase()).filter(Boolean)
+    );
 
-    console.log(`[agent] ${rawArticles.length} artigos brutos, ${filteredArticles.length} após filtrar publicados`);
+    const filteredArticles = rawArticles.filter(a => {
+      if (!a.url) return true;
+      const norm = a.url.replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
+      if (seenUrls.has(norm)) return false;
+      if (excludeSet.has(norm)) return false;
+      return true;
+    });
+
+    console.log(`[agent] ${rawArticles.length} artigos brutos, ${filteredArticles.length} após filtrar publicados + ${excludeSet.size} actuais`);
 
     const SECTOR_TERMS = {
       'maritimo':       ['maritime', 'naval', 'shipping lane', 'vessel', 'shipbuilding', 'offshore', 'fleet', 'tanker', 'cargo ship', 'freighter', 'tugboat', 'harbor', 'seaport', 'seafarer', 'nautical', 'marine engineering', 'port authority'],

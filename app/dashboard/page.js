@@ -794,7 +794,12 @@ export default function DashboardPage() {
     const token = localStorage.getItem('auth_token');
     if (!token) { setAgentRunning(false); clearAuth(); router.replace('/'); return; }
     try {
-      const res = await fetch('/api/agent/run', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const currentUrls = loadPending().map(a => a.url).filter(Boolean);
+      const res = await fetch('/api/agent/run', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ excludeUrls: currentUrls }),
+      });
       if (res.status === 401 || res.status === 403) { clearAuth(); router.replace('/'); return; }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { showToast(data.error || 'Erro ao executar agente', 'error'); return; }

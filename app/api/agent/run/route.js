@@ -17,9 +17,13 @@ export async function POST(request) {
   }
 
   try {
+    const body = await request.json().catch(() => ({}));
+    const excludeUrls = Array.isArray(body.excludeUrls) ? body.excludeUrls : [];
+
     const result = await runNewsAgent({
       triggerType: 'manual',
       triggeredBy: user.username || 'admin',
+      excludeUrls,
     });
 
     return NextResponse.json(result);
