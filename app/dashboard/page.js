@@ -800,21 +800,18 @@ export default function DashboardPage() {
       if (!res.ok) { showToast(data.error || 'Erro ao executar agente', 'error'); return; }
       setLastAgentRun(data);
       if (Array.isArray(data.articles) && data.articles.length > 0) {
-        const existing = loadPending();
-        // Filtra artigos já vistos (histórico local)
-        const newArticles = data.articles.filter(a => !isAlreadySeen(a));
-        addToSeen(newArticles);
-        // Junta os novos aos pendentes existentes, sem duplicados por URL/título
-        const existingKeys = new Set(existing.map(a => a.url || a.title));
-        const fresh = newArticles.filter(a => !existingKeys.has(a.url || a.title));
-        const merged = [...existing, ...fresh];
+        // Substitui os pendentes pelos 60 artigos novos do agente (10 por setor)
+        // Limpa o histórico visto para que a próxima execução não bloqueie artigos dos feeds
+        localStorage.removeItem(LS_SEEN_KEY);
+        addToSeen(data.articles);
+        const merged = data.articles;
 
         savePending(merged);
         setPendingArticles(merged);
         setCounts(prev => ({ ...prev, pending: merged.length }));
         // Auto-atribui empresa com base na categoria de cada artigo
         const autoSelections = {};
-        for (const a of fresh) {
+        for (const a of merged) {
           const company = guessCompanyForCategory(a.category);
           if (company) {
             autoSelections[a.id] = {
@@ -827,10 +824,7 @@ export default function DashboardPage() {
         if (Object.keys(autoSelections).length > 0) {
           setArticleSelections(prev => ({ ...autoSelections, ...prev }));
         }
-        const msg = fresh.length > 0
-          ? `${fresh.length} nova(s) notícia(s) carregadas para revisão`
-          : 'Agente concluído: sem notícias novas (duplicados ignorados)';
-        showToast(msg, fresh.length > 0 ? 'success' : 'info');
+        showToast(`${merged.length} notícia(s) carregadas para revisão`, 'success');
         setFilterStatus('pending');
         setPage(1);
       } else {
