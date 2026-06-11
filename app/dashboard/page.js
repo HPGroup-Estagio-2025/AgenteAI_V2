@@ -807,8 +807,11 @@ export default function DashboardPage() {
       if (Array.isArray(data.articles) && data.articles.length > 0) {
         // O agente já filtrou os vistos server-side — regista todos no histórico local
         addToSeen(data.articles);
-        // Substitui completamente os pendentes pelos 60 novos artigos do agente
-        const merged = data.articles;
+        // Junta os novos aos pendentes existentes, sem duplicados por URL/título
+        const existing = loadPending();
+        const existingKeys = new Set(existing.map(a => a.url || a.title));
+        const fresh = data.articles.filter(a => !existingKeys.has(a.url || a.title));
+        const merged = [...existing, ...fresh];
 
         savePending(merged);
         setPendingArticles(merged);
