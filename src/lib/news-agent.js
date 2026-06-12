@@ -189,7 +189,7 @@ function tagValue(xml, tag) {
 function attrValue(xml, tag, attr) {
   const escaped = tag.replace(':', '\\:');
   const match = xml.match(new RegExp(`<${escaped}[^>]*\\s${attr}=["']([^"']+)["'][^>]*>`, 'i'));
-  return match?.[1] || '';
+  return (match?.[1] || '').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
 }
 
 function normalize(value) {
