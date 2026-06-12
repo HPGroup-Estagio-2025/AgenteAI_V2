@@ -42,8 +42,8 @@ export default function SourcesPage() {
   const [notFound, setNotFound] = useState(false);
   const [sectorMatch, setSectorMatch] = useState(null);
   const searchTimer = useRef(null);
-  const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+  const dragIdRef = useRef(null);
   // Novo setor
   const [showNewSector, setShowNewSector] = useState(false);
   const [newSectorLabel, setNewSectorLabel] = useState('');
@@ -520,15 +520,15 @@ export default function SourcesPage() {
                     <div
                       key={src.id}
                       draggable
-                      onDragStart={() => setDragId(src.id)}
-                      onDragEnd={() => { setDragId(null); setDragOverId(null); }}
+                      onDragStart={() => { dragIdRef.current = src.id; setDragOverId(null); }}
+                      onDragEnd={() => { dragIdRef.current = null; setDragOverId(null); }}
                       onDragOver={e => { e.preventDefault(); setDragOverId(src.id); }}
-                      onDrop={e => { e.preventDefault(); if (dragId) handleReorder(group.id, dragId, src.id); setDragId(null); setDragOverId(null); }}
+                      onDrop={e => { e.preventDefault(); const from = dragIdRef.current; dragIdRef.current = null; if (from) handleReorder(group.id, from, src.id); setDragOverId(null); }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px',
                         borderBottom: '1px solid var(--gray-100)',
-                        background: dragOverId === src.id && dragId !== src.id ? 'var(--blue-50)' : dragId === src.id ? 'var(--gray-50)' : 'var(--white)',
-                        opacity: dragId === src.id ? 0.5 : 1,
+                        background: dragOverId === src.id ? 'var(--blue-50)' : 'var(--white)',
+                        opacity: 1,
                         transition: 'background .12s',
                         cursor: 'grab',
                       }}
