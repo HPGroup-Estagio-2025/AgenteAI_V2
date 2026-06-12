@@ -702,6 +702,17 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
       const defaultSectorRaw = sectorRaw.filter(a =>
         !a._feedUrl || !customFeedUrlsLower.has(a._feedUrl.toLowerCase())
       );
+      if (customUrls.size > 0) {
+        const flipFeeds = [...customFeedUrlsLower].filter(u => u.includes('flipboard'));
+        if (flipFeeds.length > 0) {
+          const allFlipRaw = filteredArticles.filter(a => flipFeeds.some(f => a._feedUrl?.toLowerCase() === f));
+          console.log(`[agent][debug] Flipboard: ${allFlipRaw.length} artigos em filteredArticles, ${customSectorRaw.length} em customSectorRaw para setor ${sectorKey}`);
+          if (allFlipRaw.length === 0) {
+            const rawFlip = rawArticles.filter(a => flipFeeds.some(f => a._feedUrl?.toLowerCase() === f));
+            console.log(`[agent][debug] Flipboard: ${rawFlip.length} artigos brutos (antes de filtro seenUrls)`);
+          }
+        }
+      }
 
       // Artigos custom: ordenar por prioridade da fonte, depois por recência dentro da mesma fonte
       const customScored = customSectorRaw
