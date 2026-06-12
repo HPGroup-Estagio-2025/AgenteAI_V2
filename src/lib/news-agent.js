@@ -92,6 +92,14 @@ const FALLBACK_POOLS = {
     'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80',
     'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=800&q=80',
   ],
+  'tecnologia': [
+    'https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=800&q=80',
+    'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=800&q=80',
+    'https://images.unsplash.com/photo-1655720828018-edd2daec9349?w=800&q=80',
+    'https://images.unsplash.com/photo-1591453089816-0fbb971b454c?w=800&q=80',
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80',
+    'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800&q=80',
+  ],
   'default': [
     'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&q=80',
     'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=800&q=80',
@@ -279,13 +287,22 @@ function parseRss(xml, feedUrl) {
   });
 }
 
+function isValidImage(url) {
+  if (!url || typeof url !== 'string') return false;
+  const u = url.trim();
+  if (!u.startsWith('http')) return false;
+  // Rejeita ícones, logos e imagens demasiado pequenas por nome
+  if (/favicon|logo|icon|sprite|placeholder|blank|pixel|tracking|1x1/i.test(u)) return false;
+  return true;
+}
+
 async function fetchOgImage(url) {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
+    const timeout = setTimeout(() => controller.abort(), 5000);
     const response = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'dashboard-news-agent/1.0' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; dashboard-news-agent/1.0)' },
     });
     clearTimeout(timeout);
     if (!response.ok) return '';
@@ -293,33 +310,40 @@ async function fetchOgImage(url) {
     const match =
       html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
       html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
-      html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i);
-    return match?.[1] || '';
+      html.match(/<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i) ||
+      html.match(/<meta[^>]+property=["']og:image:secure_url["'][^>]+content=["']([^"']+)["']/i);
+    const found = match?.[1] || '';
+    return isValidImage(found) ? found : '';
   } catch {
     return '';
   }
 }
 
 async function enrichWithImages(articles) {
-  const missing = articles.filter(a => !a.image && a.url);
-  if (missing.length === 0) return articles;
-
-  const fetched = await Promise.allSettled(
-    missing.map(a => fetchOgImage(a.url))
-  );
-
-  const imageMap = new Map();
-  missing.forEach((a, i) => {
-    const result = fetched[i];
-    if (result.status === 'fulfilled' && result.value) {
-      imageMap.set(a.url, result.value);
-    }
+  // Marca artigos sem imagem válida (inclui artigos com imagem inválida/placeholder)
+  const missing = articles.filter(a => !isValidImage(a.image) && a.url);
+  if (missing.length > 0) {
+    const fetched = await Promise.allSettled(
+      missing.map(a => fetchOgImage(a.url))
+    );
+    const imageMap = new Map();
+    missing.forEach((a, i) => {
+      const result = fetched[i];
+      if (result.status === 'fulfilled' && result.value) {
+        imageMap.set(a.url, result.value);
+      }
+    });
+    articles = articles.map(a =>
+      !isValidImage(a.image) && imageMap.has(a.url) ? { ...a, image: imageMap.get(a.url) } : a
+    );
+  }
+  // Garante que todos os artigos têm sempre uma imagem válida (fallback por categoria)
+  return articles.map(a => {
+    if (isValidImage(a.image)) return a;
+    const category = a._forcedCategory || dashboardCategory(a.matchedSectors);
+    return { ...a, image: getFallbackImage(category) };
   });
-
-  return articles.map(a =>
-    !a.image && imageMap.has(a.url) ? { ...a, image: imageMap.get(a.url) } : a
-  );
 }
 
 function sourceFromUrl(url) {
