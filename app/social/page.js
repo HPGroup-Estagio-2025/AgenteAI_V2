@@ -440,22 +440,6 @@ function SocialPageContent() {
             )}
           </div>
         )}
-        {/* Outras plataformas: mostra contas reutilizáveis */}
-        {id !== 'linkedin' && !hasAccounts && reusableAccounts.map(acc => (
-          <div key={acc.id} className="social-account-panel" onClick={e => e.stopPropagation()}>
-            <div className="social-account-panel-info">
-              <span className="social-account-panel-name">{acc.name}</span>
-              <span className="social-account-panel-sub">Disponível para reutilizar</span>
-            </div>
-            <button
-              className="btn-connect"
-              style={{ background: color, padding: '4px 12px', fontSize: '.72rem', height: 'auto' }}
-              onClick={() => handleReuseAccount(acc.id)}
-            >
-              Usar esta conta
-            </button>
-          </div>
-        ))}
         {hasAccounts && open && platformAccounts.map(account => (
           <div key={account.id} className="social-account-panel" onClick={e => e.stopPropagation()}>
             <div className="social-account-panel-info">
