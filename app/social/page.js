@@ -301,6 +301,7 @@ function SocialPageContent() {
   }
 
   const [confirmDisconnect, setConfirmDisconnect] = useState(null); // { id, name }
+  const [reuseOrNew, setReuseOrNew] = useState(null); // { platformId, companyId, existingName }
 
   async function handleDisconnect(accountId) {
     const token = localStorage.getItem('auth_token');
@@ -408,35 +409,21 @@ function SocialPageContent() {
               </svg>
             )
           ) : !hasAccounts ? (
-            hasExistingOnOtherCompany ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }} onClick={e => e.stopPropagation()}>
-                <button
-                  className="btn-connect"
-                  style={{ background: color, fontSize: '.7rem', padding: '4px 10px', height: 'auto', whiteSpace: 'nowrap' }}
-                  disabled={isConnecting || isConnectingFresh}
-                  onClick={e => { e.stopPropagation(); handleConnect(id, company.id); }}
-                >
-                  {isConnecting ? <span className="loader" style={{ width: 10, height: 10 }} /> : `Usar ${reusableAccounts[0]?.name || 'conta'}`}
-                </button>
-                <button
-                  className="btn-connect"
-                  style={{ background: 'var(--gray-600)', fontSize: '.7rem', padding: '4px 10px', height: 'auto', whiteSpace: 'nowrap' }}
-                  disabled={isConnecting || isConnectingFresh}
-                  onClick={e => { e.stopPropagation(); handleConnect(id, company.id, true); }}
-                >
-                  {isConnectingFresh ? <span className="loader" style={{ width: 10, height: 10 }} /> : 'Nova conta'}
-                </button>
-              </div>
-            ) : (
             <button
               className="btn-connect"
               style={{ background: color }}
-              disabled={isConnecting}
-              onClick={e => { e.stopPropagation(); handleConnect(id, company.id); }}
+              disabled={isConnecting || isConnectingFresh}
+              onClick={e => {
+                e.stopPropagation();
+                if (hasExistingOnOtherCompany) {
+                  setReuseOrNew({ platformId: id, companyId: company.id, existingName: reusableAccounts[0]?.name || 'conta existente' });
+                } else {
+                  handleConnect(id, company.id);
+                }
+              }}
             >
-              {isConnecting ? <span className="loader" style={{ width: 11, height: 11 }} /> : 'Conectar'}
+              {(isConnecting || isConnectingFresh) ? <span className="loader" style={{ width: 11, height: 11 }} /> : 'Conectar'}
             </button>
-            )
           ) : (
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
               style={{ color: 'var(--gray-400)', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>
@@ -812,6 +799,41 @@ function SocialPageContent() {
               >
                 {deletingCompany ? <span className="loader" style={{ width: 12, height: 12 }} /> : 'Excluir'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reuseOrNew && (
+        <div className="modal-overlay" onClick={() => setReuseOrNew(null)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Conectar Facebook</h2>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <p style={{ fontSize: '.88rem', color: 'var(--gray-600)', margin: 0 }}>
+                Já tens uma conta Facebook ligada. Como queres conectar?
+              </p>
+              <button
+                className="btn btn-primary btn-full"
+                style={{ justifyContent: 'center' }}
+                onClick={() => { setReuseOrNew(null); handleConnect(reuseOrNew.platformId, reuseOrNew.companyId); }}
+              >
+                Manter sessão iniciada
+                <span style={{ display: 'block', fontSize: '.72rem', fontWeight: 400, opacity: .8, marginTop: 2 }}>
+                  ({reuseOrNew.existingName})
+                </span>
+              </button>
+              <button
+                className="btn btn-ghost btn-full"
+                style={{ justifyContent: 'center' }}
+                onClick={() => { setReuseOrNew(null); handleConnect(reuseOrNew.platformId, reuseOrNew.companyId, true); }}
+              >
+                Iniciar sessão com outra conta
+              </button>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setReuseOrNew(null)}>Cancelar</button>
             </div>
           </div>
         </div>
