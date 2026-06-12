@@ -48,6 +48,11 @@ const SECTOR_FEEDS = {
   'tecnologia': [
     'https://feeds.arstechnica.com/arstechnica/index',
     'https://www.theverge.com/rss/index.xml',
+    'https://techcrunch.com/feed/',
+    'https://venturebeat.com/feed/',
+    'https://www.artificialintelligence-news.com/feed/',
+    'https://aiweekly.co/issues.rss',
+    'https://feeds.feedburner.com/MachineLearningMastery',
   ],
   'fitness': [
     'https://www.menshealth.com/rss/all.xml/',
@@ -609,7 +614,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
       'defesa-militar': ['defense', 'defence', 'military', 'armed forces', 'weapon system', 'missile', 'warship', 'combat', 'pentagon', 'nato', 'troops', 'warfare', 'munitions', 'air force', 'army'],
       'aeroespacial':   ['aerospace', 'aviation', 'aircraft', 'airline', 'satellite', 'rocket launch', 'orbit', 'uav', 'airport', 'spaceflight', 'astronaut', 'spacecraft'],
       'ferroviario':    ['railway', 'railroad', 'rolling stock', 'locomotive', 'tram', 'high-speed rail', 'rail freight', 'metro system'],
-      'tecnologia':     ['technology', 'software', 'hardware', 'artificial intelligence', 'digital', 'cybersecurity', 'semiconductor', 'cloud computing', 'robotics', 'startup'],
+      'tecnologia':     ['technology', 'software', 'hardware', 'artificial intelligence', 'machine learning', 'deep learning', 'large language model', 'llm', 'generative ai', 'chatgpt', 'openai', 'anthropic', 'gemini', 'neural network', 'ai model', 'digital', 'cybersecurity', 'semiconductor', 'cloud computing', 'robotics', 'startup', 'automation', 'natural language processing', 'computer vision'],
       'fitness':        ['fitness', 'workout', 'exercise', 'gym', 'training', 'nutrition', 'health', 'muscle', 'weight loss', 'running', 'yoga', 'crossfit', 'strength', 'cardio'],
     };
 
