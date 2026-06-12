@@ -721,7 +721,8 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         }
       }
 
-      // Artigos custom: ordenar por prioridade da fonte, depois por recência dentro da mesma fonte
+      // Artigos custom: máximo 3-4 por setor (mistura com predefinidas)
+      const CUSTOM_SLOTS = customSectorRaw.length > 0 ? Math.min(4, Math.floor(ARTICLES_PER_SECTOR * 0.35)) : 0;
       const customScored = customSectorRaw
         .filter(a => (a.url || a.title) && !usedUrls.has(a.url || a.title))
         .sort((a, b) => {
@@ -730,7 +731,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
           if (pa !== pb) return pa - pb;
           return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
         })
-        .slice(0, ARTICLES_PER_SECTOR)
+        .slice(0, CUSTOM_SLOTS)
         .map(a => ({ ...a, _isCustomSource: true, finalScore: 80, postDescription: generatePostDescription(a) }));
 
       // Slots restantes: fontes predefinidas passam pelo scoring normal
