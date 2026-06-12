@@ -278,13 +278,14 @@ function SocialPageContent() {
     }
   }
 
-  async function handleConnect(platformId, companyId = null) {
+  async function handleConnect(platformId, companyId = null, fresh = false) {
     const token = localStorage.getItem('auth_token');
-    setConnecting(platformId);
+    setConnecting(fresh ? `${platformId}-fresh` : platformId);
     try {
-      const connectUrl = companyId
+      let connectUrl = companyId
         ? `/api/social/connect/${platformId}?companyId=${encodeURIComponent(companyId)}`
         : `/api/social/connect/${platformId}`;
+      if (fresh) connectUrl += `&fresh=true`;
       const res = await fetch(connectUrl, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -295,7 +296,7 @@ function SocialPageContent() {
       console.error('[social] Erro ao conectar:', err);
       showToast('Erro de ligação. Tenta novamente.', 'error');
     } finally {
-      setConnecting(null);
+      setConnecting(prev => (prev === platformId || prev === `${platformId}-fresh`) ? null : prev);
     }
   }
 
@@ -370,6 +371,7 @@ function SocialPageContent() {
     const companyAccounts = getAccountsByCompany(company.id);
     const platformAccounts = companyAccounts[id] || [];
     const isConnecting = connecting === id;
+    const isConnectingFresh = connecting === `${id}-fresh`;
     const hasAccounts = platformAccounts.length > 0;
     const [open, setOpen] = useState(false);
 
@@ -377,6 +379,9 @@ function SocialPageContent() {
     const reusableAccounts = !hasAccounts
       ? (accounts[id] || []).filter(acc => acc.companyId !== company.id && !platformAccounts.find(a => a.id === acc.id))
       : [];
+
+    // Facebook/Instagram já conectado noutras empresas — permite copiar OU fazer nova conta
+    const hasExistingOnOtherCompany = !hasAccounts && reusableAccounts.length > 0 && (id === 'facebook' || id === 'instagram');
 
     return (
       <>
@@ -403,6 +408,26 @@ function SocialPageContent() {
               </svg>
             )
           ) : !hasAccounts ? (
+            hasExistingOnOtherCompany ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }} onClick={e => e.stopPropagation()}>
+                <button
+                  className="btn-connect"
+                  style={{ background: color, fontSize: '.7rem', padding: '4px 10px', height: 'auto', whiteSpace: 'nowrap' }}
+                  disabled={isConnecting || isConnectingFresh}
+                  onClick={e => { e.stopPropagation(); handleConnect(id, company.id); }}
+                >
+                  {isConnecting ? <span className="loader" style={{ width: 10, height: 10 }} /> : `Usar ${reusableAccounts[0]?.name || 'conta'}`}
+                </button>
+                <button
+                  className="btn-connect"
+                  style={{ background: 'var(--gray-600)', fontSize: '.7rem', padding: '4px 10px', height: 'auto', whiteSpace: 'nowrap' }}
+                  disabled={isConnecting || isConnectingFresh}
+                  onClick={e => { e.stopPropagation(); handleConnect(id, company.id, true); }}
+                >
+                  {isConnectingFresh ? <span className="loader" style={{ width: 10, height: 10 }} /> : 'Nova conta'}
+                </button>
+              </div>
+            ) : (
             <button
               className="btn-connect"
               style={{ background: color }}
@@ -411,6 +436,7 @@ function SocialPageContent() {
             >
               {isConnecting ? <span className="loader" style={{ width: 11, height: 11 }} /> : 'Conectar'}
             </button>
+            )
           ) : (
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
               style={{ color: 'var(--gray-400)', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>

@@ -44,11 +44,13 @@ export async function GET(request, { params }) {
     return Response.json({ error: `${config.clientIdEnv} nao configurado no .env` }, { status: 503 });
   }
 
-  const companyId = new URL(request.url).searchParams.get('companyId') || null;
+  const searchParamsObj = new URL(request.url).searchParams;
+  const companyId = searchParamsObj.get('companyId') || null;
+  const fresh = searchParamsObj.get('fresh') === 'true';
 
-  // Se já existe uma conta desta plataforma com token válido, copia para a nova empresa
-  // em vez de fazer OAuth de novo (evita o erro "An unexpected error" do Facebook).
-  if (companyId && supabaseAdmin && (platform === 'facebook' || platform === 'instagram')) {
+  // Se já existe uma conta desta plataforma com token válido E não é fresh OAuth,
+  // copia para a nova empresa em vez de fazer OAuth de novo (evita o erro "An unexpected error" do Facebook).
+  if (!fresh && companyId && supabaseAdmin && (platform === 'facebook' || platform === 'instagram')) {
     const { data: existing } = await supabaseAdmin
       .from(SOCIAL_TABLE)
       .select('*')
@@ -88,6 +90,9 @@ export async function GET(request, { params }) {
   url.searchParams.set('response_type', 'code');
   if (platform === 'linkedin') {
     url.searchParams.set('prompt', 'login'); // força escolha de conta
+  }
+  if (fresh && (platform === 'facebook' || platform === 'instagram')) {
+    url.searchParams.set('auth_type', 'reauthenticate'); // força nova sessão Facebook
   }
 
   return Response.json({ url: url.toString() });
