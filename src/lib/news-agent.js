@@ -1,7 +1,14 @@
 import crypto from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { notifyClients } from './events';
+
+// Cliente admin para operações server-side que precisam de bypasaar RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -537,13 +544,13 @@ async function createRun({ triggerType, triggeredBy }) {
     started_at: new Date().toISOString(),
   };
 
-  const { data, error } = await supabase.from(AGENT_RUNS_TABLE).insert(run).select().single();
+  const { data, error } = await supabaseAdmin.from(AGENT_RUNS_TABLE).insert(run).select().single();
   if (error) throw error;
   return data;
 }
 
 async function finishRun(id, updates) {
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from(AGENT_RUNS_TABLE)
     .update({ ...updates, finished_at: new Date().toISOString() })
     .eq('id', id);
@@ -553,7 +560,7 @@ async function finishRun(id, updates) {
 
 async function loadCustomSources() {
   try {
-    const { data } = await supabase
+    const { data } = await supabaseAdmin
       .from('news_sources')
       .select('url, sector, priority')
       .eq('active', true)
@@ -608,7 +615,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
     // Só filtra artigos JÁ PUBLICADOS — rejeitados e on_hold podem reaparecer
     let seenUrls = new Set();
     try {
-      const { data: existingNews } = await supabase
+      const { data: existingNews } = await supabaseAdmin
         .from('news')
         .select('url')
         .not('url', 'is', null)
