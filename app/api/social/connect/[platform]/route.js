@@ -55,9 +55,6 @@ export async function GET(request, { params }) {
   url.searchParams.set('scope', config.scope);
   url.searchParams.set('state', state);
   url.searchParams.set('response_type', 'code');
-  if (platform === 'facebook' || platform === 'instagram') {
-    url.searchParams.set('auth_type', 'rerequest');
-  }
   if (platform === 'linkedin') {
     url.searchParams.set('prompt', 'login'); // força escolha de conta
   }
