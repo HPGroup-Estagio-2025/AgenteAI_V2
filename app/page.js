@@ -13,6 +13,13 @@ export default function LoginPage() {
   const [otp, setOtp] = useState('');
   const [otpToken, setOtpToken] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   useEffect(() => {
     // Migra token antigo do sessionStorage para localStorage (utilizadores com sessão antiga)
@@ -74,6 +81,7 @@ export default function LoginPage() {
           }
           setOtpToken(otpData.otpToken);
           setStep(2);
+          setResendCooldown(30);
           return;
         }
         saveSession(data.token, data.expiresIn);
@@ -105,6 +113,21 @@ export default function LoginPage() {
       } finally {
         setLoading(false);
       }
+    }
+  }
+
+  async function handleResendOtp() {
+    if (resendCooldown > 0) return;
+    setError('');
+    try {
+      const otpRes = await fetch('/api/2fa/send-otp', { method: 'POST' });
+      const otpData = await otpRes.json();
+      if (!otpRes.ok) { setError(otpData.error || 'Erro ao reenviar código.'); return; }
+      setOtpToken(otpData.otpToken);
+      setOtp('');
+      setResendCooldown(30);
+    } catch {
+      setError('Não foi possível reenviar o código.');
     }
   }
 
@@ -186,6 +209,14 @@ export default function LoginPage() {
                 />
                 <button type="button" className="twofa-back" onClick={() => { setStep(1); setError(''); setOtp(''); setOtpToken(''); }}>
                   ← Voltar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendCooldown > 0}
+                  style={{ background: 'none', border: 'none', cursor: resendCooldown > 0 ? 'default' : 'pointer', fontSize: '.85rem', color: resendCooldown > 0 ? 'var(--gray-400)' : 'var(--blue-600)', marginTop: 8 }}
+                >
+                  {resendCooldown > 0 ? `Reenviar código (${resendCooldown}s)` : 'Reenviar código'}
                 </button>
               </div>
             )}
