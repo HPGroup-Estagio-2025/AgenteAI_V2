@@ -1,5 +1,5 @@
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
-import { createState } from '@/src/lib/social';
+import { createState, supabaseAdmin, SOCIAL_TABLE, addAccount } from '@/src/lib/social';
 
 const CONFIGS = {
   facebook: {
@@ -45,6 +45,37 @@ export async function GET(request, { params }) {
   }
 
   const companyId = new URL(request.url).searchParams.get('companyId') || null;
+
+  // Se já existe uma conta desta plataforma com token válido, copia para a nova empresa
+  // em vez de fazer OAuth de novo (evita o erro "An unexpected error" do Facebook).
+  if (companyId && supabaseAdmin && (platform === 'facebook' || platform === 'instagram')) {
+    const { data: existing } = await supabaseAdmin
+      .from(SOCIAL_TABLE)
+      .select('*')
+      .eq('platform', platform)
+      .not('access_token', 'is', null)
+      .order('connected_at', { ascending: false })
+      .limit(1);
+    const src = existing?.[0];
+    if (src && src.company_id !== companyId) {
+      // Cria novo registo para esta empresa com os tokens já existentes
+      await addAccount({
+        platform: src.platform,
+        accountId: src.account_id,
+        accessToken: src.access_token,
+        name: src.name,
+        email: src.email,
+        picture: src.picture,
+        pages: Array.isArray(src.pages) ? src.pages : [],
+        instagramUserId: src.instagram_user_id || null,
+        companyId,
+        expiresAt: src.expires_at || null,
+      });
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://agente-ai-v2.vercel.app';
+      return Response.json({ url: `${appUrl}/social?connected=${platform}` });
+    }
+  }
+
   const state = createState(platform, companyId);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://agente-ai-v2.vercel.app';
   const redirectUri = `${appUrl}/api/social/callback/${platform}`;
