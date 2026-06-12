@@ -91,9 +91,6 @@ export async function GET(request, { params }) {
   if (platform === 'linkedin') {
     url.searchParams.set('prompt', 'login'); // força escolha de conta
   }
-  if (fresh && (platform === 'facebook' || platform === 'instagram')) {
-    url.searchParams.set('auth_type', 'reauthenticate'); // força nova sessão Facebook
-  }
 
   return Response.json({ url: url.toString() });
 }
