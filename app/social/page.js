@@ -441,21 +441,42 @@ function SocialPageContent() {
           </div>
         )}
         {hasAccounts && open && platformAccounts.map(account => (
-          <div key={account.id} className="social-account-panel" onClick={e => e.stopPropagation()}>
-            <div className="social-account-panel-info">
-              <span className="social-account-panel-name">{account.email || account.name}</span>
-              {id === 'facebook' && account.pages?.length > 0 && (
-                <span className="social-account-panel-sub">Página: {account.pages[0].name}</span>
-              )}
-              <span className="social-account-panel-sub">{formatDate(account.connectedAt)}</span>
+          <div key={account.id} className="social-account-panel" onClick={e => e.stopPropagation()} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="social-account-panel-info" style={{ flex: 1 }}>
+                <span className="social-account-panel-name">{account.email || account.name}</span>
+                <span className="social-account-panel-sub">{formatDate(account.connectedAt)}</span>
+              </div>
+              <button
+                className="btn btn-danger"
+                style={{ padding: '4px 10px', fontSize: '.72rem', height: 'auto', flexShrink: 0 }}
+                onClick={() => setConfirmDisconnect({ id: account.id, name: account.name || account.email })}
+              >
+                Desconectar
+              </button>
             </div>
-            <button
-              className="btn btn-danger"
-              style={{ padding: '4px 10px', fontSize: '.72rem', height: 'auto' }}
-              onClick={() => setConfirmDisconnect({ id: account.id, name: account.name || account.email })}
-            >
-              Desconectar
-            </button>
+            {id === 'facebook' && account.pages?.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4, borderTop: '1px solid var(--gray-100)' }}>
+                <span style={{ fontSize: '.75rem', color: 'var(--gray-500)', flexShrink: 0 }}>Página:</span>
+                <select
+                  value={account.selectedPageId || account.pages[0]?.id || ''}
+                  onChange={async e => {
+                    const token = localStorage.getItem('auth_token');
+                    await fetch('/api/social/accounts', {
+                      method: 'PATCH',
+                      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ accountId: account.id, selectedPageId: e.target.value }),
+                    });
+                    await loadAccounts();
+                  }}
+                  style={{ flex: 1, fontSize: '.8rem', padding: '4px 8px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-sm)', background: 'var(--white)', color: 'var(--gray-800)' }}
+                >
+                  {account.pages.map(page => (
+                    <option key={page.id} value={page.id}>{page.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         ))}
       </>

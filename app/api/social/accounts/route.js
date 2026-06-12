@@ -1,5 +1,5 @@
 import { verifyToken, getTokenFromRequest } from '@/src/lib/auth';
-import { getAccounts, removeAccount, removeAccountsByPlatform, waitForAccounts, refreshAccountsFromSupabase } from '@/src/lib/social';
+import { getAccounts, removeAccount, removeAccountsByPlatform, waitForAccounts, refreshAccountsFromSupabase, supabaseAdmin, SOCIAL_TABLE } from '@/src/lib/social';
 import { listCompanies } from '@/src/lib/companies';
 
 export async function GET(request) {
@@ -7,30 +7,17 @@ export async function GET(request) {
   try { if (!token) throw new Error(); verifyToken(token); } catch {
     return Response.json({ error: 'Não autenticado' }, { status: 401 });
   }
-  // Sempre vai buscar dados frescos ao Supabase (evita cache stale entre instâncias Vercel)
   await refreshAccountsFromSupabase();
   const accounts = getAccounts();
   const companies = await listCompanies().catch(() => []);
   const singleCompany = companies.length === 1 ? companies[0] : null;
-  console.log('[social/accounts] GET: %d contas carregadas', accounts.length);
-  accounts.forEach(a => console.log('  - %s (%s) id=%s companyName=%s', a.platform, a.name, a.id, a.companyName || 'none'));
 
   const grouped = {};
+  // Deduplica por platform+id (cada registo é único — uma conta por empresa)
   const seen = new Set();
-  const newestAccounts = [...accounts].sort((a, b) =>
-    new Date(b.connectedAt || 0).getTime() - new Date(a.connectedAt || 0).getTime()
-  );
-
-  for (const account of newestAccounts) {
-    const stableAccountId = account.accountId && account.accountId !== account.id
-      ? account.accountId
-      : null;
-    const dedupeKey = [
-      account.platform,
-      stableAccountId || account.email || account.name || account.id,
-    ].join(':');
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
+  for (const account of accounts) {
+    if (seen.has(account.id)) continue;
+    seen.add(account.id);
 
     const companyId = account.companyId || (singleCompany ? singleCompany.id : null);
     const companyName = account.companyName || (singleCompany ? singleCompany.name : null);
@@ -46,16 +33,31 @@ export async function GET(request) {
       companyId,
       companyName,
       connectedAt: account.connectedAt,
+      selectedPageId: account.selectedPageId || null,
       pages: Array.isArray(account.pages) ? account.pages.map(page => ({
         id: page.id,
         name: page.name,
         picture: page.picture || null,
-        accessToken: page.accessToken || null,
       })) : [],
     });
   }
-  console.log('[social/accounts] Retornando grupos: %s', Object.keys(grouped).join(', '));
   return Response.json({ accounts: grouped });
+}
+
+export async function PATCH(request) {
+  const token = getTokenFromRequest(request);
+  try { if (!token) throw new Error(); verifyToken(token); } catch {
+    return Response.json({ error: 'Não autenticado' }, { status: 401 });
+  }
+  const { accountId, selectedPageId } = await request.json().catch(() => ({}));
+  if (!accountId) return Response.json({ error: 'accountId obrigatório' }, { status: 400 });
+
+  const { error } = await supabaseAdmin
+    .from(SOCIAL_TABLE)
+    .update({ selected_page_id: selectedPageId || null })
+    .eq('id', accountId);
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ success: true });
 }
 
 export async function DELETE(request) {

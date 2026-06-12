@@ -70,8 +70,9 @@ async function fetchFacebookPagesFromToken(account) {
   }
 }
 
-function selectFacebookPage(pages) {
+function selectFacebookPage(pages, selectedPageId) {
   const availablePages = Array.isArray(pages) ? pages : [];
+  if (selectedPageId) return availablePages.find(p => p.id === selectedPageId) || availablePages[0] || null;
   if (FACEBOOK_PAGE_ID) return availablePages.find(page => page.id === FACEBOOK_PAGE_ID) || null;
   return availablePages[0] || null;
 }
@@ -588,7 +589,7 @@ async function publishToFacebook(item, accountId = null, companyUrl = null, word
   });
 
   const storedPages = Array.isArray(account.pages) ? account.pages : [];
-  const storedPage = selectFacebookPage(storedPages);
+  const storedPage = selectFacebookPage(storedPages, account.selectedPageId);
   let page = storedPage;
 
   if (!page?.accessToken) {

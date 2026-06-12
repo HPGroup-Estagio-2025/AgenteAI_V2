@@ -92,7 +92,29 @@
       "Bash(node src/lib/news-agent.js)",
       "Bash(node -e \"require\\('./src/lib/news-agent.js'\\)\")",
       "Bash(node --input-type=module)",
-      "Bash(grep -v \"^//\")"
+      "Bash(grep -v \"^//\")",
+      "Bash(Get-ChildItem -Path . -Force)",
+      "Bash(Select-Object Name, Mode)",
+      "Bash(xargs grep -l \"export async function\")",
+      "Bash(xargs wc -l)",
+      "Bash(extract-text \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\Relatório_PartYard_PWDAM.docx\")",
+      "Bash(python scripts/unpack.py \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\Relatório_PartYard_PWDAM.docx\" \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\relatorio_unpacked\")",
+      "PowerShell($skillDir = \"C:\\\\Users\\\\PartYard_Estagio\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\37d4c84a-e9fe-4972-acfe-fe946a0962c2\\\\a7626a49-cb0c-4246-a9d2-5bf19fdfdf4c\\\\skills\\\\docx\"; python \"$skillDir\\\\scripts\\\\office\\\\unpack.py\" \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\Relatório_PartYard_PWDAM.docx\" \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\relatorio_unpacked\")",
+      "PowerShell(& python $unpack $doc $out 2>&1)",
+      "PowerShell($unpack = \"C:\\\\Users\\\\PartYard_Estagio\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\37d4c84a-e9fe-4972-acfe-fe946a0962c2\\\\a7626a49-cb0c-4246-a9d2-5bf19fdfdf4c\\\\skills\\\\docx\\\\scripts\\\\office\\\\unpack.py\")",
+      "PowerShell($doc = \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\Relat�rio_PartYard_PWDAM.docx\")",
+      "PowerShell($out = \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\relatorio_unpacked\")",
+      "PowerShell($env:PYTHONPATH = \"\"; $p = python --version 2>&1; $p)",
+      "PowerShell(Get-Content \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\relatorio_unpacked\\\\word\\\\document.xml\" -Raw | Select-String -Pattern \"w:t\" -AllMatches | ForEach-Object { $_.Matches } | Select-Object -First 5)",
+      "Bash(grep -n \"}\\)} *$\\\\|\\\\.map.*compan\\\\|social-grid\" \"C:\\\\Users\\\\PartYard_Estagio\\\\Downloads\\\\dashboard_news_agent_interno_fix_uuid\\\\dashboard_news\\\\app\\\\social\\\\page.js\")",
+      "WebFetch(domain:setq.ai)",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "Bash(python -c ' *)",
+      "Bash(pip install *)",
+      "Bash(Select-String -Path \"C:\\\\Users\\\\PartYard_Estagio\\\\.claude\\\\projects\\\\C--Users-PartYard-Estagio-Downloads-dashboard-news-agent-interno-fix-uuid-dashboard-news\\\\86b21151-1cf9-4777-8f9c-868352424135\\\\tool-results\\\\bm6m7jaf3.txt\" -Pattern \"img src|media:|enclosure|thumbnail\")",
+      "Bash(Select-Object -First 20)",
+      "mcp__Claude_in_Chrome__navigate"
     ]
   }
 }

@@ -7,11 +7,11 @@ import { supabase } from './supabase';
 const STATE_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'oauth-state-secret-fallback';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const USE_SUPABASE = SUPABASE_URL.length > 0 && !SUPABASE_URL.includes('xxxx');
-const SOCIAL_TABLE = process.env.SOCIAL_ACCOUNTS_TABLE || 'social_accounts';
+export const SOCIAL_TABLE = process.env.SOCIAL_ACCOUNTS_TABLE || 'social_accounts';
 
 // Usa service_role key para escrita server-side (bypassa RLS)
 // Cai back para anon key se não estiver configurada
-const supabaseAdmin = USE_SUPABASE
+export const supabaseAdmin = USE_SUPABASE
   ? createClient(
       SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -71,6 +71,7 @@ function toDbRow(account) {
     company_name: account.companyName || null,
     expires_at: account.expiresAt || null,
     connected_at: account.connectedAt || new Date().toISOString(),
+    selected_page_id: account.selectedPageId || null,
     active: true,
   };
 }
@@ -87,9 +88,10 @@ function fromDbRow(row) {
     pages: Array.isArray(row.pages) ? row.pages : [],
     instagramUserId: row.instagram_user_id || null,
     companyId: row.company_id || null,
-    companyName: row.company_name || null, // backward compat
+    companyName: row.company_name || null,
     expiresAt: row.expires_at || null,
     connectedAt: row.connected_at,
+    selectedPageId: row.selected_page_id || null,
   };
 }
 
@@ -323,39 +325,32 @@ export function getAccount(platform) {
 export async function addAccount(data) {
   const accountId = data.accountId || data.providerAccountId || null;
 
-  // Se já existe uma conta com o mesmo accountId nesta plataforma (qualquer empresa),
-  // reutiliza o mesmo registo e partilha-o (company_id = null) para ficar disponível em todas as empresas.
+  // Cada empresa tem o seu próprio registo independente.
+  // Procura registo existente para ESTA empresa+plataforma para atualizar em vez de duplicar.
   let existingId = null;
-  let shouldShare = false;
-  if (USE_SUPABASE && accountId) {
+  if (USE_SUPABASE && accountId && data.companyId) {
     const { data: existing } = await supabaseAdmin
       .from(SOCIAL_TABLE)
-      .select('id, company_id')
+      .select('id')
       .eq('platform', data.platform)
       .eq('account_id', accountId)
+      .eq('company_id', data.companyId)
       .limit(1);
-    if (existing?.[0]) {
-      existingId = existing[0].id;
-      // Se já existe para empresa diferente (ou partilhado), mantém partilhado
-      if (existing[0].company_id !== data.companyId) shouldShare = true;
-    }
+    if (existing?.[0]) existingId = existing[0].id;
   }
 
   const account = {
     id: data.id || existingId || crypto.randomUUID(),
     ...data,
     accountId,
-    // Se a conta já existia para outra empresa, partilha automaticamente
-    companyId: shouldShare ? null : (data.companyId || null),
-    companyName: shouldShare ? null : (data.companyName || null),
+    companyId: data.companyId || null,
+    companyName: data.companyName || null,
     connectedAt: data.connectedAt || new Date().toISOString(),
   };
 
   if (USE_SUPABASE) {
     await supabaseUpsert(account);
-    const existingIndex = g._socialAccounts.findIndex(a =>
-      a.id === account.id || (a.platform === account.platform && a.accountId === account.accountId)
-    );
+    const existingIndex = g._socialAccounts.findIndex(a => a.id === account.id);
     if (existingIndex >= 0) {
       g._socialAccounts[existingIndex] = account;
     } else {
