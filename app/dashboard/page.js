@@ -78,6 +78,13 @@ function buildCompanies(connectedAccounts, companiesData = []) {
       platforms.push('wordpress');
     }
 
+    let companySectors = [];
+    try {
+      companySectors = Array.isArray(dbCompany.sectors)
+        ? dbCompany.sectors
+        : JSON.parse(dbCompany.sectors || '[]');
+    } catch { companySectors = []; }
+
     return {
       id:        `db-${dbCompany.id}`,
       companyId: dbCompany.id,
@@ -85,6 +92,7 @@ function buildCompanies(connectedAccounts, companiesData = []) {
       picture:   fbAcc?.picture || igAcc?.picture || liAcc?.picture || null,
       platforms,
       accountIds,
+      sectors:   companySectors,
     };
   });
 
@@ -588,7 +596,7 @@ export default function DashboardPage() {
     const companies = buildCompanies(connectedAccounts, companiesData);
     if (companies.length === 0) return;
 
-    const CATEGORY_COMPANY_MAP = {
+    const CATEGORY_COMPANY_FALLBACK = {
       'defesa-militar': (cs) => cs.find(c => /defense|defesa|militar|military/i.test(c.name)),
       'maritimo':       (cs) => cs.find(c => /marine|marinha|naval|maritime/i.test(c.name)),
       'ferroviario':    (cs) => cs.find(c => /rail|ferroviario/i.test(c.name)),
@@ -600,14 +608,17 @@ export default function DashboardPage() {
       const updated = { ...prev };
       for (const article of pendingArticles) {
         const existing = updated[article.id];
-        // Se já tem empresa atribuída manualmente, só atualiza plataformas
         let company;
         if (existing?.companyId) {
           company = companies.find(c => c.id === existing.companyId) || companies[0];
         } else {
-          // Auto-atribui por categoria
-          const guessFn = CATEGORY_COMPANY_MAP[article.category];
-          company = (guessFn ? guessFn(companies) : null) || companies[0];
+          // 1. Usa setores configurados na empresa (fonte de verdade)
+          company = companies.find(c => Array.isArray(c.sectors) && c.sectors.includes(article.category));
+          // 2. Fallback: regex sobre o nome da empresa
+          if (!company) {
+            const guessFn = CATEGORY_COMPANY_FALLBACK[article.category];
+            company = (guessFn ? guessFn(companies) : null) || companies[0];
+          }
         }
         updated[article.id] = {
           companyId: company?.id || null,

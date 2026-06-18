@@ -244,6 +244,12 @@ function SocialPageContent() {
 
   function openCompanySettings(company) {
     setEditingCompanySettings(company.id);
+    let companySectors = [];
+    try {
+      companySectors = Array.isArray(company.sectors)
+        ? company.sectors
+        : JSON.parse(company.sectors || '[]');
+    } catch { companySectors = []; }
     setCompanySettingsForm({
       logo_url: company.logo_url || '',
       website_url: company.website_url || '',
@@ -251,6 +257,7 @@ function SocialPageContent() {
       wordpress_url: company.wordpress_url || '',
       wordpress_username: company.wordpress_username || '',
       wordpress_app_password: company.wordpress_app_password || '',
+      sectors: companySectors,
     });
   }
 
@@ -715,6 +722,40 @@ function SocialPageContent() {
                   Vai a linkedin.com/company/<strong>ID</strong>/admin — o número no URL é o ID. Necessário para publicar como empresa.
                 </p>
               </div>
+              {/* Setores */}
+              <div style={{ borderTop: '1px dashed var(--gray-200)', paddingTop: 12 }}>
+                <div style={{ fontSize: '.7rem', fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gray-400)', marginBottom: 6 }}>Setores de Notícias</div>
+                <p style={{ fontSize: '.7rem', color: 'var(--gray-500)', marginBottom: 10, lineHeight: 1.5 }}>
+                  As notícias destes setores são automaticamente atribuídas a esta empresa no dashboard.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {[
+                    { id: 'maritimo', label: '⚓ Marítimo' },
+                    { id: 'defesa-militar', label: '🛡️ Defesa / Militar' },
+                    { id: 'aeroespacial', label: '🚀 Aeroespacial' },
+                    { id: 'ferroviario', label: '🚂 Ferroviário' },
+                    { id: 'tecnologia', label: '💻 Tecnologia' },
+                  ].map(sector => {
+                    const active = (companySettingsForm.sectors || []).includes(sector.id);
+                    return (
+                      <button
+                        key={sector.id}
+                        type="button"
+                        onClick={() => setCompanySettingsForm(f => ({
+                          ...f,
+                          sectors: active
+                            ? (f.sectors || []).filter(s => s !== sector.id)
+                            : [...(f.sectors || []), sector.id],
+                        }))}
+                        style={{ padding: '5px 12px', borderRadius: 20, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', borderColor: active ? 'var(--blue-400)' : 'var(--gray-200)', background: active ? 'var(--blue-50, #EFF6FF)' : 'var(--gray-50, #F9FAFB)', color: active ? 'var(--blue-700, #1D4ED8)' : 'var(--gray-500)', transition: 'all .15s' }}
+                      >
+                        {sector.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* WordPress */}
               <div style={{ borderTop: '1px dashed var(--gray-200)', paddingTop: 12 }}>
                 <div style={{ fontSize: '.7rem', fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gray-400)', marginBottom: 10 }}>WordPress</div>
