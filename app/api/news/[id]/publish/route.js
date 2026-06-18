@@ -414,51 +414,34 @@ async function publishToWordPress(item, company) {
 }
 
 async function publishToLinkedIn(item, accountId = null, linkUrl = null, company = null) {
-  // Prefere token org (linkedin-org com w_organization_social) sobre token membro
-  const orgAccount = getAccount('linkedin-org');
   const memberAccount = accountId ? getAccountById(accountId) : getAccount('linkedin');
 
-  if (!orgAccount && !memberAccount) {
+  if (!memberAccount) {
     throw Object.assign(new Error('LinkedIn não conectado'), { code: 'linkedin_not_connected' });
   }
 
-  let token;
-  let authorUrn;
+  const token = memberAccount.accessToken;
 
-  if (orgAccount) {
-    token = orgAccount.accessToken;
-    if (company?.linkedin_org_id) {
-      authorUrn = `urn:li:organization:${company.linkedin_org_id}`;
-    } else if (orgAccount.accountId?.startsWith('urn:li:organization:')) {
-      authorUrn = orgAccount.accountId;
-    }
-    console.log('[linkedin] Usando token org, authorUrn:', authorUrn);
+  // Obtém o memberId da conta pessoal
+  let memberId = memberAccount.accountId;
+  if (!memberId) {
+    try {
+      const meRes = await fetch('https://api.linkedin.com/v2/me', {
+        headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' },
+      });
+      const meData = await meRes.json().catch(() => ({}));
+      memberId = meData.id;
+    } catch (e) { console.warn('[linkedin] Falha ao obter memberId:', e.message); }
   }
 
-  if (!authorUrn && memberAccount) {
-    token = memberAccount.accessToken;
-    if (company?.linkedin_org_id) {
-      authorUrn = `urn:li:organization:${company.linkedin_org_id}`;
-      console.log('[linkedin] Usando token membro, authorUrn:', authorUrn);
-    } else {
-      try {
-        const orgRes = await fetch(
-          'https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR',
-          { headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' } }
-        );
-        const orgData = await orgRes.json().catch(() => ({}));
-        const orgUrn = orgData?.elements?.[0]?.organization;
-        if (orgUrn) { authorUrn = orgUrn; console.log('[linkedin] org via ACLs:', authorUrn); }
-      } catch (e) { console.warn('[linkedin] organizationAcls falhou:', e.message); }
-    }
-  }
-
-  if (!authorUrn) {
+  if (!memberId) {
     throw Object.assign(
-      new Error('LinkedIn Organization ID não configurado. Vai a Redes Sociais → editar empresa → preenche o LinkedIn Organization ID.'),
+      new Error('Não foi possível obter o ID do membro LinkedIn. Reconecta a conta.'),
       { code: 'linkedin_publish_failed' }
     );
   }
+
+  const authorUrn = `urn:li:person:${memberId}`;
 
   const summary = buildSocialSummary(item);
   const hashtags = generateHashtags(item);
