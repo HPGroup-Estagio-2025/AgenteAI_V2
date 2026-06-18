@@ -89,6 +89,8 @@ function SocialPageContent() {
   const [newCompanyInput, setNewCompanyInput] = useState('');
   const [newCompanyLogo, setNewCompanyLogo] = useState('');
   const [newCompanySectors, setNewCompanySectors] = useState([]);
+  const [newCompanyCustomSector, setNewCompanyCustomSector] = useState('');
+  const [showNewCompanyCustomInput, setShowNewCompanyCustomInput] = useState(false);
   const [confirmDeleteCompanyId, setConfirmDeleteCompanyId] = useState(null);
   const [showCompanySelector, setShowCompanySelector] = useState(null);
   const [editingCompanySettings, setEditingCompanySettings] = useState(null);
@@ -735,6 +737,51 @@ function SocialPageContent() {
                       </button>
                     );
                   })}
+                  {/* Setores personalizados já adicionados */}
+                  {newCompanySectors.filter(s => !['maritimo','defesa-militar','aeroespacial','ferroviario','tecnologia','fitness'].includes(s)).map(custom => (
+                    <button key={custom} type="button"
+                      onClick={() => setNewCompanySectors(prev => prev.filter(s => s !== custom))}
+                      style={{ padding: '4px 10px', borderRadius: 20, fontSize: '.75rem', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', borderColor: 'var(--blue-400)', background: 'var(--blue-50, #EFF6FF)', color: 'var(--blue-700, #1D4ED8)', display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      {custom} <span style={{ opacity: .6 }}>×</span>
+                    </button>
+                  ))}
+                  {/* Botão Outro */}
+                  {showNewCompanyCustomInput ? (
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Nome do setor"
+                        value={newCompanyCustomSector}
+                        onChange={e => setNewCompanyCustomSector(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && newCompanyCustomSector.trim()) {
+                            const val = newCompanyCustomSector.trim().toLowerCase();
+                            setNewCompanySectors(prev => prev.includes(val) ? prev : [...prev, val]);
+                            setNewCompanyCustomSector('');
+                            setShowNewCompanyCustomInput(false);
+                          }
+                          if (e.key === 'Escape') { setShowNewCompanyCustomInput(false); setNewCompanyCustomSector(''); }
+                        }}
+                        style={{ padding: '4px 8px', borderRadius: 20, fontSize: '.75rem', border: '1.5px solid var(--blue-400)', outline: 'none', width: 120 }}
+                      />
+                      <button type="button" onClick={() => {
+                        const val = newCompanyCustomSector.trim().toLowerCase();
+                        if (val) { setNewCompanySectors(prev => prev.includes(val) ? prev : [...prev, val]); }
+                        setNewCompanyCustomSector('');
+                        setShowNewCompanyCustomInput(false);
+                      }} style={{ padding: '4px 8px', borderRadius: 20, fontSize: '.75rem', fontWeight: 600, cursor: 'pointer', border: '1.5px solid var(--blue-400)', background: 'var(--blue-50,#EFF6FF)', color: 'var(--blue-700,#1D4ED8)' }}>
+                        ✓
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setShowNewCompanyCustomInput(true)}
+                      style={{ padding: '4px 10px', borderRadius: 20, fontSize: '.75rem', fontWeight: 600, cursor: 'pointer', border: '1.5px dashed var(--gray-300)', background: 'transparent', color: 'var(--gray-400)' }}
+                    >
+                      + Outro
+                    </button>
+                  )}
                 </div>
               </div>
               <button
@@ -821,6 +868,46 @@ function SocialPageContent() {
                       </button>
                     );
                   })}
+                  {/* Setores personalizados */}
+                  {(companySettingsForm.sectors || []).filter(s => !['maritimo','defesa-militar','aeroespacial','ferroviario','tecnologia','fitness'].includes(s)).map(custom => (
+                    <button key={custom} type="button"
+                      onClick={() => setCompanySettingsForm(f => ({ ...f, sectors: (f.sectors || []).filter(s => s !== custom) }))}
+                      style={{ padding: '5px 12px', borderRadius: 20, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', border: '1.5px solid var(--blue-400)', background: 'var(--blue-50,#EFF6FF)', color: 'var(--blue-700,#1D4ED8)', display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      {custom} <span style={{ opacity: .6 }}>×</span>
+                    </button>
+                  ))}
+                  {/* Botão Outro */}
+                  {companySettingsForm._showCustomSector ? (
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Nome do setor"
+                        value={companySettingsForm._customSectorInput || ''}
+                        onChange={e => setCompanySettingsForm(f => ({ ...f, _customSectorInput: e.target.value }))}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            const val = (companySettingsForm._customSectorInput || '').trim().toLowerCase();
+                            if (val) setCompanySettingsForm(f => ({ ...f, sectors: (f.sectors || []).includes(val) ? f.sectors : [...(f.sectors || []), val], _customSectorInput: '', _showCustomSector: false }));
+                          }
+                          if (e.key === 'Escape') setCompanySettingsForm(f => ({ ...f, _showCustomSector: false, _customSectorInput: '' }));
+                        }}
+                        style={{ padding: '4px 8px', borderRadius: 20, fontSize: '.78rem', border: '1.5px solid var(--blue-400)', outline: 'none', width: 130 }}
+                      />
+                      <button type="button" onClick={() => {
+                        const val = (companySettingsForm._customSectorInput || '').trim().toLowerCase();
+                        if (val) setCompanySettingsForm(f => ({ ...f, sectors: (f.sectors || []).includes(val) ? f.sectors : [...(f.sectors || []), val], _customSectorInput: '', _showCustomSector: false }));
+                        else setCompanySettingsForm(f => ({ ...f, _showCustomSector: false }));
+                      }} style={{ padding: '4px 10px', borderRadius: 20, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', border: '1.5px solid var(--blue-400)', background: 'var(--blue-50,#EFF6FF)', color: 'var(--blue-700,#1D4ED8)' }}>✓</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setCompanySettingsForm(f => ({ ...f, _showCustomSector: true, _customSectorInput: '' }))}
+                      style={{ padding: '5px 12px', borderRadius: 20, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', border: '1.5px dashed var(--gray-300)', background: 'transparent', color: 'var(--gray-400)' }}
+                    >
+                      + Outro
+                    </button>
+                  )}
                 </div>
               </div>
 
