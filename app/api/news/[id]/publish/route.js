@@ -422,26 +422,26 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
 
   const token = memberAccount.accessToken;
 
-  // Obtém o memberId da conta pessoal
-  let memberId = memberAccount.accountId;
-  if (!memberId) {
-    try {
-      const meRes = await fetch('https://api.linkedin.com/v2/me', {
-        headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' },
-      });
-      const meData = await meRes.json().catch(() => ({}));
-      memberId = meData.id;
-    } catch (e) { console.warn('[linkedin] Falha ao obter memberId:', e.message); }
-  }
+  // LinkedIn ugcPosts exige ID numérico — o sub do OpenID é UUID, não serve
+  // Vai sempre buscar o ID numérico via /v2/me
+  let numericMemberId = null;
+  try {
+    const meRes = await fetch('https://api.linkedin.com/v2/me', {
+      headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' },
+    });
+    const meData = await meRes.json().catch(() => ({}));
+    numericMemberId = meData.id || null;
+    console.log('[linkedin] /v2/me id:', numericMemberId);
+  } catch (e) { console.warn('[linkedin] Falha ao obter memberId numérico:', e.message); }
 
-  if (!memberId) {
+  if (!numericMemberId) {
     throw Object.assign(
-      new Error('Não foi possível obter o ID do membro LinkedIn. Reconecta a conta.'),
+      new Error('Não foi possível obter o ID numérico do LinkedIn. Reconecta a conta.'),
       { code: 'linkedin_publish_failed' }
     );
   }
 
-  const personalUrn = `urn:li:person:${memberId}`;
+  const personalUrn = `urn:li:member:${numericMemberId}`;
 
   // Se a empresa tem linkedin_org_id configurado → tenta publicar como página de empresa
   const orgId = company?.linkedin_org_id || memberAccount.orgId || null;
