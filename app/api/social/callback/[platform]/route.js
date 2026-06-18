@@ -108,13 +108,14 @@ const CONFIGS = {
         headers: { Authorization: `Bearer ${token}` },
       });
       const d = await res.json();
+      console.log('[oauth:linkedin] userinfo response:', JSON.stringify({ sub: d.sub, name: d.name, given_name: d.given_name, family_name: d.family_name, email: d.email }));
       const fullName =
         d.name?.trim() ||
         [d.given_name, d.family_name].filter(Boolean).join(' ').trim() ||
-        d.email?.split('@')[0] || d.sub || null;
+        d.email?.split('@')[0] || null;
       return {
         accountId: d.sub || d.id || null,
-        name: fullName || 'Conta LinkedIn',
+        name: fullName || d.email || d.sub || 'Utilizador LinkedIn',
         email: d.email || null,
         picture: d.picture || null,
       };
