@@ -45,6 +45,7 @@ export default function SourcesPage() {
   const [dragOverId, setDragOverId] = useState(null);
   const dragIdRef = useRef(null);
   const dragSectorRef = useRef(null);
+  const dragState = useRef(null);
   // Novo setor
   const [showNewSector, setShowNewSector] = useState(false);
   const [newSectorLabel, setNewSectorLabel] = useState('');
@@ -235,6 +236,39 @@ export default function SourcesPage() {
       });
       if (res.ok) { showToast('Fonte removida', 'info'); await loadSources(); }
     } catch {}
+  }
+
+  function startDrag(e, src, group) {
+    e.preventDefault();
+    dragIdRef.current = src.id;
+    dragSectorRef.current = group.id;
+    dragState.current = { fromId: src.id, sectorId: group.id, overId: null };
+
+    function onMove(ev) {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const row = el?.closest('[data-source-id]');
+      const targetId = row?.dataset?.sourceId || null;
+      if (targetId !== dragState.current?.fromId) {
+        setDragOverId(targetId);
+        if (dragState.current) dragState.current.overId = targetId;
+      }
+    }
+
+    function onUp() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      const { fromId, sectorId, overId } = dragState.current || {};
+      dragState.current = null;
+      dragIdRef.current = null;
+      dragSectorRef.current = null;
+      setDragOverId(null);
+      if (fromId && overId && fromId !== overId) {
+        handleReorder(sectorId, fromId, overId);
+      }
+    }
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
   }
 
   async function handleReorder(sectorId, fromId, toId) {
@@ -520,24 +554,20 @@ export default function SourcesPage() {
                     return (
                     <div
                       key={src.id}
-                      draggable={true}
-                      onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', src.id); dragIdRef.current = src.id; dragSectorRef.current = group.id; setDragOverId(null); }}
-                      onDragEnd={() => { dragIdRef.current = null; dragSectorRef.current = null; setDragOverId(null); }}
-                      onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (src.id !== dragIdRef.current) setDragOverId(src.id); }}
-                      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverId(v => v === src.id ? null : v); }}
-                      onDrop={e => { e.preventDefault(); const from = dragIdRef.current; const sector = dragSectorRef.current; dragIdRef.current = null; dragSectorRef.current = null; setDragOverId(null); if (from && from !== src.id) handleReorder(sector || group.id, from, src.id); }}
+                      data-source-id={src.id}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px',
                         borderBottom: '1px solid var(--gray-100)',
                         background: dragOverId === src.id ? 'var(--blue-50)' : 'var(--white)',
-                        opacity: 1,
                         transition: 'background .12s',
-                        cursor: 'grab',
                         userSelect: 'none',
                       }}
                     >
                       {/* Drag handle */}
-                      <span style={{ color: 'var(--gray-300)', fontSize: '1rem', userSelect: 'none', flexShrink: 0, lineHeight: 1 }}>
+                      <span
+                        onPointerDown={e => startDrag(e, src, group)}
+                        style={{ color: 'var(--gray-300)', fontSize: '1rem', userSelect: 'none', flexShrink: 0, lineHeight: 1, cursor: 'grab', touchAction: 'none' }}
+                      >
                         ⠿
                       </span>
                       {/* Prioridade global */}
