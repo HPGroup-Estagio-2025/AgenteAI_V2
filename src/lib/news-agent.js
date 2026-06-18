@@ -62,8 +62,8 @@ const SECTOR_FEEDS = {
     'https://feeds.feedburner.com/MachineLearningMastery',
   ],
   'fitness': [
-    'https://www.womenshealth.pt/d/nutricao/4/feed/',
-    'https://www.womenshealth.pt/d/treino/6/feed/',
+    'https://www.womenshealth.pt/d/nutricao/4/',
+    'https://www.womenshealth.pt/d/treino/6/',
   ],
 };
 
@@ -386,12 +386,58 @@ function cleanSourceName(raw, feedUrl) {
   return raw.trim();
 }
 
+function scrapeHtmlArticles(html, pageUrl) {
+  const articles = [];
+  const base = (() => { try { const u = new URL(pageUrl); return `${u.protocol}//${u.host}`; } catch { return ''; } })();
+
+  // Tenta extrair blocos <article> (padrão WordPress)
+  const blocks = [...html.matchAll(/<article[^>]*>([\s\S]*?)<\/article>/gi)].map(m => m[1]);
+
+  // Fallback: blocos de lista de notícias com classe "post" ou "item"
+  const fallbackBlocks = blocks.length > 0 ? blocks :
+    [...html.matchAll(/<(?:div|li)[^>]+class=["'][^"']*(?:post|article|item|card|entry)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|li)>/gi)].map(m => m[1]);
+
+  for (const block of fallbackBlocks) {
+    // URL + título: procura <h2>/<h3> com link, ou link com classe entry-title
+    const linkMatch =
+      block.match(/<h[23][^>]*>[\s\S]*?<a[^>]+href=["']([^"'#][^"']*)["'][^>]*>([\s\S]*?)<\/a>/i) ||
+      block.match(/<a[^>]+href=["']([^"'#][^"']*)["'][^>]*class=["'][^"']*(?:title|headline)[^"']*["'][^>]*>([\s\S]*?)<\/a>/i) ||
+      block.match(/<a[^>]+class=["'][^"']*(?:title|headline)[^"']*["'][^>]+href=["']([^"'#][^"']*)["'][^>]*>([\s\S]*?)<\/a>/i);
+    if (!linkMatch) continue;
+
+    const rawUrl = linkMatch[1];
+    const url = rawUrl.startsWith('http') ? rawUrl : `${base}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+    const title = linkMatch[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    if (!title || title.length < 5 || !url.startsWith('http')) continue;
+
+    // Descrição/excerpt
+    const descMatch =
+      block.match(/<p[^>]*class=["'][^"']*excerpt[^"']*["'][^>]*>([\s\S]*?)<\/p>/i) ||
+      block.match(/<div[^>]*class=["'][^"']*excerpt[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) ||
+      block.match(/<p(?![^>]*class=["'][^"']*(?:meta|tag|date|author)[^"']*["'])[^>]*>([^<]{30,})<\/p>/i);
+    const description = descMatch ? descMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : '';
+
+    // Imagem
+    const imgMatch = block.match(/src=["']([^"']*(?:jpg|jpeg|png|webp)[^"'?]*)["']/i);
+    const image = imgMatch ? (imgMatch[1].startsWith('http') ? imgMatch[1] : `${base}${imgMatch[1]}`) : '';
+
+    // Data
+    const dateMatch = block.match(/datetime=["']([^"']+)["']/i) || block.match(/(\d{4}-\d{2}-\d{2})/);
+    const publishedAt = dateMatch ? dateMatch[1] : new Date().toISOString();
+
+    articles.push({ title, description, content: description, url, image, source: 'Women\'s Health PT', publishedAt, rawProvider: 'HTML', _feedUrl: pageUrl });
+  }
+
+  console.log(`[agent] Scrape HTML ${pageUrl}: ${articles.length} artigos extraídos`);
+  return articles;
+}
+
 async function fetchAllRss(sectorFeeds = SECTOR_FEEDS) {
   const allFeeds = [...new Set(Object.values(sectorFeeds).flat())];
   const results = await Promise.allSettled(
     allFeeds.map(async feedUrl => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+      const timeout = setTimeout(() => controller.abort(), 10000);
       try {
         const response = await fetch(feedUrl, {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; dashboard-news-agent/1.0)' },
@@ -399,7 +445,13 @@ async function fetchAllRss(sectorFeeds = SECTOR_FEEDS) {
           signal: controller.signal,
         });
         if (!response.ok) throw new Error(`${feedUrl} respondeu ${response.status}`);
-        return parseRss(await response.text(), feedUrl);
+        const text = await response.text();
+        const trimmed = text.trimStart();
+        // Se não é XML/RSS, tenta scraping HTML
+        if (!trimmed.startsWith('<?xml') && !trimmed.startsWith('<rss') && !trimmed.startsWith('<feed') && trimmed.startsWith('<')) {
+          return scrapeHtmlArticles(text, feedUrl);
+        }
+        return parseRss(text, feedUrl);
       } finally {
         clearTimeout(timeout);
       }
