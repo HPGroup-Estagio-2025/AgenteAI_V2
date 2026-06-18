@@ -1,4 +1,4 @@
-export const VALID_SECTORS = ['maritimo', 'defesa-militar', 'aeroespacial', 'ferroviario'];
+export const VALID_SECTORS = ['maritimo', 'defesa-militar', 'aeroespacial', 'ferroviario', 'setq'];
 
 const g = globalThis;
 if (!g._newsStore) g._newsStore = [];

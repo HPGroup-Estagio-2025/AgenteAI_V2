@@ -735,6 +735,7 @@ function SocialPageContent() {
                     { id: 'aeroespacial', label: '🚀 Aeroespacial' },
                     { id: 'ferroviario', label: '🚂 Ferroviário' },
                     { id: 'tecnologia', label: '💻 Tecnologia' },
+                    { id: 'setq', label: '🔬 SETQ' },
                   ].map(sector => {
                     const active = (companySettingsForm.sectors || []).includes(sector.id);
                     return (
