@@ -520,11 +520,11 @@ export default function SourcesPage() {
                     return (
                     <div
                       key={src.id}
-                      draggable="true"
+                      draggable={true}
                       onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', src.id); dragIdRef.current = src.id; dragSectorRef.current = group.id; setDragOverId(null); }}
                       onDragEnd={() => { dragIdRef.current = null; dragSectorRef.current = null; setDragOverId(null); }}
                       onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (src.id !== dragIdRef.current) setDragOverId(src.id); }}
-                      onDragLeave={() => setDragOverId(v => v === src.id ? null : v)}
+                      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverId(v => v === src.id ? null : v); }}
                       onDrop={e => { e.preventDefault(); const from = dragIdRef.current; const sector = dragSectorRef.current; dragIdRef.current = null; dragSectorRef.current = null; setDragOverId(null); if (from && from !== src.id) handleReorder(sector || group.id, from, src.id); }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px',
@@ -533,6 +533,7 @@ export default function SourcesPage() {
                         opacity: 1,
                         transition: 'background .12s',
                         cursor: 'grab',
+                        userSelect: 'none',
                       }}
                     >
                       {/* Drag handle */}
