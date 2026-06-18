@@ -445,14 +445,15 @@ function SocialPageContent() {
             <div className={`social-platform-status ${hasAccounts ? 'social-platform-status--on' : 'social-platform-status--off'}`}>
               {hasAccounts ? (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  {`✓ ${platformAccounts[0]?.name || platformAccounts[0]?.email || 'Conectado'}`}
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16A34A', display: 'inline-block', flexShrink: 0 }} />
+                  {platformAccounts[0]?.name || platformAccounts[0]?.email || 'Conectado'}
                   {id === 'linkedin' && (
-                    <span style={{ fontSize: '.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: company.linkedin_org_id ? '#EFF6FF' : '#F0FDF4', color: company.linkedin_org_id ? '#1D4ED8' : '#15803D', border: '1px solid', borderColor: company.linkedin_org_id ? '#BFDBFE' : '#BBF7D0' }}>
+                    <span style={{ fontSize: '.6rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8, background: company.linkedin_org_id ? '#EFF6FF' : '#F0FDF4', color: company.linkedin_org_id ? '#1D4ED8' : '#15803D', border: '1px solid', borderColor: company.linkedin_org_id ? '#BFDBFE' : '#BBF7D0' }}>
                       {company.linkedin_org_id ? 'Empresa' : 'Pessoal'}
                     </span>
                   )}
                 </span>
-              ) : '○ Desconectado'}
+              ) : <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gray-300)', display: 'inline-block' }} />Desconectado</span>}
             </div>
           </div>
           {!hasAccounts ? (
@@ -536,7 +537,9 @@ function SocialPageContent() {
           <div className="social-platform-info">
             <div className="social-platform-name">WordPress</div>
             <div className={`social-platform-status ${hasWordpress ? 'social-platform-status--on' : 'social-platform-status--off'}`}>
-              {hasWordpress ? '✓ Configurado' : '○ Não configurado'}
+              {hasWordpress
+                ? <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16A34A', display: 'inline-block' }} />Configurado</span>
+                : <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gray-300)', display: 'inline-block' }} />Não configurado</span>}
             </div>
           </div>
           {!hasWordpress ? (
@@ -628,28 +631,33 @@ function SocialPageContent() {
                 <div key={company.id} className="social-company-card">
                   {/* Header */}
                   <div className="social-company-header">
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                      {company.logo_url && (
-                        <div style={{ width: 52, height: 52, borderRadius: 10, background: '#fff', border: '1.5px solid var(--gray-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,.08)', padding: 4, marginTop: 1 }}>
-                          <img src={company.logo_url} alt="" onError={e => e.target.parentElement.style.display='none'} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                        </div>
-                      )}
-                      <div>
-                        <div className="social-company-name">{company.name}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                          <span style={{ fontSize: '.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: connectedCount > 0 ? 'var(--green-100)' : 'var(--gray-100)', color: connectedCount > 0 ? 'var(--green-600)' : 'var(--gray-400)' }}>
-                            {connectedCount} {connectedCount === 1 ? 'conta' : 'contas'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                      {/* Logo / initials */}
+                      <div style={{ width: 44, height: 44, borderRadius: 10, background: company.logo_url ? '#fff' : 'linear-gradient(135deg,#EDE9FE,#DDD6FE)', border: '1.5px solid var(--gray-150,#EAECF0)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                        {company.logo_url
+                          ? <img src={company.logo_url} alt="" onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }} />
+                          : null}
+                        <span style={{ display: company.logo_url ? 'none' : 'flex', fontWeight: 800, fontSize: '.85rem', color: '#7C3AED' }}>
+                          {company.name.slice(0,2).toUpperCase()}
+                        </span>
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="social-company-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{company.name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                          {connectedCount > 0 && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16A34A', display: 'inline-block', flexShrink: 0 }} />}
+                          <span style={{ fontSize: '.7rem', color: connectedCount > 0 ? '#16A34A' : 'var(--gray-400)', fontWeight: 600 }}>
+                            {connectedCount > 0 ? `${connectedCount} ${connectedCount === 1 ? 'conta conectada' : 'contas conectadas'}` : 'Nenhuma conta conectada'}
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="social-company-header-right">
+                    <div className="social-company-header-right" style={{ flexShrink: 0 }}>
                       <button
                         className="social-icon-btn"
                         title="Editar empresa"
                         onClick={() => isSettingsOpen ? setEditingCompanySettings(null) : openCompanySettings(company)}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                       </button>
@@ -661,7 +669,7 @@ function SocialPageContent() {
                       >
                         {deletingCompany === company.id
                           ? <span className="loader" style={{ width: 12, height: 12, borderColor: 'rgba(220,38,38,.3)', borderTopColor: '#DC2626' }} />
-                          : <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          : <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                             </svg>
                         }
@@ -685,7 +693,13 @@ function SocialPageContent() {
 
             {/* ── Create Company Card ── */}
             <div className="social-create-card">
-              <span className="social-create-card-label">Nova Empresa</span>
+              <div className="social-create-card-header">
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg,#7C3AED,#6D28D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </div>
+                <span className="social-create-card-label">Nova Empresa</span>
+              </div>
+              <div className="social-create-card-body">
               <input
                 type="text"
                 placeholder="Nome da empresa"
@@ -804,6 +818,7 @@ function SocialPageContent() {
                   Cria uma empresa para organizar as tuas contas de redes sociais.
                 </p>
               )}
+              </div>
             </div>
           </div>
         )}
