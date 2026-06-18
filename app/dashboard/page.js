@@ -84,7 +84,13 @@ function buildCompanies(connectedAccounts, companiesData = []) {
         ? dbCompany.sectors
         : JSON.parse(dbCompany.sectors || '[]');
     } catch { companySectors = []; }
-
+    // Fallback localStorage quando a coluna sectors não existe no Supabase
+    if (companySectors.length === 0) {
+      try {
+        const stored = JSON.parse(localStorage.getItem('company_sectors') || '{}');
+        if (stored[dbCompany.id]) companySectors = stored[dbCompany.id];
+      } catch { }
+    }
     return {
       id:        `db-${dbCompany.id}`,
       companyId: dbCompany.id,

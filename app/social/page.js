@@ -207,11 +207,20 @@ function SocialPageContent() {
       if (res.ok) {
         // Guarda setores se foram selecionados
         if (newCompanySectors.length > 0 && data.id) {
-          await fetch(`/api/companies/${data.id}`, {
-            method: 'PATCH',
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sectors: newCompanySectors }),
-          }).catch(() => {});
+          try {
+            const patchRes = await fetch(`/api/companies/${data.id}`, {
+              method: 'PATCH',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sectors: newCompanySectors }),
+            });
+            const patchData = await patchRes.json().catch(() => ({}));
+            // Se coluna não existe no Supabase, guarda em localStorage
+            if (!patchRes.ok || patchData._skipped?.includes('sectors')) {
+              const stored = JSON.parse(localStorage.getItem('company_sectors') || '{}');
+              stored[data.id] = newCompanySectors;
+              localStorage.setItem('company_sectors', JSON.stringify(stored));
+            }
+          } catch { }
         }
         showToast('Empresa criada com sucesso!', 'success');
         setNewCompanyInput('');
@@ -260,6 +269,13 @@ function SocialPageContent() {
         ? company.sectors
         : JSON.parse(company.sectors || '[]');
     } catch { companySectors = []; }
+    // Fallback: lê do localStorage se a coluna não existe no Supabase
+    if (companySectors.length === 0) {
+      try {
+        const stored = JSON.parse(localStorage.getItem('company_sectors') || '{}');
+        if (stored[company.id]) companySectors = stored[company.id];
+      } catch { }
+    }
     setCompanySettingsForm({
       logo_url: company.logo_url || '',
       website_url: company.website_url || '',
@@ -282,6 +298,17 @@ function SocialPageContent() {
       });
       const data = await res.json();
       if (res.ok) {
+        // Se a coluna sectors não existe no Supabase, guarda em localStorage
+        if (data._skipped?.includes('sectors') && companySettingsForm.sectors) {
+          const stored = JSON.parse(localStorage.getItem('company_sectors') || '{}');
+          stored[companyId] = companySettingsForm.sectors;
+          localStorage.setItem('company_sectors', JSON.stringify(stored));
+        } else if (companySettingsForm.sectors) {
+          // Limpa localStorage se foi guardado com sucesso no Supabase
+          const stored = JSON.parse(localStorage.getItem('company_sectors') || '{}');
+          delete stored[companyId];
+          localStorage.setItem('company_sectors', JSON.stringify(stored));
+        }
         showToast('Configurações guardadas!', 'success');
         setEditingCompanySettings(null);
         await loadCompanies();
