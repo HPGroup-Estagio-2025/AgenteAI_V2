@@ -321,29 +321,31 @@ export async function updateCompanySettings(companyId, settings) {
 
   if (error) {
     console.error('[companies] Erro ao atualizar configurações:', error.message, 'code:', error.code);
-    // Coluna pode não existir — tenta sem as colunas problemáticas
+    // Coluna pode não existir — tenta criar e re-tentar
     if (error.code === '42703' || error.message?.includes('column')) {
-      const retryUpdates = { ...updates };
-      // Remove colunas que podem não existir e tenta de novo
-      for (const col of ['logo_url', 'linkedin_org_id']) {
-        if (col in retryUpdates) delete retryUpdates[col];
+      // Colunas opcionais que podem não existir
+      const optionalCols = ['logo_url', 'linkedin_org_id', 'sectors'];
+      // Tenta criar as colunas em falta via RPC
+      for (const col of optionalCols) {
+        if (col in updates) {
+          await supabaseAdmin.rpc('exec_sql', {
+            sql: `ALTER TABLE ${COMPANIES_TABLE} ADD COLUMN IF NOT EXISTS ${col} text`
+          }).catch(() => {});
+        }
       }
-      if (Object.keys(retryUpdates).length === 0) return { id: companyId };
+      // Re-tenta com todas as colunas
       const { data: retry, error: retryErr } = await supabaseAdmin
-        .from(COMPANIES_TABLE).update(retryUpdates).eq('id', companyId).select().single();
-      if (retryErr) throw retryErr;
-      // Tenta criar coluna linkedin_org_id via SQL se estava em updates
-      if ('linkedin_org_id' in updates) {
-        await supabaseAdmin.rpc('exec_sql', {
-          sql: `ALTER TABLE ${COMPANIES_TABLE} ADD COLUMN IF NOT EXISTS linkedin_org_id text`
-        }).catch(() => {});
-        // Re-tenta guardar só o linkedin_org_id
-        await supabaseAdmin.from(COMPANIES_TABLE)
-          .update({ linkedin_org_id: updates.linkedin_org_id })
-          .eq('id', companyId)
-          .catch(() => {});
-      }
-      return retry;
+        .from(COMPANIES_TABLE).update(updates).eq('id', companyId).select().single();
+      if (!retryErr) return retry;
+
+      // Se ainda falha, remove colunas opcionais e tenta o mínimo
+      const safeUpdates = { ...updates };
+      for (const col of optionalCols) delete safeUpdates[col];
+      if (Object.keys(safeUpdates).length === 0) return { id: companyId };
+      const { data: safe, error: safeErr } = await supabaseAdmin
+        .from(COMPANIES_TABLE).update(safeUpdates).eq('id', companyId).select().single();
+      if (safeErr) throw safeErr;
+      return safe;
     }
     throw error;
   }
