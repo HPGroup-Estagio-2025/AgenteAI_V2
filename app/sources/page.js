@@ -240,18 +240,24 @@ export default function SourcesPage() {
 
   function startDrag(e, src, group) {
     e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
     dragIdRef.current = src.id;
     dragSectorRef.current = group.id;
     dragState.current = { fromId: src.id, sectorId: group.id, overId: null };
 
     function onMove(ev) {
-      const el = document.elementFromPoint(ev.clientX, ev.clientY);
-      const row = el?.closest('[data-source-id]');
-      const targetId = row?.dataset?.sourceId || null;
-      if (targetId !== dragState.current?.fromId) {
-        setDragOverId(targetId);
-        if (dragState.current) dragState.current.overId = targetId;
+      const rows = document.querySelectorAll('[data-source-id]');
+      let closestId = null;
+      let closestDist = Infinity;
+      for (const row of rows) {
+        const id = row.dataset.sourceId;
+        if (id === dragState.current?.fromId) continue;
+        const rect = row.getBoundingClientRect();
+        const dist = Math.abs(ev.clientY - (rect.top + rect.height / 2));
+        if (dist < closestDist) { closestDist = dist; closestId = id; }
       }
+      setDragOverId(closestId);
+      if (dragState.current) dragState.current.overId = closestId;
     }
 
     function onUp() {
