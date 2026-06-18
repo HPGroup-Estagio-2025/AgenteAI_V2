@@ -646,8 +646,13 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
       'aeroespacial':   ['aerospace', 'aviation', 'aircraft', 'airline', 'satellite', 'rocket launch', 'orbit', 'uav', 'airport', 'spaceflight', 'astronaut', 'spacecraft'],
       'ferroviario':    ['railway', 'railroad', 'rolling stock', 'locomotive', 'tram', 'high-speed rail', 'rail freight', 'metro system'],
       'tecnologia':     ['technology', 'software', 'hardware', 'artificial intelligence', 'machine learning', 'deep learning', 'large language model', 'llm', 'generative ai', 'chatgpt', 'openai', 'anthropic', 'gemini', 'neural network', 'ai model', 'digital', 'cybersecurity', 'semiconductor', 'cloud computing', 'robotics', 'startup', 'automation', 'natural language processing', 'computer vision'],
-      'fitness':        ['fitness', 'workout', 'exercise', 'gym', 'training', 'nutrition', 'health', 'muscle', 'weight loss', 'running', 'yoga', 'crossfit', 'strength', 'cardio'],
+      'fitness':        ['fitness', 'treino', 'exercício', 'ginásio', 'nutrição', 'saúde', 'yoga', 'pilates', 'crossfit', 'corrida', 'bem-estar', 'workout', 'exercise', 'gym', 'nutrition', 'health', 'running', 'strength', 'cardio', 'wellness', 'mulher', 'feminino', 'feminina', 'women', 'female'],
     };
+
+    // Termos obrigatórios e de exclusão para o setor fitness (apenas PT + feminino)
+    const FITNESS_PT_WORDS = ['de', 'da', 'do', 'em', 'para', 'com', 'que', 'não', 'uma', 'ao', 'na', 'se', 'por', 'mais', 'como', 'mas', 'as', 'os', 'às', 'é', 'são', 'foram'];
+    const FITNESS_FEMALE_TERMS = ['mulher', 'mulheres', 'feminino', 'feminina', 'femininas', 'femininos', 'woman', 'women', 'female', 'girl', 'girls', 'ela', 'grávida', 'gravidez', 'maternidade', 'menopausa', 'menstrual', 'menstruação'];
+    const FITNESS_MALE_EXCLUDE = [' homem', ' homens', 'masculino', 'masculina', " men'", " men ", "men's", ' male ', "male'", ' man ', "man's", 'boyfriend', 'husband', 'paternidade', ' pai ', ' rapaz', ' rapazes'];
 
     // Busca os feeds de cada setor — mínimo 10 artigos por setor
     const ARTICLES_PER_SECTOR = 10;
@@ -700,13 +705,27 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         return terms.some(t => text.includes(t));
       });
 
+      // Filtro extra para fitness: apenas artigos em PT e sobre fitness feminino
+      let sectorFiltered = sectorRaw;
+      if (sectorKey === 'fitness') {
+        sectorFiltered = sectorRaw.filter(a => {
+          const text = `${a.title || ''} ${a.description || ''} ${a.content || ''}`.toLowerCase();
+          const ptCount = FITNESS_PT_WORDS.filter(w => new RegExp(`\\b${w}\\b`).test(text)).length;
+          if (ptCount < 3) return false; // não está em português
+          if (!FITNESS_FEMALE_TERMS.some(t => text.includes(t))) return false; // não é fitness feminino
+          if (FITNESS_MALE_EXCLUDE.some(t => text.includes(t))) return false; // contém conteúdo masculino
+          return true;
+        });
+        console.log(`[agent] Fitness após filtro PT+feminino: ${sectorFiltered.length}/${sectorRaw.length} artigos`);
+      }
+
       // Prioridade: artigos de fontes custom entram primeiro (sem filtro de keywords),
       // depois preenchem-se as slots restantes com artigos das fontes predefinidas.
       const customFeedUrlsLower = new Set([...customUrls].map(u => u.toLowerCase()));
-      const customSectorRaw = sectorRaw.filter(a =>
+      const customSectorRaw = sectorFiltered.filter(a =>
         a._feedUrl && customFeedUrlsLower.has(a._feedUrl.toLowerCase())
       );
-      const defaultSectorRaw = sectorRaw.filter(a =>
+      const defaultSectorRaw = sectorFiltered.filter(a =>
         !a._feedUrl || !customFeedUrlsLower.has(a._feedUrl.toLowerCase())
       );
       if (customUrls.size > 0) {
