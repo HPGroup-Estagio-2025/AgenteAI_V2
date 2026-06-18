@@ -233,6 +233,30 @@ export async function GET(request, { params }) {
       return redirect('/social?error=profile_failed');
     }
 
+    // Para LinkedIn: extrai nome/email do id_token (JWT OpenID Connect) como fallback mais fiável
+    if (platform === 'linkedin' && tokenData.id_token) {
+      try {
+        const parts = tokenData.id_token.split('.');
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+        console.log('[oauth:linkedin] id_token claims:', JSON.stringify({ name: payload.name, given_name: payload.given_name, family_name: payload.family_name, email: payload.email }));
+        const idName =
+          payload.name?.trim() ||
+          [payload.given_name, payload.family_name].filter(Boolean).join(' ').trim() ||
+          null;
+        if (idName && (!profile.name || profile.name === 'Utilizador LinkedIn')) {
+          profile.name = idName;
+        }
+        if (payload.email && !profile.email) {
+          profile.email = payload.email;
+        }
+        if (!profile.name || profile.name === 'Utilizador LinkedIn') {
+          profile.name = payload.email?.split('@')[0] || payload.sub || 'Utilizador LinkedIn';
+        }
+      } catch (e) {
+        console.warn('[oauth:linkedin] Falha ao decodificar id_token:', e.message);
+      }
+    }
+
     // 4. Guarda a conta
     // Para Instagram: usa o page token (nunca expira) guardado em profile.accessToken se disponível
     const tokenToStore = profile.accessToken || accessToken;
