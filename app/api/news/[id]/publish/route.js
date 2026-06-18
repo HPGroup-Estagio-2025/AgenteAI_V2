@@ -442,12 +442,7 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
   }
 
   const personalUrn = `urn:li:member:${numericMemberId}`;
-
-  // Se a empresa tem linkedin_org_id configurado → tenta publicar como página de empresa
-  const orgId = company?.linkedin_org_id || memberAccount.orgId || null;
-  const orgUrn = orgId ? `urn:li:organization:${orgId}` : null;
-
-  console.log('[linkedin] personalUrn:', personalUrn, '| orgUrn:', orgUrn || 'n/a');
+  console.log('[linkedin] authorUrn:', personalUrn);
 
   const summary = buildSocialSummary(item);
   const hashtags = generateHashtags(item);
@@ -484,34 +479,19 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
     return { ok: r.ok, data: d, postId: d.id };
   }
 
-  // Tenta publicar como empresa; se falhar, faz fallback para conta pessoal
-  let result;
-  let usedUrn = personalUrn;
-
-  if (orgUrn) {
-    result = await tryPost(orgUrn);
-    if (result.ok) {
-      usedUrn = orgUrn;
-    } else {
-      console.warn('[linkedin] Falha ao publicar como org, a tentar conta pessoal. Erro:', result.data?.message);
-      result = await tryPost(personalUrn);
-    }
-  } else {
-    result = await tryPost(personalUrn);
-  }
+  const result = await tryPost(personalUrn);
 
   if (!result.ok) {
     const errMsg = result.data?.message || result.data?.serviceErrorCode || 'Falha ao publicar no LinkedIn';
-    console.error('[linkedin] Post falhou:', errMsg, 'author:', usedUrn, 'details:', JSON.stringify(result.data));
+    console.error('[linkedin] Post falhou:', errMsg, 'author:', personalUrn, 'details:', JSON.stringify(result.data));
     throw Object.assign(
       new Error(errMsg),
       { code: 'linkedin_publish_failed', details: result.data }
     );
   }
 
-  const publishedAs = usedUrn === orgUrn ? 'empresa' : 'pessoal';
-  console.log(`[linkedin] ✓ Publicado como ${publishedAs}, postId:`, result.postId, 'author:', usedUrn);
-  return { platform: 'linkedin', postId: result.postId, authorUrn: usedUrn, publishedAs };
+  console.log('[linkedin] ✓ Publicado, postId:', result.postId, 'author:', personalUrn);
+  return { platform: 'linkedin', postId: result.postId, authorUrn: personalUrn };
 }
 
 async function publishToInstagram(item, accountId = null) {
