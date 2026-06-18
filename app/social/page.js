@@ -88,6 +88,7 @@ function SocialPageContent() {
   const [appOrigin, setAppOrigin] = useState('');
   const [newCompanyInput, setNewCompanyInput] = useState('');
   const [newCompanyLogo, setNewCompanyLogo] = useState('');
+  const [newCompanySectors, setNewCompanySectors] = useState([]);
   const [confirmDeleteCompanyId, setConfirmDeleteCompanyId] = useState(null);
   const [showCompanySelector, setShowCompanySelector] = useState(null);
   const [editingCompanySettings, setEditingCompanySettings] = useState(null);
@@ -204,9 +205,18 @@ function SocialPageContent() {
       });
       const data = await res.json();
       if (res.ok) {
+        // Guarda setores se foram selecionados
+        if (newCompanySectors.length > 0 && data.id) {
+          await fetch(`/api/companies/${data.id}`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sectors: newCompanySectors }),
+          }).catch(() => {});
+        }
         showToast('Empresa criada com sucesso!', 'success');
         setNewCompanyInput('');
         setNewCompanyLogo('');
+        setNewCompanySectors([]);
         await loadCompanies();
       } else {
         showToast(data.error || 'Erro ao criar empresa', 'error');
@@ -668,6 +678,36 @@ function SocialPageContent() {
                     onChange={e => setNewCompanyLogo(e.target.value)}
                     style={{ flex: 1 }}
                   />
+                </div>
+              </div>
+              {/* Setores */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                  Setores <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional)</span>
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {[
+                    { id: 'maritimo', label: '⚓ Marítimo' },
+                    { id: 'defesa-militar', label: '🛡️ Defesa' },
+                    { id: 'aeroespacial', label: '🚀 Aeroespacial' },
+                    { id: 'ferroviario', label: '🚂 Ferroviário' },
+                    { id: 'tecnologia', label: '💻 Tecnologia' },
+                    { id: 'setq', label: '🔬 SETQ' },
+                  ].map(sector => {
+                    const active = newCompanySectors.includes(sector.id);
+                    return (
+                      <button
+                        key={sector.id}
+                        type="button"
+                        onClick={() => setNewCompanySectors(prev =>
+                          active ? prev.filter(s => s !== sector.id) : [...prev, sector.id]
+                        )}
+                        style={{ padding: '4px 10px', borderRadius: 20, fontSize: '.75rem', fontWeight: 600, cursor: 'pointer', border: '1.5px solid', borderColor: active ? 'var(--blue-400)' : 'var(--gray-200)', background: active ? 'var(--blue-50, #EFF6FF)' : 'transparent', color: active ? 'var(--blue-700, #1D4ED8)' : 'var(--gray-500)', transition: 'all .15s' }}
+                      >
+                        {sector.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <button
