@@ -443,9 +443,16 @@ function SocialPageContent() {
           <div className="social-platform-info">
             <div className="social-platform-name">{name}</div>
             <div className={`social-platform-status ${hasAccounts ? 'social-platform-status--on' : 'social-platform-status--off'}`}>
-              {hasAccounts
-                ? `✓ ${platformAccounts[0]?.name || platformAccounts[0]?.email || 'Conectado'}`
-                : '○ Desconectado'}
+              {hasAccounts ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  {`✓ ${platformAccounts[0]?.name || platformAccounts[0]?.email || 'Conectado'}`}
+                  {id === 'linkedin' && (
+                    <span style={{ fontSize: '.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: company.linkedin_org_id ? '#EFF6FF' : '#F0FDF4', color: company.linkedin_org_id ? '#1D4ED8' : '#15803D', border: '1px solid', borderColor: company.linkedin_org_id ? '#BFDBFE' : '#BBF7D0' }}>
+                      {company.linkedin_org_id ? 'Empresa' : 'Pessoal'}
+                    </span>
+                  )}
+                </span>
+              ) : '○ Desconectado'}
             </div>
           </div>
           {!hasAccounts ? (
