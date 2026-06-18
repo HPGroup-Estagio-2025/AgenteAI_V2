@@ -62,8 +62,10 @@ const SECTOR_FEEDS = {
     'https://feeds.feedburner.com/MachineLearningMastery',
   ],
   'fitness': [
-    'https://www.menshealth.com/rss/all.xml/',
-    'https://www.womenshealthmag.com/rss/all.xml/',
+    'https://www.womenshealth.pt/feed/',
+    'https://activa.sapo.pt/feed/',
+    'https://nit.pt/category/fit/feed/',
+    'https://www.fitness.pt/feed/',
   ],
 };
 
@@ -711,7 +713,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
         sectorFiltered = sectorRaw.filter(a => {
           const text = `${a.title || ''} ${a.description || ''} ${a.content || ''}`.toLowerCase();
           const ptCount = FITNESS_PT_WORDS.filter(w => new RegExp(`\\b${w}\\b`).test(text)).length;
-          if (ptCount < 3) return false; // não está em português
+          if (ptCount < 2) return false; // não está em português
           if (!FITNESS_FEMALE_TERMS.some(t => text.includes(t))) return false; // não é fitness feminino
           if (FITNESS_MALE_EXCLUDE.some(t => text.includes(t))) return false; // contém conteúdo masculino
           return true;
