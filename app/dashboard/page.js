@@ -1185,47 +1185,47 @@ export default function DashboardPage() {
             )}
           </div>
           {/* Direita */}
-          {pendingArticles.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                savePending([]);
-                setPendingArticles([]);
-                setCounts(prev => ({ ...prev, pending: 0 }));
-                showToast('Cache de notícias limpa', 'info');
-              }}
-              title="Limpar notícias pendentes do browser"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '7px 14px', borderRadius: 20,
-                background: 'var(--red-50)', border: '1.5px solid var(--red-100)',
-                color: 'var(--red-500)', fontSize: '.78rem', fontWeight: 600,
-                cursor: 'pointer', transition: 'all .15s', whiteSpace: 'nowrap',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-100)'; e.currentTarget.style.borderColor = 'var(--red-300)'; e.currentTarget.style.color = 'var(--red-700)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'var(--red-50)'; e.currentTarget.style.borderColor = 'var(--red-100)'; e.currentTarget.style.color = 'var(--red-500)'; }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-              </svg>
-              Limpar cache
-            </button>
-          )}
-          <button type="button" className={`btn-agent${agentRunning ? ' btn-agent--running' : ''}`} onClick={runAgentManually} disabled={agentRunning}>
-            {agentRunning ? (
-              <>
-                <span className="loader" style={{ width: 15, height: 15, borderColor: 'rgba(255,255,255,.35)', borderTopColor: '#fff' }} />
-                A executar...
-              </>
-            ) : (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><path d="M18 2v4h4"/>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {pendingArticles.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  savePending([]);
+                  setPendingArticles([]);
+                  setCounts(prev => ({ ...prev, pending: 0 }));
+                  showToast('Cache de notícias limpa', 'info');
+                }}
+                title="Limpar notícias pendentes do browser"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: 'var(--red-50)', border: '1.5px solid var(--red-200)',
+                  color: 'var(--red-400)', cursor: 'pointer', transition: 'all .15s', flexShrink: 0,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-100)'; e.currentTarget.style.borderColor = 'var(--red-400)'; e.currentTarget.style.color = 'var(--red-600)'; e.currentTarget.style.transform = 'scale(1.08)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--red-50)'; e.currentTarget.style.borderColor = 'var(--red-200)'; e.currentTarget.style.color = 'var(--red-400)'; e.currentTarget.style.transform = 'scale(1)'; }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                 </svg>
-                Executar agente
-              </>
+              </button>
             )}
-          </button>
+            <button type="button" className={`btn-agent${agentRunning ? ' btn-agent--running' : ''}`} onClick={runAgentManually} disabled={agentRunning}>
+              {agentRunning ? (
+                <>
+                  <span className="loader" style={{ width: 15, height: 15, borderColor: 'rgba(255,255,255,.35)', borderTopColor: '#fff' }} />
+                  A executar...
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><path d="M18 2v4h4"/>
+                  </svg>
+                  Executar agente
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {lastAgentRun?.run_id && (
