@@ -62,8 +62,9 @@ const SECTOR_FEEDS = {
     'https://feeds.feedburner.com/MachineLearningMastery',
   ],
   'fitness': [
-    'https://www.womenshealth.pt/d/nutricao/4/',
-    'https://www.womenshealth.pt/d/treino/6/',
+    'https://nit.pt/category/fit/feed/',
+    'https://nit.pt/category/fit/alimentacao-saudavel/feed/',
+    'https://nit.pt/category/fit/ginasios-e-outdoor/feed/',
   ],
 };
 
@@ -764,8 +765,7 @@ export async function runNewsAgent({ triggerType = 'manual', triggeredBy = 'admi
           const text = `${a.title || ''} ${a.description || ''} ${a.content || ''}`.toLowerCase();
           const ptCount = FITNESS_PT_WORDS.filter(w => new RegExp(`\\b${w}\\b`).test(text)).length;
           if (ptCount < 2) return false; // não está em português
-          if (!FITNESS_FEMALE_TERMS.some(t => text.includes(t))) return false; // não é fitness feminino
-          if (FITNESS_MALE_EXCLUDE.some(t => text.includes(t))) return false; // contém conteúdo masculino
+          if (FITNESS_MALE_EXCLUDE.some(t => text.includes(t))) return false; // exclui conteúdo explicitamente masculino
           return true;
         });
         console.log(`[agent] Fitness após filtro PT+feminino: ${sectorFiltered.length}/${sectorRaw.length} artigos`);
