@@ -62,7 +62,6 @@ const SECTOR_FEEDS = {
     'https://feeds.feedburner.com/MachineLearningMastery',
   ],
   'fitness': [
-    'https://nit.pt/category/fit/feed/',
     'https://nit.pt/category/fit/alimentacao-saudavel/feed/',
     'https://nit.pt/category/fit/ginasios-e-outdoor/feed/',
   ],
