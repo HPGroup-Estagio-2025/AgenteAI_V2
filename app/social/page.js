@@ -692,7 +692,7 @@ function SocialPageContent() {
                     { id: 'aeroespacial', label: '🚀 Aeroespacial' },
                     { id: 'ferroviario', label: '🚂 Ferroviário' },
                     { id: 'tecnologia', label: '💻 Tecnologia' },
-                    { id: 'setq', label: '🔬 SETQ' },
+                    { id: 'fitness', label: '🏋️ Fitness' },
                   ].map(sector => {
                     const active = newCompanySectors.includes(sector.id);
                     return (
@@ -775,7 +775,7 @@ function SocialPageContent() {
                     { id: 'aeroespacial', label: '🚀 Aeroespacial' },
                     { id: 'ferroviario', label: '🚂 Ferroviário' },
                     { id: 'tecnologia', label: '💻 Tecnologia' },
-                    { id: 'setq', label: '🔬 SETQ' },
+                    { id: 'fitness', label: '🏋️ Fitness' },
                   ].map(sector => {
                     const active = (companySettingsForm.sectors || []).includes(sector.id);
                     return (
