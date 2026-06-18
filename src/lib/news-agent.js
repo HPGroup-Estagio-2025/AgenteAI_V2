@@ -62,7 +62,8 @@ const SECTOR_FEEDS = {
     'https://feeds.feedburner.com/MachineLearningMastery',
   ],
   'fitness': [
-    'https://www.womenshealth.pt/feed/',
+    'https://www.womenshealth.pt/d/nutricao/4/feed/',
+    'https://www.womenshealth.pt/d/treino/6/feed/',
   ],
 };
 
