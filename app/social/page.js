@@ -397,7 +397,9 @@ function SocialPageContent() {
           <div className="social-platform-info">
             <div className="social-platform-name">{name}</div>
             <div className={`social-platform-status ${hasAccounts ? 'social-platform-status--on' : 'social-platform-status--off'}`}>
-              {hasAccounts ? '✓ Conectado' : '○ Desconectado'}
+              {hasAccounts
+                ? `✓ ${platformAccounts[0]?.name || platformAccounts[0]?.email || 'Conectado'}`
+                : '○ Desconectado'}
             </div>
           </div>
           {!hasAccounts ? (
