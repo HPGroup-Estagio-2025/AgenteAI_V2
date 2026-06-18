@@ -63,9 +63,6 @@ const SECTOR_FEEDS = {
   ],
   'fitness': [
     'https://www.womenshealth.pt/feed/',
-    'https://activa.sapo.pt/feed/',
-    'https://nit.pt/category/fit/feed/',
-    'https://www.fitness.pt/feed/',
   ],
 };
 
