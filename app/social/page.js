@@ -487,6 +487,15 @@ function SocialPageContent() {
                 <span className="social-account-panel-sub">{formatDate(account.connectedAt)}</span>
               </div>
               <button
+                className="btn btn-ghost"
+                style={{ padding: '4px 10px', fontSize: '.72rem', height: 'auto', flexShrink: 0 }}
+                disabled={isConnectingFresh}
+                onClick={() => handleConnect(id, company.id, true)}
+                title="Força novo OAuth para renovar permissões"
+              >
+                {isConnectingFresh ? <span className="loader" style={{ width: 10, height: 10 }} /> : 'Reconectar'}
+              </button>
+              <button
                 className="btn btn-danger"
                 style={{ padding: '4px 10px', fontSize: '.72rem', height: 'auto', flexShrink: 0 }}
                 onClick={() => setConfirmDisconnect({ id: account.id, name: account.name || account.email })}

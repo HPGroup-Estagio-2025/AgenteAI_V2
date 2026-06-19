@@ -47,7 +47,15 @@ async function fetchFacebookPagesFromToken(account) {
     );
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      console.error('[facebook] Falha ao buscar paginas no momento da publicacao:', data.error?.message || data);
+      const fbMsg = data.error?.message || '';
+      console.error('[facebook] Falha ao buscar paginas no momento da publicacao:', fbMsg || data);
+      // Permissões insuficientes — token precisa de re-autorização
+      if (data.error?.code === 200 || /pages_read_engagement|pages_show_list|pages_manage/i.test(fbMsg)) {
+        throw Object.assign(
+          new Error('O token do Facebook não tem permissões de página. Reconecta a conta Facebook em Redes Sociais (usa o botão "Reconectar" para forçar novo OAuth).'),
+          { code: 'facebook_permissions_missing' }
+        );
+      }
       return [];
     }
     const pages = Array.isArray(data.data) ? data.data.map(page => ({
