@@ -73,7 +73,7 @@ async function fetchFacebookPagesFromToken(account) {
 function selectFacebookPage(pages, selectedPageId) {
   const availablePages = Array.isArray(pages) ? pages : [];
   if (selectedPageId) return availablePages.find(p => p.id === selectedPageId) || availablePages[0] || null;
-  if (FACEBOOK_PAGE_ID) return availablePages.find(page => page.id === FACEBOOK_PAGE_ID) || null;
+  if (FACEBOOK_PAGE_ID) return availablePages.find(page => page.id === FACEBOOK_PAGE_ID) || availablePages[0] || null;
   return availablePages[0] || null;
 }
 
@@ -578,7 +578,7 @@ async function publishToFacebook(item, accountId = null, companyUrl = null, word
     // Tenta encontrar a página pelo ID guardado, depois qualquer página com token
     page = (storedPage?.id ? livePages.find(p => p.id === storedPage.id) : null)
       || livePages.find(p => p.accessToken)
-      || selectFacebookPage(livePages);
+      || selectFacebookPage(livePages, account.selectedPageId);
     console.log('[facebook] Página selecionada após fetch ao vivo:', page ? { id: page.id, name: page.name, hasToken: Boolean(page.accessToken) } : null);
   }
 
