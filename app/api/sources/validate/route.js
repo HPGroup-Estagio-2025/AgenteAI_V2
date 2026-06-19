@@ -7,9 +7,33 @@ function auth(request) {
   try { verifyToken(token); return true; } catch { return false; }
 }
 
-function extractRssTitle(xml) {
-  const m = xml.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/i);
-  return m?.[1]?.trim().replace(/<[^>]+>/g, '') || null;
+function extractRssTitle(xml, feedUrl) {
+  // Tenta extrair o título do <channel>, antes do primeiro <item> ou <entry>
+  const channelXml = xml.replace(/<item[\s\S]*$/i, '').replace(/<entry[\s\S]*$/i, '');
+  const m = channelXml.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
+  const raw = m?.[1]?.trim().replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>') || null;
+  if (!raw) return null;
+
+  // Se o título contém separadores ("NIT | Fitness" → "NIT"), pega só a primeira parte
+  const separators = [' | ', ' - ', ' – ', ' · ', ' » ', ' > ', ' :: '];
+  for (const sep of separators) {
+    if (raw.includes(sep)) return raw.split(sep)[0].trim();
+  }
+
+  // Se o título é idêntico ao hostname (já é o nome certo) ou curto e claro, usa-o
+  try {
+    const hostname = new URL(feedUrl).hostname.replace(/^www\./, '');
+    const domainBase = hostname.split('.')[0];
+    // Se o título parece uma categoria (corresponde a palavras do path), prefere o hostname
+    const pathParts = new URL(feedUrl).pathname.toLowerCase().split('/').filter(Boolean);
+    const titleLower = raw.toLowerCase().replace(/\s+/g, '-');
+    const looksLikeCategory = pathParts.some(p => titleLower.includes(p) || p.includes(titleLower));
+    if (looksLikeCategory && raw.length < 40) {
+      return domainBase.charAt(0).toUpperCase() + domainBase.slice(1);
+    }
+  } catch {}
+
+  return raw;
 }
 
 function countRssItems(xml) {
@@ -79,7 +103,7 @@ export async function POST(request) {
 
     // É RSS/Atom directamente
     if (isRssXml(text) || /rss|atom|xml/i.test(contentType)) {
-      const title = extractRssTitle(text);
+      const title = extractRssTitle(text, targetUrl);
       const items = countRssItems(text);
       // Feed válido mesmo sem artigos (pode estar temporariamente vazio)
       return NextResponse.json({
@@ -108,7 +132,7 @@ export async function POST(request) {
           if (feedRes.ok) {
             const feedText = await feedRes.text();
             if (isRssXml(feedText)) {
-              const title = extractRssTitle(feedText);
+              const title = extractRssTitle(feedText, feedUrl);
               const items = countRssItems(feedText);
               return NextResponse.json({
                 valid: true,
