@@ -1086,8 +1086,21 @@ export default function DashboardPage() {
             <button className="header-nav-item" onClick={() => router.push('/sources')}>Fontes</button>
           </nav>
           <div className="header-actions">
+            <button
+              type="button"
+              className={`btn-agent${agentRunning ? ' btn-agent--running' : ''}`}
+              onClick={runAgentManually}
+              disabled={agentRunning}
+              style={{ padding: '7px 16px', fontSize: '.8rem' }}
+            >
+              {agentRunning ? (
+                <><span className="loader" style={{ width: 13, height: 13, borderColor: 'rgba(255,255,255,.35)', borderTopColor: '#fff' }} />A executar...</>
+              ) : (
+                <><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><path d="M18 2v4h4"/></svg>Executar agente</>
+              )}
+            </button>
             <div className="user-badge">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/>
               </svg>
               <span>{username}</span>
