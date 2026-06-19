@@ -251,14 +251,14 @@ function ImagePlaceholder() {
 }
 
 // ── Card para artigos do agente ─────────────────────────────────────
-function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetCompany, onPublish, onSave, isSelected, onToggleSelect, bulkStatus, isPublishing, sectorsMap }) {
+function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetCompany, onPublish, onSave, isSelected, onToggleSelect, bulkStatus, isPublishing, sectorsMap, featured }) {
   const selectedId = selection?.companyId || companies[0]?.id;
   const selectedCompany = companies.find(c => c.id === selectedId) || companies[0];
 
   const bulkStatusColor = bulkStatus === 'success' ? '#10B981' : bulkStatus === 'error' ? '#DC2626' : bulkStatus === 'publishing' ? '#7C3AED' : null;
 
   return (
-    <article className="news-card" style={{ ...(bulkStatusColor ? { outline: `2px solid ${bulkStatusColor}` } : {}), position: 'relative' }}>
+    <article className={`news-card${featured ? ' news-card--featured' : ''}`} style={{ ...(bulkStatusColor ? { outline: `2px solid ${bulkStatusColor}` } : {}), position: 'relative' }}>
       {/* Checkbox de seleção múltipla — canto superior esquerdo sobre a imagem */}
       {onToggleSelect && (
         <div className="news-card-checkbox">
@@ -358,7 +358,7 @@ function AgentArticleCard({ item, companies, selection, onTogglePlatform, onSetC
 }
 
 // ── Card para artigos já guardados na BD ───────────────────────────
-function SavedArticleCard({ item, companies, onPublish, onRemove, isPublishing }) {
+function SavedArticleCard({ item, companies, onPublish, onRemove, isPublishing, featured }) {
   const [selectedCompanyId, setSelectedCompanyId] = useState(companies[0]?.id || null);
   const [selectedPlatforms, setSelectedPlatforms] = useState(companies[0]?.platforms ? [...companies[0].platforms] : []);
   const [selectedAccounts, setSelectedAccounts] = useState(companies[0]?.accountIds || {});
@@ -380,7 +380,7 @@ function SavedArticleCard({ item, companies, onPublish, onRemove, isPublishing }
   const selectedCompany = companies.find(c => c.id === selectedCompanyId) || companies[0];
 
   return (
-    <article className="news-card">
+    <article className={`news-card${featured ? ' news-card--featured' : ''}`}>
       <div className="news-card-image">
         {item.imageUrl
           ? <img
@@ -1277,7 +1277,7 @@ export default function DashboardPage() {
               <p>Sem notícias para mostrar</p>
             </div>
           ) : filterStatus === 'pending' ? (
-            displayedNews.map(item => (
+            displayedNews.map((item, idx) => (
               <AgentArticleCard
                 key={item.id}
                 item={item}
@@ -1296,10 +1296,11 @@ export default function DashboardPage() {
                 })}
                 bulkStatus={bulkProgress[item.id]}
                 sectorsMap={sectorsMap}
+                featured={idx === 0}
               />
             ))
           ) : (
-            displayedNews.map(item => (
+            displayedNews.map((item, idx) => (
               <SavedArticleCard
                 key={item.id}
                 item={item}
@@ -1307,6 +1308,7 @@ export default function DashboardPage() {
                 isPublishing={publishingId === item.id}
                 onPublish={filterStatus === 'on_hold' ? handlePublishSaved : null}
                 onRemove={filterStatus === 'on_hold' ? (item) => setConfirmRemove(item) : null}
+                featured={idx === 0}
               />
             ))
           )}
