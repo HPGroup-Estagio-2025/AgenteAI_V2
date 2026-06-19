@@ -839,8 +839,11 @@ export async function POST(request, { params }) {
       stack: err.stack?.split('\n')[0],
     });
 
+    if (err.code === 'facebook_permissions_missing') {
+      return NextResponse.json({ error: 'O token do Facebook não tem permissões de página. Vai a Redes Sociais e clica em "Reconectar" na conta Facebook para renovar as permissões.' }, { status: 409 });
+    }
     if (err.code === 'facebook_page_missing') {
-      return NextResponse.json({ error: err.message || 'Facebook conectado, mas sem Pagina disponivel para publicar.' }, { status: 409 });
+      return NextResponse.json({ error: err.message || 'Facebook conectado, mas sem Pagina disponivel para publicar. Vai a Redes Sociais e clica em "Reconectar".' }, { status: 409 });
     }
     if (err.code === 'facebook_publish_failed') {
       console.error('[facebook] Erro ao publicar:', err.details || err.message);

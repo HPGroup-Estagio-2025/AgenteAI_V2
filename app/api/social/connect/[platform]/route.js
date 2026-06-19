@@ -54,6 +54,21 @@ export async function GET(request, { params }) {
       .limit(1);
     const src = existing?.[0];
     if (src && src.company_id !== companyId) {
+      // Tenta refrescar as páginas com o token existente para incluir todas as páginas do utilizador
+      let freshPages = Array.isArray(src.pages) ? src.pages : [];
+      if (src.access_token && platform === 'facebook') {
+        try {
+          const pagesRes = await fetch(
+            `https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,tasks,picture.width(200)&access_token=${encodeURIComponent(src.access_token)}`
+          );
+          const pagesData = await pagesRes.json().catch(() => ({}));
+          if (pagesRes.ok && Array.isArray(pagesData.data) && pagesData.data.length > 0) {
+            freshPages = pagesData.data.map(p => ({
+              id: p.id, name: p.name, accessToken: p.access_token, tasks: p.tasks || [], picture: p.picture?.data?.url || null,
+            }));
+          }
+        } catch {}
+      }
       // Cria novo registo para esta empresa com os tokens já existentes
       await addAccount({
         platform: src.platform,
@@ -62,7 +77,7 @@ export async function GET(request, { params }) {
         name: src.name,
         email: src.email,
         picture: src.picture,
-        pages: Array.isArray(src.pages) ? src.pages : [],
+        pages: freshPages,
         instagramUserId: src.instagram_user_id || null,
         companyId,
         expiresAt: src.expires_at || null,
