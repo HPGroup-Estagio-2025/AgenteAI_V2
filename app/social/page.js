@@ -579,26 +579,19 @@ function SocialPageContent() {
       <header className="header">
         <div className="header-inner">
           <div className="header-brand">
-            <img src="/robot-logo.svg" width="36" height="36" alt="Publixy" style={{borderRadius:8}} />
-            <span>Publixy</span>
+            <img src="/robot-logo.svg" width="34" height="34" alt="Publixy" style={{borderRadius:8}} />
+            <span className="header-brand-name">Publixy</span>
           </div>
           <nav className="header-nav">
-            <button className="header-nav-item" onClick={() => router.push('/dashboard')}>
-              Notícias
-            </button>
-            <button className="header-nav-item active">
-              Redes Sociais
-            </button>
-            <button className="header-nav-item" onClick={() => router.push('/sources')}>
-              Fontes
-            </button>
+            <button className="header-nav-item" onClick={() => router.push('/dashboard')}>Notícias</button>
+            <button className="header-nav-item active">Redes Sociais</button>
+            <button className="header-nav-item" onClick={() => router.push('/sources')}>Fontes</button>
           </nav>
           <div className="header-actions">
-            <button className="btn-logout" onClick={() => { clearAuth(); router.replace('/'); }}>
+            <button className="btn-logout" title="Sair" onClick={() => { clearAuth(); router.replace('/'); }}>
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>
               </svg>
-              Sair
             </button>
           </div>
         </div>
