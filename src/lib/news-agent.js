@@ -353,6 +353,17 @@ async function enrichWithImages(articles) {
   });
 }
 
+const GENERIC_SOURCE_TERMS = new Set([
+  'military','defense','defence','naval','maritime','shipping','offshore','army','navy','airforce','air force',
+  'aerospace','aviation','aircraft','space','rocket',
+  'railway','railroad','rail','tram','metro',
+  'technology','tech','digital','software','hardware','ai','artificial intelligence',
+  'fitness','workout','gym','treino','alimentacao','alimentação','ginasio','ginásio','outdoor',
+  'saude','saúde','health','nutricao','nutrição',
+  'news','noticias','notícias','latest','feed','rss','blog','articles','posts',
+  'maritimo','marítimo','defesa','militar','aeroespacial','ferroviario','ferroviário','tecnologia',
+]);
+
 function sourceFromUrl(url) {
   try {
     const host = new URL(url).hostname.replace(/^www\./, '').replace(/^feeds\./, '');
@@ -367,8 +378,12 @@ function sourceFromUrl(url) {
     if (host.includes('flipboard')) return 'Flipboard';
     if (host.includes('arstechnica')) return 'Ars Technica';
     if (host.includes('theverge')) return 'The Verge';
+    if (host.includes('techcrunch')) return 'TechCrunch';
+    if (host.includes('venturebeat')) return 'VentureBeat';
+    if (host.includes('artificialintelligence-news')) return 'AI News';
+    if (host.includes('aiweekly')) return 'AI Weekly';
+    if (host.includes('nit.pt') || host === 'nit') return 'NIT';
     if (host.includes('news.google')) return 'Google News';
-    // Capitaliza o domínio para ficar mais legível
     const parts = host.split('.');
     return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
   } catch {
@@ -378,11 +393,13 @@ function sourceFromUrl(url) {
 
 function cleanSourceName(raw, feedUrl) {
   if (!raw) return sourceFromUrl(feedUrl);
-  // Rejeita valores que parecem URLs, query strings ou IDs numéricos
   if (/^https?:\/\//.test(raw)) return sourceFromUrl(feedUrl);
   if (/[?&=]/.test(raw)) return sourceFromUrl(feedUrl);
   if (/^\d+$/.test(raw.trim())) return sourceFromUrl(feedUrl);
   if (raw.trim().length < 2 || raw.trim().length > 80) return sourceFromUrl(feedUrl);
+  // Rejeita termos genéricos de setor/categoria
+  const normalized = raw.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (GENERIC_SOURCE_TERMS.has(normalized)) return sourceFromUrl(feedUrl);
   return raw.trim();
 }
 
