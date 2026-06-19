@@ -596,7 +596,7 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Inicializa seleção por empresa para novos artigos — usa categoria para auto-atribuir
+  // Inicializa seleção apenas para artigos SEM seleção — nunca sobrescreve seleções já configuradas
   useEffect(() => {
     if (pendingArticles.length === 0) return;
     const companies = buildCompanies(connectedAccounts, companiesData);
@@ -612,27 +612,24 @@ export default function DashboardPage() {
 
     setArticleSelections(prev => {
       const updated = { ...prev };
+      let changed = false;
       for (const article of pendingArticles) {
-        const existing = updated[article.id];
-        let company;
-        if (existing?.companyId) {
-          company = companies.find(c => c.id === existing.companyId) || companies[0];
-        } else {
-          // 1. Usa setores configurados na empresa (fonte de verdade)
-          company = companies.find(c => Array.isArray(c.sectors) && c.sectors.includes(article.category));
-          // 2. Fallback: regex sobre o nome da empresa
-          if (!company) {
-            const guessFn = CATEGORY_COMPANY_FALLBACK[article.category];
-            company = (guessFn ? guessFn(companies) : null) || companies[0];
-          }
+        // Só inicializa artigos sem seleção — nunca sobrescreve o que o user configurou
+        if (updated[article.id]?.companyId) continue;
+        let company =
+          companies.find(c => Array.isArray(c.sectors) && c.sectors.includes(article.category));
+        if (!company) {
+          const guessFn = CATEGORY_COMPANY_FALLBACK[article.category];
+          company = (guessFn ? guessFn(companies) : null) || companies[0];
         }
         updated[article.id] = {
           companyId: company?.id || null,
           platforms: company ? [...company.platforms] : [],
           accounts:  company ? { ...company.accountIds } : {},
         };
+        changed = true;
       }
-      return updated;
+      return changed ? updated : prev;
     });
   }, [pendingArticles, connectedAccounts, companiesData]);
 
@@ -840,7 +837,8 @@ export default function DashboardPage() {
           }
         }
         if (Object.keys(autoSelections).length > 0) {
-          setArticleSelections(prev => ({ ...autoSelections, ...prev }));
+          // autoSelections tem prioridade — artigos novos devem usar a empresa auto-atribuída
+          setArticleSelections(() => autoSelections);
         }
         showToast(`${merged.length} notícia(s) carregadas para revisão`, 'success');
         setFilterStatus('pending');
