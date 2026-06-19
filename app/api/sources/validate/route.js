@@ -7,33 +7,79 @@ function auth(request) {
   try { verifyToken(token); return true; } catch { return false; }
 }
 
+// Termos genéricos de setor/categoria que NÃO devem ser usados como nome de fonte
+const GENERIC_SECTOR_TERMS = [
+  'maritimo','maritime','naval','shipping','port','offshore',
+  'defesa','defense','defence','militar','military','army','navy','airforce',
+  'aeroespacial','aerospace','aviation','aircraft','space','rocket',
+  'ferroviario','railway','railroad','rail','tram','metro',
+  'tecnologia','technology','tech','digital','software','hardware','ai',
+  'fitness','workout','gym','treino','alimentacao','alimentação',
+  'ginasio','ginásio','outdoor','saude','health','nutricao','nutrição',
+  'news','noticias','notícias','latest','feed','rss','blog','articles',
+];
+
+function domainToName(feedUrl) {
+  try {
+    const hostname = new URL(feedUrl).hostname.replace(/^www\./, '').replace(/^feeds\./, '');
+    const known = {
+      'naval-technology.com': 'Naval Technology',
+      'gcaptain.com': 'gCaptain',
+      'defensenews.com': 'Defense News',
+      'breakingdefense.com': 'Breaking Defense',
+      'spacenews.com': 'SpaceNews',
+      'simpleflying.com': 'Simple Flying',
+      'railway-technology.com': 'Railway Technology',
+      'railjournal.com': 'Rail Journal',
+      'arstechnica.com': 'Ars Technica',
+      'theverge.com': 'The Verge',
+      'techcrunch.com': 'TechCrunch',
+      'venturebeat.com': 'VentureBeat',
+      'artificialintelligence-news.com': 'AI News',
+      'aiweekly.co': 'AI Weekly',
+      'feedburner.com': null, // precisa do path
+      'nit.pt': 'NIT',
+    };
+    if (known[hostname] !== undefined) return known[hostname];
+    const base = hostname.split('.')[0];
+    return base.charAt(0).toUpperCase() + base.slice(1);
+  } catch { return null; }
+}
+
 function extractRssTitle(xml, feedUrl) {
-  // Tenta extrair o título do <channel>, antes do primeiro <item> ou <entry>
+  // Extrai o título do <channel> antes do primeiro <item>/<entry>
   const channelXml = xml.replace(/<item[\s\S]*$/i, '').replace(/<entry[\s\S]*$/i, '');
   const m = channelXml.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
-  const raw = m?.[1]?.trim().replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>') || null;
-  if (!raw) return null;
+  const raw = m?.[1]?.trim().replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim() || null;
 
-  // Se o título contém separadores ("NIT | Fitness" → "NIT"), pega só a primeira parte
-  const separators = [' | ', ' - ', ' – ', ' · ', ' » ', ' > ', ' :: '];
-  for (const sep of separators) {
-    if (raw.includes(sep)) return raw.split(sep)[0].trim();
+  // Se o título contém separadores ("NIT | Fitness" → "NIT"), pega a primeira parte
+  let candidate = raw;
+  if (candidate) {
+    const separators = [' | ', ' - ', ' – ', ' · ', ' » ', ' > ', ' :: '];
+    for (const sep of separators) {
+      if (candidate.includes(sep)) { candidate = candidate.split(sep)[0].trim(); break; }
+    }
   }
 
-  // Se o título é idêntico ao hostname (já é o nome certo) ou curto e claro, usa-o
+  // Verifica se o candidato é genérico demais (nome de setor/categoria)
+  const normalize = s => s?.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[-_\s]+/g, '');
+  const candidateNorm = normalize(candidate || '');
+  const isGeneric = !candidate
+    || GENERIC_SECTOR_TERMS.some(t => candidateNorm === normalize(t))
+    || candidateNorm.length < 3;
+
+  // Também verifica se o título bate com partes do URL path (ex: "alimentacao-saudavel" no path)
+  let looksLikePathCategory = false;
   try {
-    const hostname = new URL(feedUrl).hostname.replace(/^www\./, '');
-    const domainBase = hostname.split('.')[0];
-    // Se o título parece uma categoria (corresponde a palavras do path), prefere o hostname
-    const pathParts = new URL(feedUrl).pathname.toLowerCase().split('/').filter(Boolean);
-    const titleLower = raw.toLowerCase().replace(/\s+/g, '-');
-    const looksLikeCategory = pathParts.some(p => titleLower.includes(p) || p.includes(titleLower));
-    if (looksLikeCategory && raw.length < 40) {
-      return domainBase.charAt(0).toUpperCase() + domainBase.slice(1);
-    }
+    const pathParts = new URL(feedUrl).pathname.toLowerCase().split('/').filter(p => p.length > 3);
+    looksLikePathCategory = pathParts.some(p => {
+      const pNorm = normalize(p);
+      return candidateNorm.includes(pNorm) || pNorm.includes(candidateNorm);
+    });
   } catch {}
 
-  return raw;
+  if (isGeneric || looksLikePathCategory) return domainToName(feedUrl);
+  return candidate || domainToName(feedUrl);
 }
 
 function countRssItems(xml) {
