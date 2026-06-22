@@ -463,27 +463,27 @@ async function publishToLinkedInLegacy(item, accountId = null, linkUrl = null, c
   const hashtags = generateHashtags(item);
   const postText = [summary, linkUrl ? `🔗 ${linkUrl}` : '', hashtags].filter(Boolean).join('\n\n').trim();
 
-  // Publicar como utilizador pessoal via ugcPosts
-  async function tryPost(urn) {
-    const r = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+  // Publicar via /rest/posts (aceita urn:li:person e urn:li:member)
+  const liVersions = ['202506', '202412', '202409', '202406'];
+  let postRes, postData = {};
+  for (const ver of liVersions) {
+    postRes = await fetch('https://api.linkedin.com/rest/posts', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
-      body: JSON.stringify({ author: urn, lifecycleState: 'PUBLISHED', specificContent: { 'com.linkedin.ugc.ShareContent': { shareCommentary: { text: postText }, shareMediaCategory: 'NONE' } }, visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' } }),
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'LinkedIn-Version': ver, 'X-Restli-Protocol-Version': '2.0.0' },
+      body: JSON.stringify({ author: personalUrn, commentary: postText, visibility: 'PUBLIC', distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] }, lifecycleState: 'PUBLISHED', isReshareDisabledByAuthor: false }),
     });
-    let d = {};
-    try { d = await r.json(); } catch {}
-    console.log('[linkedin] ugcPosts status:', r.status, 'author:', urn, 'error:', d?.message || d?.serviceErrorCode || 'none');
-    return { ok: r.ok, data: d, postId: d.id };
+    try { postData = await postRes.json(); } catch { postData = {}; }
+    console.log('[linkedin] /rest/posts ver:', ver, 'status:', postRes.status, '| error:', postData?.message || 'none');
+    if (postRes.status !== 426) break;
   }
-
-  const result = await tryPost(personalUrn);
-  if (!result.ok) {
-    const errMsg = result.data?.message || result.data?.serviceErrorCode || 'Falha ao publicar no LinkedIn';
-    console.error('[linkedin] Post falhou:', errMsg, JSON.stringify(result.data));
-    throw Object.assign(new Error(errMsg), { code: 'linkedin_publish_failed', details: result.data });
+  const postId = postRes.headers?.get?.('x-restli-id') || postData.id || null;
+  if (postRes.ok || postRes.status === 201) {
+    console.log('[linkedin] ✓ Publicado, postId:', postId, 'author:', personalUrn);
+    return { platform: 'linkedin', postId, authorUrn: personalUrn };
   }
-  console.log('[linkedin] ✓ Publicado, postId:', result.postId, 'author:', personalUrn);
-  return { platform: 'linkedin', postId: result.postId, authorUrn: personalUrn };
+  const errMsg = postData?.message || postData?.serviceErrorCode || 'Falha ao publicar no LinkedIn';
+  console.error('[linkedin] Post falhou:', errMsg, JSON.stringify(postData));
+  throw Object.assign(new Error(errMsg), { code: 'linkedin_publish_failed', details: postData });
 }
 
 async function publishToLinkedIn(item, accountId = null, linkUrl = null, company = null) {
