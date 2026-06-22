@@ -421,17 +421,15 @@ async function publishToWordPress(item, company) {
   return { platform: 'wordpress', postId: String(data.id), postUrl: data.link };
 }
 
-async function publishToLinkedInLegacy(item, accountId = null, linkUrl = null, company = null) {
+async function publishToLinkedIn(item, accountId = null, linkUrl = null, company = null) {
   const memberAccount = accountId ? getAccountById(accountId) : getAccount('linkedin');
-
   if (!memberAccount) {
     throw Object.assign(new Error('LinkedIn não conectado'), { code: 'linkedin_not_connected' });
   }
 
   const token = memberAccount.accessToken;
 
-  // Tenta obter ID numérico via /v2/me para usar urn:li:member:{id}
-  // Se falhar, usa o sub do OpenID via urn:li:person:{sub} (aceite pela API mais recente)
+  // Obtém ID numérico via /v2/me para urn:li:member
   let personalUrn = null;
   try {
     const meRes = await fetch('https://api.linkedin.com/v2/me', {
@@ -439,31 +437,25 @@ async function publishToLinkedInLegacy(item, accountId = null, linkUrl = null, c
     });
     const meData = await meRes.json().catch(() => ({}));
     const numericId = meData.id && /^\d+$/.test(String(meData.id)) ? String(meData.id) : null;
-    console.log('[linkedin] /v2/me id:', numericId || 'n/a (usando sub como fallback)');
-    if (numericId) {
-      personalUrn = `urn:li:member:${numericId}`;
-    }
+    console.log('[linkedin] /v2/me id:', numericId || 'n/a');
+    if (numericId) personalUrn = `urn:li:member:${numericId}`;
   } catch (e) { console.warn('[linkedin] Falha ao chamar /v2/me:', e.message); }
 
-  // Fallback: urn:li:person:{sub} — compatível com tokens OpenID Connect
   if (!personalUrn && memberAccount.accountId) {
     personalUrn = `urn:li:person:${memberAccount.accountId}`;
-    console.log('[linkedin] A usar urn:li:person (OpenID sub):', personalUrn);
+    console.log('[linkedin] Fallback para urn:li:person:', personalUrn);
   }
 
   if (!personalUrn) {
-    throw Object.assign(
-      new Error('Não foi possível determinar o ID do utilizador LinkedIn. Reconecta a conta.'),
-      { code: 'linkedin_publish_failed' }
-    );
+    throw Object.assign(new Error('Não foi possível determinar o ID do utilizador LinkedIn. Reconecta a conta.'), { code: 'linkedin_publish_failed' });
   }
-  console.log('[linkedin] personalUrn:', personalUrn);
+
+  console.log('[linkedin] author:', personalUrn);
 
   const summary = buildSocialSummary(item);
   const hashtags = generateHashtags(item);
   const postText = [summary, linkUrl ? `🔗 ${linkUrl}` : '', hashtags].filter(Boolean).join('\n\n').trim();
 
-  // Publicar via /rest/posts (aceita urn:li:person e urn:li:member)
   const liVersions = ['202506', '202412', '202409', '202406'];
   let postRes, postData = {};
   for (const ver of liVersions) {
@@ -476,107 +468,16 @@ async function publishToLinkedInLegacy(item, accountId = null, linkUrl = null, c
     console.log('[linkedin] /rest/posts ver:', ver, 'status:', postRes.status, '| error:', postData?.message || 'none');
     if (postRes.status !== 426) break;
   }
+
   const postId = postRes.headers?.get?.('x-restli-id') || postData.id || null;
   if (postRes.ok || postRes.status === 201) {
-    console.log('[linkedin] ✓ Publicado, postId:', postId, 'author:', personalUrn);
+    console.log('[linkedin] ✓ Publicado, postId:', postId);
     return { platform: 'linkedin', postId, authorUrn: personalUrn };
   }
+
   const errMsg = postData?.message || postData?.serviceErrorCode || 'Falha ao publicar no LinkedIn';
   console.error('[linkedin] Post falhou:', errMsg, JSON.stringify(postData));
   throw Object.assign(new Error(errMsg), { code: 'linkedin_publish_failed', details: postData });
-}
-
-async function publishToLinkedIn(item, accountId = null, linkUrl = null, company = null) {
-  const memberAccount = accountId ? getAccountById(accountId) : getAccount('linkedin');
-  if (!memberAccount) {
-    throw Object.assign(new Error('LinkedIn nao conectado'), { code: 'linkedin_not_connected' });
-  }
-
-  const token = memberAccount.accessToken;
-  const companyOrgId = String(company?.linkedin_org_id || '').replace(/\D/g, '');
-  const authorUrn = companyOrgId
-    ? `urn:li:organization:${companyOrgId}`
-    : (memberAccount.accountId ? `urn:li:person:${memberAccount.accountId}` : null);
-
-  if (!authorUrn) {
-    throw Object.assign(
-      new Error('Nao foi possivel determinar o ID do utilizador LinkedIn. Reconecta a conta.'),
-      { code: 'linkedin_publish_failed' }
-    );
-  }
-
-  const summary = buildSocialSummary(item);
-  const hashtags = generateHashtags(item);
-  const postText = [summary, linkUrl || '', hashtags].filter(Boolean).join('\n\n').trim();
-
-  async function tryRestPost() {
-    const apiVersion = process.env.LINKEDIN_API_VERSION || '202606';
-    const res = await fetch('https://api.linkedin.com/rest/posts', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Linkedin-Version': apiVersion,
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-      body: JSON.stringify({
-        author: authorUrn,
-        commentary: postText,
-        visibility: 'PUBLIC',
-        distribution: {
-          feedDistribution: 'MAIN_FEED',
-          targetEntities: [],
-          thirdPartyDistributionChannels: [],
-        },
-        lifecycleState: 'PUBLISHED',
-        isReshareDisabledByAuthor: false,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    const postId = res.headers.get('x-restli-id') || data.id || null;
-    console.log('[linkedin] rest/posts status:', res.status, 'author:', authorUrn, 'error:', data?.message || data?.serviceErrorCode || 'none');
-    return { ok: res.ok, status: res.status, data, postId };
-  }
-
-  async function tryLegacyUgcPost() {
-    const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-      body: JSON.stringify({
-        author: authorUrn,
-        lifecycleState: 'PUBLISHED',
-        specificContent: {
-          'com.linkedin.ugc.ShareContent': {
-            shareCommentary: { text: postText },
-            shareMediaCategory: 'NONE',
-          },
-        },
-        visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    const postId = res.headers.get('x-restli-id') || data.id || null;
-    console.log('[linkedin] ugcPosts fallback status:', res.status, 'author:', authorUrn, 'error:', data?.message || data?.serviceErrorCode || 'none');
-    return { ok: res.ok, status: res.status, data, postId };
-  }
-
-  let result = await tryRestPost();
-  if (!result.ok && result.status !== 401 && result.status !== 403) {
-    result = await tryLegacyUgcPost();
-  }
-
-  if (!result.ok) {
-    const errMsg = result.data?.message || result.data?.serviceErrorCode || 'Falha ao publicar no LinkedIn';
-    console.error('[linkedin] Post falhou:', errMsg, JSON.stringify(result.data));
-    throw Object.assign(new Error(errMsg), { code: 'linkedin_publish_failed', details: result.data });
-  }
-
-  console.log('[linkedin] Publicado, postId:', result.postId, 'author:', authorUrn);
-  return { platform: 'linkedin', postId: result.postId, authorUrn };
 }
 
 async function publishToInstagram(item, accountId = null) {
