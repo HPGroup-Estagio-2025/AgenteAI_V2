@@ -23,28 +23,6 @@ function isConfiguredValue(value) {
   return Boolean(value && !value.includes('coloca_aqui') && !value.includes('coloca-aqui'));
 }
 
-async function getLinkedInScope(companyId) {
-  const baseScope = CONFIGS.linkedin.scope;
-  if (!companyId || !supabaseAdmin) return baseScope;
-
-  const normalizedCompanyId = companyId.startsWith('db-') ? companyId.slice(3) : companyId;
-  try {
-    const { data } = await supabaseAdmin
-      .from('companies')
-      .select('linkedin_org_id')
-      .eq('id', normalizedCompanyId)
-      .single();
-
-    if (data?.linkedin_org_id) {
-      return `${baseScope} w_organization_social r_organization_social`;
-    }
-  } catch (err) {
-    console.warn('[oauth:linkedin] Falha ao verificar linkedin_org_id:', err.message);
-  }
-
-  return baseScope;
-}
-
 export async function GET(request, { params }) {
   const token = getTokenFromRequest(request);
   try { if (!token) throw new Error(); verifyToken(token); } catch {
@@ -116,7 +94,7 @@ export async function GET(request, { params }) {
   const url = new URL(config.authUrl);
   url.searchParams.set('client_id', clientId);
   url.searchParams.set('redirect_uri', redirectUri);
-  url.searchParams.set('scope', platform === 'linkedin' ? await getLinkedInScope(companyId) : config.scope);
+  url.searchParams.set('scope', config.scope);
   url.searchParams.set('state', state);
   url.searchParams.set('response_type', 'code');
 
