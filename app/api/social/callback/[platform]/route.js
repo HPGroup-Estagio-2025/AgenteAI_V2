@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { consumeState, addAccount } from '@/src/lib/social';
+import { consumeState, addAccount, supabaseAdmin } from '@/src/lib/social';
 import { ensureCompanyExists } from '@/src/lib/companies';
 
 // Troca um User Access Token curto (1-2h) por um de longa duração (60 dias).
@@ -122,32 +122,6 @@ const CONFIGS = {
         name: fullName || d.email || d.sub || 'Utilizador LinkedIn',
         email: d.email || null,
         picture: d.picture || null,
-      };
-    },
-  },
-  'linkedin-org': {
-    tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
-    clientIdEnv: 'LINKEDIN_ORG_CLIENT_ID',
-    clientSecretEnv: 'LINKEDIN_ORG_CLIENT_SECRET',
-    longLived: false,
-    async getProfile(token) {
-      // Com Community Management API obtemos as organizações administradas
-      const orgRes = await fetch(
-        'https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR',
-        { headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' } }
-      );
-      const orgData = await orgRes.json().catch(() => ({}));
-      console.log('[linkedin-org] organizationAcls:', JSON.stringify(orgData).slice(0, 300));
-      const firstOrg = orgData?.elements?.[0];
-      const orgUrn = firstOrg?.organization; // ex: "urn:li:organization:12345"
-      const orgId = orgUrn?.split(':').pop() || null;
-      return {
-        accountId: orgUrn || 'linkedin-org-token',
-        name: `Org Token (${orgId || 'desconhecido'})`,
-        email: null,
-        picture: null,
-        isOrgToken: true,
-        orgUrn,
       };
     },
   },
@@ -278,9 +252,7 @@ export async function GET(request, { params }) {
     } else {
       // Busca o nome da empresa pelo ID para backward compat
       try {
-        const { createClient } = await import('@supabase/supabase-js');
-        const adm = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-        const { data: co } = await adm.from('companies').select('name').eq('id', companyId).single();
+        const { data: co } = await supabaseAdmin.from('companies').select('name').eq('id', companyId).single();
         companyName = co?.name || null;
       } catch {}
       console.log(`[oauth:${platform}] companyId do state: ${companyId}, nome: ${companyName || 'desconhecido'}`);

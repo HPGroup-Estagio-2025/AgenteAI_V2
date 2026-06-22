@@ -14,7 +14,7 @@ const CONFIGS = {
   },
   linkedin: {
     authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
-    scope: 'openid profile email w_member_social',
+    scope: 'openid profile email w_member_social w_organization_social',
     clientIdEnv: 'LINKEDIN_CLIENT_ID',
   },
 };
@@ -97,9 +97,6 @@ export async function GET(request, { params }) {
   url.searchParams.set('scope', config.scope);
   url.searchParams.set('state', state);
   url.searchParams.set('response_type', 'code');
-  if (platform === 'linkedin') {
-    url.searchParams.set('prompt', 'login');
-  }
 
   return Response.json({ url: url.toString() });
 }
