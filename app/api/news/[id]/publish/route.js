@@ -496,19 +496,39 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
     return { ok: r.ok, data: d, postId: d.id };
   }
 
-  // Tenta publicar como organização se a empresa tem linkedin_org_id configurado
+  // Tenta publicar como organização usando /rest/posts (Community Management API)
   if (orgUrn) {
-    const orgResult = await tryPost(orgUrn);
-    if (orgResult.ok) {
-      console.log('[linkedin] ✓ Publicado como organização, postId:', orgResult.postId, 'org:', orgUrn);
-      return { platform: 'linkedin', postId: orgResult.postId, authorUrn: orgUrn };
+    const orgBody = {
+      author: orgUrn,
+      commentary: postText,
+      visibility: 'PUBLIC',
+      distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },
+      lifecycleState: 'PUBLISHED',
+      isReshareDisabledByAuthor: false,
+    };
+    const orgRes = await fetch('https://api.linkedin.com/rest/posts', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'LinkedIn-Version': '202504',
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+      body: JSON.stringify(orgBody),
+    });
+    let orgData = {};
+    try { orgData = await orgRes.json(); } catch {}
+    const postId = orgRes.headers?.get?.('x-restli-id') || orgData.id || null;
+    console.log('[linkedin] /rest/posts org status:', orgRes.status, '| postId:', postId, '| error:', orgData?.message || 'none');
+    if (orgRes.ok || orgRes.status === 201) {
+      console.log('[linkedin] ✓ Publicado como organização, postId:', postId, 'org:', orgUrn);
+      return { platform: 'linkedin', postId, authorUrn: orgUrn };
     }
-    const orgErr = orgResult.data?.message || orgResult.data?.serviceErrorCode || 'erro desconhecido';
-    console.error('[linkedin] Publicação como organização falhou (orgId:', orgId, '):', orgErr, '| status:', orgResult.data?.status, '| details:', JSON.stringify(orgResult.data));
-    // Não faz fallback silencioso — lança erro para que o utilizador saiba o que corrigir
+    const orgErr = orgData?.message || orgData?.code || 'erro desconhecido';
+    console.error('[linkedin] Publicação como organização falhou (orgId:', orgId, '):', orgErr, '| details:', JSON.stringify(orgData));
     throw Object.assign(
       new Error(`Falha ao publicar como página LinkedIn (org ${orgId}): ${orgErr}`),
-      { code: 'linkedin_publish_failed', details: orgResult.data }
+      { code: 'linkedin_publish_failed', details: orgData }
     );
   }
 
