@@ -104,17 +104,21 @@ const CONFIGS = {
     clientSecretEnv: 'LINKEDIN_CLIENT_SECRET',
     longLived: false,
     async getProfile(token) {
-      const res = await fetch('https://api.linkedin.com/v2/userinfo', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const d = await res.json();
-      console.log('[oauth:linkedin] userinfo response:', JSON.stringify({ sub: d.sub, name: d.name, given_name: d.given_name, family_name: d.family_name, email: d.email }));
+      const [userInfoRes, meRes] = await Promise.all([
+        fetch('https://api.linkedin.com/v2/userinfo', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('https://api.linkedin.com/v2/me', { headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' } }),
+      ]);
+      const d = await userInfoRes.json();
+      const me = await meRes.json().catch(() => ({}));
+      const numericId = me.id && /^\d+$/.test(String(me.id)) ? String(me.id) : null;
+      console.log('[oauth:linkedin] userinfo sub:', d.sub, '| /v2/me numeric id:', numericId || 'n/a');
       const fullName =
         d.name?.trim() ||
         [d.given_name, d.family_name].filter(Boolean).join(' ').trim() ||
         d.email?.split('@')[0] || null;
       return {
         accountId: d.sub || d.id || null,
+        linkedinNumericId: numericId,
         name: fullName || d.email || d.sub || 'Utilizador LinkedIn',
         email: d.email || null,
         picture: d.picture || null,

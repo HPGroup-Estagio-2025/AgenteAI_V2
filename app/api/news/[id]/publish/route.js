@@ -430,26 +430,33 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
 
   const token = memberAccount.accessToken;
 
-  // LinkedIn ugcPosts exige ID numérico — o sub do OpenID é UUID, não serve
-  // Vai sempre buscar o ID numérico via /v2/me
-  let numericMemberId = null;
+  // Tenta obter ID numérico via /v2/me para usar urn:li:member:{id}
+  // Se falhar, usa o sub do OpenID via urn:li:person:{sub} (aceite pela API mais recente)
+  let personalUrn = null;
   try {
     const meRes = await fetch('https://api.linkedin.com/v2/me', {
       headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' },
     });
     const meData = await meRes.json().catch(() => ({}));
-    numericMemberId = meData.id || null;
-    console.log('[linkedin] /v2/me id:', numericMemberId);
-  } catch (e) { console.warn('[linkedin] Falha ao obter memberId numérico:', e.message); }
+    const numericId = meData.id && /^\d+$/.test(String(meData.id)) ? String(meData.id) : null;
+    console.log('[linkedin] /v2/me id:', numericId || 'n/a (usando sub como fallback)');
+    if (numericId) {
+      personalUrn = `urn:li:member:${numericId}`;
+    }
+  } catch (e) { console.warn('[linkedin] Falha ao chamar /v2/me:', e.message); }
 
-  if (!numericMemberId) {
+  // Fallback: urn:li:person:{sub} — compatível com tokens OpenID Connect
+  if (!personalUrn && memberAccount.accountId) {
+    personalUrn = `urn:li:person:${memberAccount.accountId}`;
+    console.log('[linkedin] A usar urn:li:person (OpenID sub):', personalUrn);
+  }
+
+  if (!personalUrn) {
     throw Object.assign(
-      new Error('Não foi possível obter o ID numérico do LinkedIn. Reconecta a conta.'),
+      new Error('Não foi possível determinar o ID do utilizador LinkedIn. Reconecta a conta.'),
       { code: 'linkedin_publish_failed' }
     );
   }
-
-  const personalUrn = `urn:li:member:${numericMemberId}`;
   const orgId = company?.linkedin_org_id || null;
   const orgUrn = orgId ? `urn:li:organization:${orgId}` : null;
   console.log('[linkedin] personalUrn:', personalUrn, '| orgUrn:', orgUrn || 'n/a');
