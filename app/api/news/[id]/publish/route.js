@@ -506,20 +506,25 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
       lifecycleState: 'PUBLISHED',
       isReshareDisabledByAuthor: false,
     };
-    const orgRes = await fetch('https://api.linkedin.com/rest/posts', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'LinkedIn-Version': '202501',
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-      body: JSON.stringify(orgBody),
-    });
-    let orgData = {};
-    try { orgData = await orgRes.json(); } catch {}
+    // Tenta versões do LinkedIn até uma funcionar (versões ativas ~2 anos)
+    const liVersions = ['202506', '202412', '202409', '202406', '202404', '202312', '202309'];
+    let orgRes, orgData = {};
+    for (const ver of liVersions) {
+      orgRes = await fetch('https://api.linkedin.com/rest/posts', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'LinkedIn-Version': ver,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+        body: JSON.stringify(orgBody),
+      });
+      try { orgData = await orgRes.json(); } catch { orgData = {}; }
+      console.log('[linkedin] /rest/posts ver:', ver, 'status:', orgRes.status, '| error:', orgData?.message || orgData?.code || 'none');
+      if (orgRes.status !== 426) break; // 426 = versão inativa, tenta próxima
+    }
     const postId = orgRes.headers?.get?.('x-restli-id') || orgData.id || null;
-    console.log('[linkedin] /rest/posts org status:', orgRes.status, '| postId:', postId, '| error:', orgData?.message || 'none');
     if (orgRes.ok || orgRes.status === 201) {
       console.log('[linkedin] ✓ Publicado como organização, postId:', postId, 'org:', orgUrn);
       return { platform: 'linkedin', postId, authorUrn: orgUrn };
