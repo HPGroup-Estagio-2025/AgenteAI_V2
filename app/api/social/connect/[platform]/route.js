@@ -14,7 +14,7 @@ const CONFIGS = {
   },
   linkedin: {
     authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
-    scope: 'openid profile email w_member_social w_organization_social',
+    scope: 'openid profile email w_member_social',
     clientIdEnv: 'LINKEDIN_CLIENT_ID',
   },
 };
