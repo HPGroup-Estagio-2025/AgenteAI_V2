@@ -457,9 +457,7 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
       { code: 'linkedin_publish_failed' }
     );
   }
-  const orgId = company?.linkedin_org_id || null;
-  const orgUrn = orgId ? `urn:li:organization:${orgId}` : null;
-  console.log('[linkedin] personalUrn:', personalUrn, '| orgUrn:', orgUrn || 'n/a');
+  console.log('[linkedin] personalUrn:', personalUrn);
 
   const summary = buildSocialSummary(item);
   const hashtags = generateHashtags(item);
@@ -494,47 +492,6 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
     try { d = await r.json(); } catch {}
     console.log('[linkedin] ugcPosts status:', r.status, 'author:', urn, 'error:', d?.message || d?.serviceErrorCode || 'none');
     return { ok: r.ok, data: d, postId: d.id };
-  }
-
-  // Tenta publicar como organização usando /rest/posts (Community Management API)
-  if (orgUrn) {
-    const orgBody = {
-      author: orgUrn,
-      commentary: postText,
-      visibility: 'PUBLIC',
-      distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },
-      lifecycleState: 'PUBLISHED',
-      isReshareDisabledByAuthor: false,
-    };
-    // Tenta versões do LinkedIn até uma funcionar (versões ativas ~2 anos)
-    const liVersions = ['202506', '202412', '202409', '202406', '202404', '202312', '202309'];
-    let orgRes, orgData = {};
-    for (const ver of liVersions) {
-      orgRes = await fetch('https://api.linkedin.com/rest/posts', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'LinkedIn-Version': ver,
-          'X-Restli-Protocol-Version': '2.0.0',
-        },
-        body: JSON.stringify(orgBody),
-      });
-      try { orgData = await orgRes.json(); } catch { orgData = {}; }
-      console.log('[linkedin] /rest/posts ver:', ver, 'status:', orgRes.status, '| error:', orgData?.message || orgData?.code || 'none');
-      if (orgRes.status !== 426) break; // 426 = versão inativa, tenta próxima
-    }
-    const postId = orgRes.headers?.get?.('x-restli-id') || orgData.id || null;
-    if (orgRes.ok || orgRes.status === 201) {
-      console.log('[linkedin] ✓ Publicado como organização, postId:', postId, 'org:', orgUrn);
-      return { platform: 'linkedin', postId, authorUrn: orgUrn };
-    }
-    const orgErr = orgData?.message || orgData?.code || 'erro desconhecido';
-    console.error('[linkedin] Publicação como organização falhou (orgId:', orgId, '):', orgErr, '| details:', JSON.stringify(orgData));
-    throw Object.assign(
-      new Error(`Falha ao publicar como página LinkedIn (org ${orgId}): ${orgErr}`),
-      { code: 'linkedin_publish_failed', details: orgData }
-    );
   }
 
   const result = await tryPost(personalUrn);
