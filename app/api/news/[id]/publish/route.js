@@ -450,7 +450,9 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
   }
 
   const personalUrn = `urn:li:member:${numericMemberId}`;
-  console.log('[linkedin] authorUrn:', personalUrn);
+  const orgId = company?.linkedin_org_id || null;
+  const orgUrn = orgId ? `urn:li:organization:${orgId}` : null;
+  console.log('[linkedin] personalUrn:', personalUrn, '| orgUrn:', orgUrn || 'n/a');
 
   const summary = buildSocialSummary(item);
   const hashtags = generateHashtags(item);
@@ -485,6 +487,16 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
     try { d = await r.json(); } catch {}
     console.log('[linkedin] ugcPosts status:', r.status, 'author:', urn, 'error:', d?.message || d?.serviceErrorCode || 'none');
     return { ok: r.ok, data: d, postId: d.id };
+  }
+
+  // Tenta publicar como organização se a empresa tem linkedin_org_id configurado
+  if (orgUrn) {
+    const orgResult = await tryPost(orgUrn);
+    if (orgResult.ok) {
+      console.log('[linkedin] ✓ Publicado como organização, postId:', orgResult.postId, 'org:', orgUrn);
+      return { platform: 'linkedin', postId: orgResult.postId, authorUrn: orgUrn };
+    }
+    console.warn('[linkedin] Publicação como organização falhou, a tentar como utilizador pessoal. Erro:', orgResult.data?.message || orgResult.data?.serviceErrorCode);
   }
 
   const result = await tryPost(personalUrn);
