@@ -756,13 +756,15 @@ export async function POST(request, { params }) {
     await refreshAccountsFromSupabase();
 
     // Busca empresa — usa companyId do body se disponível, senão tenta via conta selecionada
-    const bodyCompanyId = body.companyId || null;
-    console.log('[publish] companyId recebido:', bodyCompanyId);
+    // O frontend envia IDs no formato "db-{uuid}" — remove o prefixo para a query
+    const rawCompanyId = body.companyId || null;
+    const bodyCompanyId = rawCompanyId?.startsWith('db-') ? rawCompanyId.slice(3) : rawCompanyId;
+    console.log('[publish] companyId recebido:', rawCompanyId, '→ lookup:', bodyCompanyId);
     let company = null;
     if (bodyCompanyId) {
       const { data } = await supabaseAdmin.from('companies').select('*').eq('id', bodyCompanyId).single();
       company = data || null;
-      console.log('[publish] Empresa encontrada:', company?.name || 'não encontrada');
+      console.log('[publish] Empresa encontrada:', company?.name || 'não encontrada', '| linkedin_org_id:', company?.linkedin_org_id || 'n/a');
     }
     if (!company) {
       const primaryAccountId = selectedAccounts.facebook || selectedAccounts.instagram || null;
