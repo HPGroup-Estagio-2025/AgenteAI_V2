@@ -503,7 +503,13 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
       console.log('[linkedin] ✓ Publicado como organização, postId:', orgResult.postId, 'org:', orgUrn);
       return { platform: 'linkedin', postId: orgResult.postId, authorUrn: orgUrn };
     }
-    console.warn('[linkedin] Publicação como organização falhou, a tentar como utilizador pessoal. Erro:', orgResult.data?.message || orgResult.data?.serviceErrorCode);
+    const orgErr = orgResult.data?.message || orgResult.data?.serviceErrorCode || 'erro desconhecido';
+    console.error('[linkedin] Publicação como organização falhou (orgId:', orgId, '):', orgErr, '| status:', orgResult.data?.status, '| details:', JSON.stringify(orgResult.data));
+    // Não faz fallback silencioso — lança erro para que o utilizador saiba o que corrigir
+    throw Object.assign(
+      new Error(`Falha ao publicar como página LinkedIn (org ${orgId}): ${orgErr}`),
+      { code: 'linkedin_publish_failed', details: orgResult.data }
+    );
   }
 
   const result = await tryPost(personalUrn);
