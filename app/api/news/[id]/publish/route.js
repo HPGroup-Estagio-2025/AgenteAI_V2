@@ -457,11 +457,36 @@ async function publishToLinkedIn(item, accountId = null, linkUrl = null, company
       { code: 'linkedin_publish_failed' }
     );
   }
-  console.log('[linkedin] personalUrn:', personalUrn);
+  const orgId = company?.linkedin_org_id || null;
+  const orgUrn = orgId ? `urn:li:organization:${orgId}` : null;
+  console.log('[linkedin] personalUrn:', personalUrn, '| orgUrn:', orgUrn || 'n/a');
 
   const summary = buildSocialSummary(item);
   const hashtags = generateHashtags(item);
   const postText = [summary, linkUrl ? `🔗 ${linkUrl}` : '', hashtags].filter(Boolean).join('\n\n').trim();
+
+  if (orgUrn) {
+    const liVersions = ['202506', '202412', '202409', '202406'];
+    let orgRes, orgData = {};
+    for (const ver of liVersions) {
+      orgRes = await fetch('https://api.linkedin.com/rest/posts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'LinkedIn-Version': ver, 'X-Restli-Protocol-Version': '2.0.0' },
+        body: JSON.stringify({ author: orgUrn, commentary: postText, visibility: 'PUBLIC', distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] }, lifecycleState: 'PUBLISHED', isReshareDisabledByAuthor: false }),
+      });
+      try { orgData = await orgRes.json(); } catch { orgData = {}; }
+      console.log('[linkedin] /rest/posts ver:', ver, 'status:', orgRes.status, '| error:', orgData?.message || 'none');
+      if (orgRes.status !== 426) break;
+    }
+    const postId = orgRes.headers?.get?.('x-restli-id') || orgData.id || null;
+    if (orgRes.ok || orgRes.status === 201) {
+      console.log('[linkedin] ✓ Publicado como organização, postId:', postId);
+      return { platform: 'linkedin', postId, authorUrn: orgUrn };
+    }
+    const orgErr = orgData?.message || orgData?.code || 'erro desconhecido';
+    console.error('[linkedin] Org post falhou:', orgErr, JSON.stringify(orgData));
+    throw Object.assign(new Error(`Falha ao publicar como empresa LinkedIn: ${orgErr}`), { code: 'linkedin_publish_failed', details: orgData });
+  }
 
   // Publicar como utilizador pessoal via ugcPosts
   async function tryPost(urn) {
