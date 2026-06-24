@@ -79,17 +79,18 @@ function buildCompanies(connectedAccounts, companiesData = []) {
     }
 
     let companySectors = [];
+    // Tenta primeiro localStorage (tem prioridade para dados recém-guardados)
     try {
-      companySectors = Array.isArray(dbCompany.sectors)
-        ? dbCompany.sectors
-        : JSON.parse(dbCompany.sectors || '[]');
-    } catch { companySectors = []; }
-    // Fallback localStorage quando a coluna sectors não existe no Supabase
+      const stored = JSON.parse(localStorage.getItem('company_sectors') || '{}');
+      if (stored[dbCompany.id]) companySectors = stored[dbCompany.id];
+    } catch { }
+    // Se localStorage vazio, tenta Supabase
     if (companySectors.length === 0) {
       try {
-        const stored = JSON.parse(localStorage.getItem('company_sectors') || '{}');
-        if (stored[dbCompany.id]) companySectors = stored[dbCompany.id];
-      } catch { }
+        companySectors = Array.isArray(dbCompany.sectors)
+          ? dbCompany.sectors
+          : JSON.parse(dbCompany.sectors || '[]');
+      } catch { companySectors = []; }
     }
     return {
       id:        `db-${dbCompany.id}`,
@@ -616,8 +617,14 @@ export default function DashboardPage() {
       for (const article of pendingArticles) {
         // Só inicializa artigos sem seleção — nunca sobrescreve o que o user configurou
         if (updated[article.id]?.companyId) continue;
-        let company =
-          companies.find(c => Array.isArray(c.sectors) && c.sectors.includes(article.category));
+        let company = null;
+        // Procura por setor (case-insensitive)
+        const categoryLower = (article.category || '').toLowerCase();
+        company = companies.find(c => {
+          if (!Array.isArray(c.sectors) || c.sectors.length === 0) return false;
+          return c.sectors.some(s => s.toLowerCase() === categoryLower);
+        });
+        // Se não encontrou por setor, tenta fallback por nome
         if (!company) {
           const guessFn = CATEGORY_COMPANY_FALLBACK[article.category];
           company = (guessFn ? guessFn(companies) : null) || companies[0];
@@ -760,6 +767,16 @@ export default function DashboardPage() {
   function guessCompanyForCategory(category) {
     const companies = buildCompanies(connectedAccounts, companiesData);
     if (!companies.length) return null;
+
+    // Primeiro tenta encontrar por setor configurado (case-insensitive)
+    const categoryLower = (category || '').toLowerCase();
+    const bySetor = companies.find(c => {
+      if (!Array.isArray(c.sectors) || c.sectors.length === 0) return false;
+      return c.sectors.some(s => s.toLowerCase() === categoryLower);
+    });
+    if (bySetor) return bySetor;
+
+    // Fallback: tenta por nome da empresa
     const name = (c) => (c.name || '').toLowerCase();
     const DEFENSE_KEYS  = ['defense', 'defesa', 'militar', 'military'];
     const MARINE_KEYS   = ['marine', 'marinha', 'naval', 'maritime'];
